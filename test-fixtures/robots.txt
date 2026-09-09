@@ -1,0 +1,31 @@
+# Test fixture for the geo-readiness module.
+# Every group here exists to exercise a different branch of RobotsRules.
+
+# --- Wildcard group: everyone not named below falls here -------------------
+User-agent: *
+Disallow: /cms/
+Disallow: /modules/
+Disallow: /*/login
+Disallow: /*?reply=
+Disallow: /private$
+
+# --- Named and welcomed. Two agents sharing one group ----------------------
+# Exercises: consecutive User-agent lines form a single group.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /internal/
+
+# --- Named and refused outright --------------------------------------------
+# Exercises: "reachable but disallowed", since the server will still serve it.
+User-agent: CCBot
+Disallow: /
+
+# --- Named, with Allow beating Disallow on a longer match ------------------
+# Exercises: longest-match-wins between Allow and Disallow.
+User-agent: PerplexityBot
+Disallow: /docs/
+Allow: /docs/public/
+
+Sitemap: http://localhost:9090/sitemap.xml
+Sitemap: http://localhost:9090/fr/sitemap-lang.xml

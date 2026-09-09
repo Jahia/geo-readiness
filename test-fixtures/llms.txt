@@ -1,0 +1,20 @@
+# GEO Readiness test site
+
+> A fixture site used to exercise the geo-readiness module. It exists only to give
+> the crawler check something predictable to read, with a known structure.
+
+## Core pages
+
+- [Home](http://localhost:9090/en/home.html): the landing page
+- [Products](http://localhost:9090/en/products.html): what the fixture pretends to sell
+- [Contact](http://localhost:9090/en/contact.html): a form that goes nowhere
+
+## Documentation
+
+- [Getting started](http://localhost:9090/docs/public/start.html): allowed for every crawler
+- [API reference](http://localhost:9090/docs/public/api.html): also allowed
+- [Internal notes](http://localhost:9090/docs/internal.html): disallowed for PerplexityBot
+
+## Optional
+
+- [Changelog](http://localhost:9090/en/changelog.html): release history

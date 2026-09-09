@@ -1,0 +1,12 @@
+# GEO Readiness test site, full text
+
+> The expanded variant. Only served when the fixture server is started with --llms-full.
+
+## Home
+
+The landing page of a site that does not exist. It is here so the module has something
+to report when llms-full.txt is present rather than missing.
+
+## Products
+
+Nothing is actually for sale.
