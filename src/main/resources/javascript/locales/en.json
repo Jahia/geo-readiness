@@ -1,0 +1,93 @@
+{
+  "geo-readiness": {
+    "action": {
+      "open": "GEO readiness"
+    },
+    "drawer": {
+      "title": "GEO readiness",
+      "subtitle": "Can AI crawlers actually read this page?",
+      "close": "Close",
+      "run": "Run check",
+      "rerun": "Run again",
+      "running": "Checking, one request per crawler…",
+      "lastRun": "Last check: {{date}}",
+      "url": "Tested URL"
+    },
+    "crawler": {
+      "tab": "Crawler access",
+      "verdict": {
+        "ok": "Every crawler we tested can read this page.",
+        "blocked": "{{count}} crawler is blocked.",
+        "blocked_plural": "{{count}} crawlers are blocked.",
+        "thin": "Some crawlers receive far less text than a browser. The page may need JavaScript to show its content.",
+        "unpublished": "This page has never been published, so there is no public URL to test yet.",
+        "empty": "Even a browser receives almost no text before JavaScript runs ({{count}} words). Crawlers will see an empty page."
+      },
+      "agent": "Crawler",
+      "status": "Status",
+      "time": "Time",
+      "size": "Size",
+      "words": "Words",
+      "blocked": "Blocked",
+      "reachable": "Reachable",
+      "initialHtml": "What the crawler receives before JavaScript runs",
+      "h1": "H1 heading",
+      "metaDescription": "Meta description",
+      "canonical": "Canonical URL",
+      "links": "Links",
+      "jsonLd": "Structured data",
+      "present": "Present",
+      "missing": "Missing",
+      "explain": {
+        "403": "The server refused this crawler. This is usually a firewall or bot-protection rule, not a content problem.",
+        "jsOnly": "A browser sees much more text than the crawler does. The content probably arrives through JavaScript, which crawlers do not run.",
+        "layer": "Fix layer",
+        "empty": "The initial HTML is a shell. The content arrives through JavaScript, or after a client-side redirect, and crawlers do not run either. Server-side rendering is the fix, not a robots.txt change.",
+        "blockedButAllowed": "Your robots.txt allows {{count}} of these crawlers, but the server refused them anyway. The block is coming from a firewall or bot protection, not from your content or your robots.txt. This is an infrastructure fix.",
+        "reachableButDisallowed": "Your robots.txt tells {{count}} of these crawlers not to fetch this page. They can reach it, but a well-behaved crawler will not read it. Change robots.txt if you want them to."
+      },
+      "metaRefresh": "Client-side redirect: the page tells a browser to go to {{url}}. Crawlers stay on this shell.",
+      "robots": "robots.txt"
+    },
+    "error": {
+      "generic": "The check could not be completed.",
+      "rateLimit": "Too many checks in a short time. Try again in a few minutes.",
+      "notPublished": "Publish this page first, then run the check."
+    },
+    "files": {
+      "tab": "Site files",
+      "robots": {
+        "title": "robots.txt",
+        "absent": "This site has no robots.txt. Every crawler is allowed everywhere by default. That works, but nobody decided it.",
+        "noneNamed": "No AI crawler is named in robots.txt. They all fall under the wildcard rule, so they are allowed by default rather than on purpose.",
+        "someNamed": "{{count}} AI crawler is named explicitly in robots.txt.",
+        "someNamed_plural": "{{count}} AI crawlers are named explicitly in robots.txt.",
+        "someDisallowed": "{{count}} of them cannot fetch this page.",
+        "declared": "Declared",
+        "effective": "For this page",
+        "rule": "Matching rule",
+        "byName": "By name",
+        "byWildcard": "Wildcard",
+        "allowed": "Allowed",
+        "disallowed": "Disallowed",
+        "noRule": "No rule matches, so allowed",
+        "sitemaps": "{{count}} sitemap declared:",
+        "sitemaps_plural": "{{count}} sitemaps declared:"
+      },
+      "llms": {
+        "title": "llms.txt",
+        "present": "This site publishes an llms.txt.",
+        "absent": "No llms.txt at the site root (HTTP {{status}}). AI engines have no curated map of your best content.",
+        "servedHtml": "The site returned an HTML page for /llms.txt instead of a text file. That counts as not having one.",
+        "h1": "Title",
+        "summary": "Summary line",
+        "sections": "Sections",
+        "links": "Links",
+        "contentType": "Content type"
+      },
+      "llmsFull": {
+        "label": "llms-full.txt"
+      }
+    }
+  }
+}

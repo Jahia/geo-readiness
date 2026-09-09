@@ -1,0 +1,93 @@
+{
+  "geo-readiness": {
+    "action": {
+      "open": "Lisibilité IA"
+    },
+    "drawer": {
+      "title": "Lisibilité IA",
+      "subtitle": "Les robots des IA peuvent-ils vraiment lire cette page ?",
+      "close": "Fermer",
+      "run": "Lancer le test",
+      "rerun": "Relancer",
+      "running": "Test en cours, une requête par robot…",
+      "lastRun": "Dernier test : {{date}}",
+      "url": "URL testée"
+    },
+    "crawler": {
+      "tab": "Accès des robots",
+      "verdict": {
+        "ok": "Tous les robots testés peuvent lire cette page.",
+        "blocked": "{{count}} robot est bloqué.",
+        "blocked_plural": "{{count}} robots sont bloqués.",
+        "thin": "Certains robots reçoivent beaucoup moins de texte qu'un navigateur. La page a sans doute besoin de JavaScript pour afficher son contenu.",
+        "unpublished": "Cette page n'a jamais été publiée. Il n'y a donc pas encore d'URL publique à tester.",
+        "empty": "Même un navigateur ne reçoit presque aucun texte avant l'exécution du JavaScript ({{count}} mots). Les robots verront une page vide."
+      },
+      "agent": "Robot",
+      "status": "Statut",
+      "time": "Temps",
+      "size": "Taille",
+      "words": "Mots",
+      "blocked": "Bloqué",
+      "reachable": "Accessible",
+      "initialHtml": "Ce que le robot reçoit avant l'exécution du JavaScript",
+      "h1": "Titre H1",
+      "metaDescription": "Meta description",
+      "canonical": "URL canonique",
+      "links": "Liens",
+      "jsonLd": "Données structurées",
+      "present": "Présent",
+      "missing": "Absent",
+      "explain": {
+        "403": "Le serveur a refusé ce robot. C'est en général une règle de pare-feu ou d'anti-bot, pas un problème de contenu.",
+        "jsOnly": "Un navigateur voit beaucoup plus de texte que le robot. Le contenu arrive probablement via JavaScript, que les robots n'exécutent pas.",
+        "layer": "Couche à corriger",
+        "empty": "Le HTML initial est une coquille vide. Le contenu arrive via JavaScript, ou après une redirection côté client, et les robots n'exécutent ni l'un ni l'autre. La solution est le rendu côté serveur, pas robots.txt.",
+        "blockedButAllowed": "Votre robots.txt autorise {{count}} de ces robots, mais le serveur les a quand même refusés. Le blocage vient d'un pare-feu ou d'une protection anti-bot, pas de votre contenu ni de votre robots.txt. C'est une correction d'infrastructure.",
+        "reachableButDisallowed": "Votre robots.txt demande à {{count}} de ces robots de ne pas récupérer cette page. Ils peuvent y accéder, mais un robot respectueux ne la lira pas. Modifiez robots.txt si vous voulez qu’ils la lisent."
+      },
+      "metaRefresh": "Redirection côté client : la page demande au navigateur d'aller vers {{url}}. Les robots restent sur cette coquille vide.",
+      "robots": "robots.txt"
+    },
+    "error": {
+      "generic": "Le test n'a pas pu aboutir.",
+      "rateLimit": "Trop de tests en peu de temps. Réessayez dans quelques minutes.",
+      "notPublished": "Publiez d'abord cette page, puis lancez le test."
+    },
+    "files": {
+      "tab": "Fichiers du site",
+      "robots": {
+        "title": "robots.txt",
+        "absent": "Ce site n'a pas de robots.txt. Tous les robots sont autorisés partout par défaut. Cela fonctionne, mais personne ne l'a décidé.",
+        "noneNamed": "Aucun robot d'IA n'est nommé dans le robots.txt. Ils dépendent tous de la règle générique : ils sont autorisés par défaut, pas volontairement.",
+        "someNamed": "{{count}} robot d'IA est nommé explicitement dans le robots.txt.",
+        "someNamed_plural": "{{count}} robots d'IA sont nommés explicitement dans le robots.txt.",
+        "someDisallowed": "{{count}} d'entre eux ne peuvent pas récupérer cette page.",
+        "declared": "Déclaré",
+        "effective": "Pour cette page",
+        "rule": "Règle appliquée",
+        "byName": "Par son nom",
+        "byWildcard": "Générique",
+        "allowed": "Autorisé",
+        "disallowed": "Interdit",
+        "noRule": "Aucune règle ne correspond, donc autorisé",
+        "sitemaps": "{{count}} sitemap déclaré :",
+        "sitemaps_plural": "{{count}} sitemaps déclarés :"
+      },
+      "llms": {
+        "title": "llms.txt",
+        "present": "Ce site publie un fichier llms.txt.",
+        "absent": "Pas de llms.txt à la racine du site (HTTP {{status}}). Les moteurs d'IA n'ont aucune carte de vos meilleurs contenus.",
+        "servedHtml": "Le site a renvoyé une page HTML pour /llms.txt au lieu d'un fichier texte. Cela revient à ne pas en avoir.",
+        "h1": "Titre",
+        "summary": "Ligne de résumé",
+        "sections": "Sections",
+        "links": "Liens",
+        "contentType": "Type de contenu"
+      },
+      "llmsFull": {
+        "label": "llms-full.txt"
+      }
+    }
+  }
+}

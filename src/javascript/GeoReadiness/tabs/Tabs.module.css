@@ -1,0 +1,100 @@
+.verdict {
+    padding: 12px 14px;
+    border-radius: 5px;
+    font-size: 14px;
+    line-height: 1.45;
+    margin-bottom: 12px;
+}
+.good { background: #dff0ea; color: #0e6a51; }
+.warn { background: #fbefd9; color: #8a5605; }
+.bad  { background: #fae6e4; color: #a5312a; }
+
+.url { display: block; margin-bottom: 14px; word-break: break-all; }
+
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th {
+    text-align: left;
+    font-size: 10.5px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: #5c6b7a;
+    padding: 8px 8px 8px 0;
+    border-bottom: 1px solid #c9d3dc;
+    white-space: nowrap;
+}
+.table td { padding: 9px 8px 9px 0; border-bottom: 1px solid #eef2f6; vertical-align: top; }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rowBad td { background: #fdf3f2; }
+
+.pillGood, .pillBad {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 3px;
+    font-weight: 600;
+    font-size: 12px;
+}
+.pillGood { background: #dff0ea; color: #0e6a51; }
+.pillBad  { background: #fae6e4; color: #a5312a; }
+
+.marks { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.marks span {
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.on    { background: #e1f1f9; color: #0086bf; }
+.off   { background: #f0f2f5; color: #8a97a3; text-decoration: line-through; }
+.plain { background: #f0f2f5; color: #5c6b7a; }
+
+.explain {
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: #f2f6f9;
+    border-radius: 4px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: #24343f;
+}
+
+.sectionTitle { display: block; margin: 22px 0 10px; }
+.sectionTitle:first-child { margin-top: 0; }
+
+.rule { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: #5c6b7a; }
+
+.facts { margin: 4px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
+.facts li { color: #24343f; }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid #dfe3e8; margin-bottom: 16px; }
+.tab {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #5c6b7a;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+}
+.tab:hover { color: #24343f; }
+.tabActive { color: #0086bf; border-bottom-color: #0086bf; }
+.tabBadge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 8px;
+    background: #fae6e4;
+    color: #a5312a;
+    font-size: 11px;
+}
+
+.mismatch {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    background: #fbefd9;
+    color: #8a5605;
+    font-size: 12.5px;
+    line-height: 1.5;
+}
