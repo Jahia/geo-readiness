@@ -55,6 +55,13 @@ rather than a delta. It needs nothing from any external vendor.
 - English and French throughout, including every check label and its
   explanation.
 
+### Changed
+
+- The score is rendered as a list rather than a table, and the drawer is
+  820px wide instead of 620px. Moonstone table rows are a fixed height and
+  the cell scrolls its overflow, so a check's explanation was being clipped
+  with no way to read it. Tables remain where the values are short.
+
 ### Notes on behaviour worth knowing
 
 - **Being disallowed in robots.txt is not scored as a failure.** Refusing a
