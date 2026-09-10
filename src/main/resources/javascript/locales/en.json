@@ -47,7 +47,11 @@
         "reachableButDisallowed": "Your robots.txt tells {{count}} of these crawlers not to fetch this page. They can reach it, but a well-behaved crawler will not read it. Change robots.txt if you want them to."
       },
       "metaRefresh": "Client-side redirect: the page tells a browser to go to {{url}}. Crawlers stay on this shell.",
-      "robots": "robots.txt"
+      "robots": "robots.txt",
+      "wordCount": "{{count}} word",
+      "wordCount_plural": "{{count}} words",
+      "thinMark": "far less text",
+      "noResponse": "no response"
     },
     "error": {
       "generic": "The check could not be completed.",

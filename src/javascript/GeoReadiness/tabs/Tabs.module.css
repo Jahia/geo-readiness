@@ -243,3 +243,51 @@
     font-variant-numeric: tabular-nums;
     opacity: 0.8;
 }
+
+/*
+ * Crawler list. Same reason as the score list: Moonstone Table rows are a
+ * fixed height and wrap children in a Typography, which made the wrapping
+ * marks overlap the line above.
+ */
+.agentList {
+    list-style: none;
+    margin: 0.5rem 0 1rem;
+    padding: 0;
+}
+
+.agentItem {
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--moon-color-gray_light, #dfe3e8);
+}
+
+.agentItem:last-child {
+    border-bottom: none;
+}
+
+.agentHead {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.agentName {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.agentMetrics {
+    margin-left: auto;
+    white-space: nowrap;
+    opacity: 0.75;
+}
+
+.markWarn {
+    background: #fdf0d5;
+    color: #8a6100;
+}
+
+/* The marks now sit under the agent's head line rather than in a cell. */
+.agentItem .marks {
+    margin-top: 0.35rem;
+}

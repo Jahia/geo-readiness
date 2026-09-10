@@ -143,10 +143,12 @@ unknown case renders the name alone.
 **Moonstone `Table` rows are a fixed height.** 48px, or 64px with
 `hasMultipleLines`, and `TableBodyCell` sets `overflow-y: auto`, so anything taller is
 scroll-clipped rather than wrapped. That makes `Table` right for short tabular values and wrong
-for explanatory prose. The score list was a `Table` and its per-check explanations were being cut
-off; it is now a plain `<ul>` that wraps, still built from Moonstone `Chip`, `Typography` and
-`Separator`. The crawler table stays a `Table` (its values are short) but sets `hasMultipleLines`
-because the marks column wraps to two lines. Check any new column against the 48px budget before
+for explanatory prose. `TableCell` also wraps its children in a `Typography`, so a nested wrapping
+flex overlaps the line above rather than pushing it down. Both symptoms bit us: the score's
+per-check explanations were cut off, and the crawler's markup indicators overlapped. Both are now
+plain `<ul>` lists that wrap, still built from Moonstone `Chip` and `Typography`. `Table` survives
+only where every value is short and fits one line: the robots stance grid and the site-files
+report. Check any new column against the 48px budget, and against that Typography wrapper, before
 reaching for `Table`.
 
 **Use Moonstone, not raw markup.** The settings page is `LayoutContent` + `Header`, the same shape

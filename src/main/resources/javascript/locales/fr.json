@@ -47,7 +47,11 @@
         "reachableButDisallowed": "Votre robots.txt demande à {{count}} de ces robots de ne pas récupérer cette page. Ils peuvent y accéder, mais un robot respectueux ne la lira pas. Modifiez robots.txt si vous voulez qu’ils la lisent."
       },
       "metaRefresh": "Redirection côté client : la page demande au navigateur d'aller vers {{url}}. Les robots restent sur cette coquille vide.",
-      "robots": "robots.txt"
+      "robots": "robots.txt",
+      "wordCount": "{{count}} mot",
+      "wordCount_plural": "{{count}} mots",
+      "thinMark": "beaucoup moins de texte",
+      "noResponse": "pas de réponse"
     },
     "error": {
       "generic": "Le test n'a pas pu aboutir.",

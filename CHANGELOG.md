@@ -57,10 +57,12 @@ rather than a delta. It needs nothing from any external vendor.
 
 ### Changed
 
-- The score is rendered as a list rather than a table, and the drawer is
-  820px wide instead of 620px. Moonstone table rows are a fixed height and
-  the cell scrolls its overflow, so a check's explanation was being clipped
-  with no way to read it. Tables remain where the values are short.
+- The score and the crawler results are rendered as lists rather than
+  tables, and the drawer is 820px wide instead of 620px. Moonstone table
+  rows are a fixed height and the cell wraps its children in a Typography,
+  so a check's explanation was clipped and the crawler's markup indicators
+  overlapped the line above. Tables remain where every value is short and
+  fits one line.
 
 ### Notes on behaviour worth knowing
 

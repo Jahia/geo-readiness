@@ -1,9 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {
-    Chip, Table, TableBody, TableBodyCell, TableHead, TableHeadCell, TableRow, Typography
-} from '@jahia/moonstone';
+import {Chip, Typography} from '@jahia/moonstone';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -62,49 +60,47 @@ export const CrawlerTab = ({report}) => {
                 </Typography>
             )}
 
-            <Table className={styles.mTable}>
-                <TableHead>
-                    <TableRow>
-                        <TableHeadCell>{t('crawler.agent')}</TableHeadCell>
-                        <TableHeadCell width="80px" textAlign="right">{t('crawler.status')}</TableHeadCell>
-                        <TableHeadCell width="80px" textAlign="right">{t('crawler.time')}</TableHeadCell>
-                        <TableHeadCell width="80px" textAlign="right">{t('crawler.words')}</TableHeadCell>
-                        <TableHeadCell>{t('crawler.initialHtml')}</TableHeadCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {(report.agents || []).map(a => {
-                        const ok = a.status === 200;
-                        const words = a.html ? a.html.words : 0;
-                        return (
-                            // The marks column wraps to two lines on a narrow drawer, and a
-                            // default 48px row would scroll-clip the second one.
-                            <TableRow key={a.name} hasMultipleLines>
-                                <TableBodyCell>{a.name}</TableBodyCell>
-                                <TableBodyCell textAlign="right">
-                                    <Chip
-                                        label={a.status === null || a.status === undefined ? '—' : String(a.status)}
-                                        color={ok ? 'success' : 'danger'}
-                                    />
-                                </TableBodyCell>
-                                <TableBodyCell textAlign="right">{a.ms}ms</TableBodyCell>
-                                <TableBodyCell textAlign="right">{words.toLocaleString()}</TableBodyCell>
-                                <TableBodyCell>
-                                    {a.html ? (
-                                        <span className={styles.marks}>
-                                            <span className={a.html.h1Count ? styles.on : styles.off}>{t('crawler.h1')}</span>
-                                            <span className={a.html.metaDescription ? styles.on : styles.off}>{t('crawler.metaDescription')}</span>
-                                            <span className={a.html.canonical ? styles.on : styles.off}>{t('crawler.canonical')}</span>
-                                            <span className={styles.plain}>{a.html.links} {t('crawler.links')}</span>
-                                            <span className={a.html.jsonLd ? styles.on : styles.off}>{t('crawler.jsonLd')}</span>
-                                        </span>
-                                    ) : <span className={styles.off}>—</span>}
-                                </TableBodyCell>
-                            </TableRow>
-                        );
-                    })}
-                </TableBody>
-            </Table>
+            {/*
+              * A list, not a Table. Moonstone rows are a fixed height and the cell
+              * wraps its children in a Typography, so the wrapping marks below
+              * overlapped the line above. Each agent gets a headline row and its
+              * marks underneath, free to wrap.
+              */}
+            <ul className={styles.agentList}>
+                {(report.agents || []).map(a => {
+                    const ok = a.status === 200;
+                    const words = a.html ? a.html.words : 0;
+                    const thin = ok && control > 0 && words < control * THIN_RATIO;
+                    return (
+                        <li key={a.name} className={styles.agentItem}>
+                            <div className={styles.agentHead}>
+                                <Chip
+                                    label={a.status === null || a.status === undefined ? '—' : String(a.status)}
+                                    color={ok ? 'success' : 'danger'}
+                                />
+                                <Typography variant="body" className={styles.agentName}>{a.name}</Typography>
+                                <Typography variant="caption" className={styles.agentMetrics}>
+                                    {a.ms}ms · {t('crawler.wordCount', {count: words})}
+                                </Typography>
+                            </div>
+                            {a.html ? (
+                                <div className={styles.marks}>
+                                    <span className={a.html.h1Count ? styles.on : styles.off}>{t('crawler.h1')}</span>
+                                    <span className={a.html.metaDescription ? styles.on : styles.off}>{t('crawler.metaDescription')}</span>
+                                    <span className={a.html.canonical ? styles.on : styles.off}>{t('crawler.canonical')}</span>
+                                    <span className={styles.plain}>{a.html.links} {t('crawler.links')}</span>
+                                    <span className={a.html.jsonLd ? styles.on : styles.off}>{t('crawler.jsonLd')}</span>
+                                    {thin && <span className={styles.markWarn}>{t('crawler.thinMark')}</span>}
+                                </div>
+                            ) : (
+                                <div className={styles.marks}>
+                                    <span className={styles.off}>{a.error ? t('crawler.noResponse') : '—'}</span>
+                                </div>
+                            )}
+                        </li>
+                    );
+                })}
+            </ul>
 
             {report.blockedButAllowedCount > 0 && (
                 <p className={styles.mismatch}>
