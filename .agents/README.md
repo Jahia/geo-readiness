@@ -49,6 +49,23 @@ Concretely, the servlet must keep:
 - **OSGi servlet requests report `/modules` as context path.** The rewriter prepends it faithfully,
   giving `/modules/sites/x/home.html`. `fixContextPath()` swaps it for `Jahia.getContextPath()`.
   Keep that call if the rewriter is ever touched.
+- **The `robots` module (3.0.0) and jcontent cannot both run on a cold origin.** robots shares
+  `@apollo/react-hooks` without `@apollo/react-common`, wins the equal-version election by `uniqueName`,
+  and every legacy `useQuery` at boot throws `Invariant Violation: 1` -> white jcontent (seen the first
+  time the UI was opened on `digitall.local.com`). It also owns `/robots.txt` (RobotsServlet + urlrewrite),
+  so stopping it removes the fixture, and a static `webapps/ROOT/robots.txt` is not an immediate fallback: the module's
+  urlrewrite rule (`/robots.txt` -> `/modules/robots/robots`) survives the bundle stop, so the path 404s until
+  the next Jahia restart with robots still stopped. Options: rebuild robots with `@apollo/react-common` shared, or start
+  robots only after jcontent has loaded on a warm origin. Same defect in `llms` 1.0.0, but its name sorts
+  below personal-api-tokens so it does not win.
+- **Test through the site's own host, or set `PUBLIC_BASE_URL`.** `robots.txt` is served from the
+  site's `j:robots` property and resolved by server name, so `http://localhost:8080/robots.txt` is
+  the *default* site's file (404 on this box), while `http://digitall.local.com:8080/robots.txt` is
+  digitall's. `baseUrl()` follows the same logic: request host equals the site's `j:serverName` ->
+  reuse the request's scheme and port; request host differs and the site has a real server name ->
+  `https://<serverName>`, which on a dev box is a `ConnectException` for all nine agents. That is
+  the edit-host-vs-public-host production case, not a bug. Add `127.0.0.1 <serverName>` to
+  `/etc/hosts` and open jContent through that host. The file is `robots.txt`, plural.
 - **Vanity URLs only resolve when the request host maps to the site.** With many sites on
   `localhost`, digitall's vanity URL was live in JCR but the rewriter (correctly) kept the
   `/sites/digitall/...` form, because `/geo-about` on that host returns 400. Not a bug. Test vanity
@@ -85,12 +102,68 @@ Concretely, the servlet must keep:
   their 200 homepage for any unknown path. Check the body and the content type, not just the
   status code.
 
+## Two entry points
+
+- `GeoReadinessAction` -> portal drawer, registered on `headerPrimaryActions:890`. **Page scope.**
+- `GeoDashboard` -> admin route `siteSettingsSeo/geoReadiness` on `jcontent-siteSettingsSeo:80`,
+  which is Additional > SEO. **Site scope.** Same target the `robots` and `sitemap` modules use
+  (both at `:75`), so the three sit together.
+
+The registration shape for the settings page, copied from `robots` and `sitemap`:
+
+```js
+registry.add('adminRoute', 'siteSettingsSeo/geoReadiness', {
+    targets: ['jcontent-siteSettingsSeo:80'],
+    label: 'geo-readiness:dashboard.navLabel',   // an i18n key, not a literal
+    isSelectable: true,
+    requiredPermission: 'publish',
+    requireModuleInstalledOnSite: 'geo-readiness',
+    render: () => <GeoDashboard/>
+});
+```
+
+The component reads its context from the store, `state.site` and `state.language`, and sends
+`/sites/<siteKey>` as the path. The servlet resolves the site from any path under `/sites/`, so a
+site node works exactly as a page path does.
+
+**Header pattern.** Settings panels title themselves after the thing they act on, the way
+site-settings-seo does (`"<label> - <site displayName>"`). Ours reads *GEO readiness for site
+{{site}} - {{language}}*, with the site's **displayName** from `useSiteInfo` rather than the site
+key, and the language as its own display name plus a flag. `useSiteInfo({siteKey, displayLanguage,
+uiLanguage})` comes from `@jahia/data-helper` and returns `displayName` and a `languages` array
+carrying `displayName` / `uiLanguageDisplayName` per language. Redux supplies all three inputs:
+`state.site`, `state.language`, `state.uilang`.
+
+**Flags are derived, not looked up.** Moonstone ships no flag icons. `util/languageFlag.js` builds
+the emoji from the locale's region subtag when it has one (`fr_BE` -> BE), else from a small
+language-to-country default map, and returns null when it cannot answer. A flag is a country and a
+locale is a language, so this is a convention: no flag beats the wrong flag, which is why the
+unknown case renders the name alone.
+
+**Use Moonstone, not raw markup.** The settings page is `LayoutContent` + `Header`, the same shape
+as the other Additional panels, with `Tab` / `TabItem` in the header's `toolbarLeft` slot to keep
+robots.txt and llms.txt apart. Inside, tables are `Table` / `TableHead` / `TableBody` /
+`TableRow` / `TableHeadCell` / `TableBodyCell`, states are `Banner` (it needs both a `title` and
+children), badges are `Chip`, the per-crawler choice is a `Switch`, and the editable file is
+`Textarea`. The only raw element left on purpose is the `<pre>` holding the diff, because a
+monospaced block is the right element and Moonstone has no equivalent.
+
+Two gotchas found while converting: `Tab`'s `TabItem` is exported from the package root even
+though `components/Tab/index.d.ts` does not list it, and `TabItem` has no badge slot, so a count
+goes in its `icon` prop as a `Badge`. Also beware i18n key collisions: `score.check` is a
+namespace holding `.label` and `.fix`, so a column header cannot reuse that key. It is
+`score.checkColumn`.
+
+**Keep the scopes apart.** Anything that edits a site-wide file belongs on the settings page. The
+drawer answers one question about one page, and every control added to it has to earn its place
+against that sentence.
+
 ## Layout
 
 ```
 src/javascript/
 ├── index.js                        # jahiaApp-init:50 callback
-├── init.js                         # translations + action registration
+├── init.js                         # translations + action AND admin route registration
 └── GeoReadiness/
     ├── GeoReadinessAction.jsx      # useNodeChecks -> portal drawer
     ├── GeoReadinessDrawer.jsx      # run, cache, error states
@@ -106,9 +179,65 @@ src/main/java/org/jahia/se/modules/georeadiness/
 └── servlet/CrawlerCheckServlet.java
 ```
 
+## The report / write line
+
+Reporting is safe to run against any site. Writing is not. Keep the two visibly apart: the crawler
+check and the score only read, and the one write path (`SiteFilesServlet`) generates, shows, and
+waits for a second confirming click before it stores anything. `applyLlms` writes **exactly** the
+text it is handed and never regenerates, so an editor's hand-edits survive.
+
+## Site file storage, verified from the deployed jars
+
+Both community modules are the same shape, which is why the two write features are symmetric:
+
+| Module | Mixin | Property | Autocreated default |
+|---|---|---|---|
+| `robots` 3.0.0 | `jmix:robots` | `j:robots` (string, textarea) | `User-agent: *` |
+| `llms` 1.0.0 | `jmix:llms` | `j:llms` (string, textarea) | `# Title` |
+
+Each ships one servlet that reads the property off the site via `JahiaSitesService` and serves it
+as `text/plain`, plus a `last-urlrewrite-*.xml` rule routing `/robots.txt` or `/llms.txt` to it.
+Consequences worth knowing:
+
+- **Writing means: add the mixin if absent, set the property, then publish.** The servlets read
+  live. An unpublished change leaves the served file unchanged and looks like the write failed.
+- **The autocreated default is not a file.** A site carrying `jmix:llms` with `# Title` reports as
+  "has an llms.txt" unless you check for the placeholder explicitly.
+- **`llms-full.txt` is unsupported**, not missing. There is no property and no route for it.
+
+## Generator rules
+
+`LlmsGenerator` walks the LIVE tree. Sections come from the page tree, not from a fixed list.
+The trap: a section such as `legal` or `landing-pages` is usually **`jnt:navMenuText`**, a grouping
+node that is not itself a page. Looking only for `jnt:page` children of the site finds the home page
+and silently drops every page underneath those groups. On luxe that was 6 of 15 pages missing.
+
+Section headings use the node's own title in the requested language, never a hardcoded English
+word, because the generated file is site content and must follow the site's language. The fallback
+when a node has no title in that language is its humanised node name.
+
+## robots.txt merging
+
+`RobotsEditor` parses into blocks (raw lines, and groups of consecutive `User-agent` lines plus
+their rules) and re-renders. Rules that took real work to get right, all verified against
+`test-fixtures/robots.txt`:
+
+- **Allow and block are not symmetric.** Block replaces the group's rules with `Disallow: /`.
+  Allow acts *only* when the group blocks the whole site, so `Disallow: /docs/` survives.
+- **Shared groups split.** `GPTBot` and `OAI-SearchBot` share one group in the fixture. Changing
+  one moves it into its own group and leaves the sibling's rules alone.
+- **Blank lines are separators, so never trim them.** An earlier version trimmed trailing blanks
+  from a group, which meant a second merge differed from the first and the UI showed a phantom
+  diff on an unchanged file. There is a stability test in the fixture run: apply twice, compare.
+- **Empty decisions must return the file byte for byte.** Also tested. It is what makes the
+  "nothing to apply" state trustworthy.
+
+The diff shown before an overwrite is computed in the browser (`util/diffLines.js`, LCS with a
+line cap) from the current and proposed text the server returns. The merge itself only ever runs
+server-side, so what the editor sees is the file that would actually be written.
+
 ## Not built yet
 
-The remaining Wave 1 items: the GEO score over the criteria we compute natively, and the two
-**write** features, generating the `llms.txt` body on top of the community `llms.txt manager`
-module and writing named AI-crawler rules into `robots.txt`. This module reports only. Keep that
-line clear: reporting is safe to run against any site, writing is not.
+Wave 1 is complete. Wave 2 candidates, in the order they are worth doing: run the check across
+every site language rather than one at a time, and a site-level roll-up instead of one page at a
+time. The roll-up is the better presales artifact but needs crawl budgeting.

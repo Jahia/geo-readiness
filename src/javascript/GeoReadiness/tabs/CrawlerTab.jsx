@@ -1,7 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Typography} from '@jahia/moonstone';
+import {
+    Chip, Table, TableBody, TableBodyCell, TableHead, TableHeadCell, TableRow, Typography
+} from '@jahia/moonstone';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -60,45 +62,32 @@ export const CrawlerTab = ({report}) => {
                 </Typography>
             )}
 
-            <table className={styles.table}>
-                <thead>
-                    <tr>
-                        <th>{t('crawler.agent')}</th>
-                        <th className={styles.num}>{t('crawler.status')}</th>
-                        <th className={styles.num}>{t('crawler.time')}</th>
-                        <th className={styles.num}>{t('crawler.words')}</th>
-                        <th>{t('crawler.robots')}</th>
-                        <th>{t('crawler.initialHtml')}</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <Table className={styles.mTable}>
+                <TableHead>
+                    <TableRow>
+                        <TableHeadCell>{t('crawler.agent')}</TableHeadCell>
+                        <TableHeadCell width="80px" textAlign="right">{t('crawler.status')}</TableHeadCell>
+                        <TableHeadCell width="80px" textAlign="right">{t('crawler.time')}</TableHeadCell>
+                        <TableHeadCell width="80px" textAlign="right">{t('crawler.words')}</TableHeadCell>
+                        <TableHeadCell>{t('crawler.initialHtml')}</TableHeadCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
                     {(report.agents || []).map(a => {
                         const ok = a.status === 200;
                         const words = a.html ? a.html.words : 0;
-                        const thin = ok && control > 0 && words < control * THIN_RATIO;
                         return (
-                            <tr key={a.name} className={ok ? '' : styles.rowBad}>
-                                <td>{a.name}</td>
-                                <td className={styles.num}>
-                                    <span className={ok ? styles.pillGood : styles.pillBad}>
-                                        {a.status === null || a.status === undefined ? '—' : a.status}
-                                    </span>
-                                </td>
-                                <td className={styles.num}>{a.ms}ms</td>
-                                <td className={styles.num}>{words.toLocaleString()}</td>
-                                <td>
-                                    {a.robotsAllowed === undefined ? (
-                                        <span className={styles.plain}>—</span>
-                                    ) : (
-                                        <span
-                                            className={a.robotsAllowed ? styles.on : styles.off}
-                                            title={a.robotsRule || ''}
-                                        >
-                                            {a.robotsAllowed ? t('files.robots.allowed') : t('files.robots.disallowed')}
-                                        </span>
-                                    )}
-                                </td>
-                                <td>
+                            <TableRow key={a.name}>
+                                <TableBodyCell>{a.name}</TableBodyCell>
+                                <TableBodyCell textAlign="right">
+                                    <Chip
+                                        label={a.status === null || a.status === undefined ? '—' : String(a.status)}
+                                        color={ok ? 'success' : 'danger'}
+                                    />
+                                </TableBodyCell>
+                                <TableBodyCell textAlign="right">{a.ms}ms</TableBodyCell>
+                                <TableBodyCell textAlign="right">{words.toLocaleString()}</TableBodyCell>
+                                <TableBodyCell>
                                     {a.html ? (
                                         <span className={styles.marks}>
                                             <span className={a.html.h1Count ? styles.on : styles.off}>{t('crawler.h1')}</span>
@@ -108,12 +97,12 @@ export const CrawlerTab = ({report}) => {
                                             <span className={a.html.jsonLd ? styles.on : styles.off}>{t('crawler.jsonLd')}</span>
                                         </span>
                                     ) : <span className={styles.off}>—</span>}
-                                </td>
-                            </tr>
+                                </TableBodyCell>
+                            </TableRow>
                         );
                     })}
-                </tbody>
-            </table>
+                </TableBody>
+            </Table>
 
             {report.blockedButAllowedCount > 0 && (
                 <p className={styles.mismatch}>

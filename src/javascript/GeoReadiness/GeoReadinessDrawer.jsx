@@ -1,15 +1,16 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Button, Close, Typography} from '@jahia/moonstone';
+import {Badge, Button, Close, Tab, TabItem, Typography} from '@jahia/moonstone';
 import {runCrawlerCheck} from './api/crawlerCheck';
+import {ScoreTab} from './tabs/ScoreTab';
 import {CrawlerTab} from './tabs/CrawlerTab';
 import {SiteFilesTab} from './tabs/SiteFilesTab';
 import tabStyles from './tabs/Tabs.module.css';
 import styles from './GeoReadinessDrawer.module.css';
 
 const NS = 'geo-readiness';
-const CACHE_SCHEMA = 2;
+const CACHE_SCHEMA = 3;
 
 // Results are cached per page and language so reopening the drawer is instant.
 // Bump CACHE_SCHEMA whenever the report shape changes, or an old cached entry
@@ -61,7 +62,7 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     const [report, setReport] = useState(null);
     const [ranAt, setRanAt] = useState(null);
     const [phase, setPhase] = useState('idle');
-    const [tab, setTab] = useState('crawler');
+    const [tab, setTab] = useState('score');
     const [error, setError] = useState(null);
 
     useEffect(() => {
@@ -133,28 +134,24 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                 )}
 
                 {report && report.published && (
-                    <div className={tabStyles.tabs}>
-                        <button
-                            type="button"
-                            className={`${tabStyles.tab} ${tab === 'crawler' ? tabStyles.tabActive : ''}`}
-                            onClick={() => setTab('crawler')}
-                        >
-                            {t('crawler.tab')}
-                            {report.blockedCount > 0 && <span className={tabStyles.tabBadge}>{report.blockedCount}</span>}
-                        </button>
-                        <button
-                            type="button"
-                            className={`${tabStyles.tab} ${tab === 'files' ? tabStyles.tabActive : ''}`}
-                            onClick={() => setTab('files')}
-                        >
-                            {t('files.tab')}
-                            {filesIssueCount(report) > 0 && (
-                                <span className={tabStyles.tabBadge}>{filesIssueCount(report)}</span>
-                            )}
-                        </button>
-                    </div>
+                    <Tab className={tabStyles.tabs}>
+                        {[
+                            {id: 'score', label: t('score.tab'), count: report.score ? report.score.criticalFailed : 0},
+                            {id: 'crawler', label: t('crawler.tab'), count: report.blockedCount},
+                            {id: 'files', label: t('files.tab'), count: filesIssueCount(report)}
+                        ].map(item => (
+                            <TabItem
+                                key={item.id}
+                                label={item.label}
+                                isSelected={tab === item.id}
+                                icon={item.count > 0 ? <Badge label={String(item.count)} color="warning"/> : undefined}
+                                onClick={() => setTab(item.id)}
+                            />
+                        ))}
+                    </Tab>
                 )}
 
+                {report && report.published && tab === 'score' && <ScoreTab report={report}/>}
                 {report && tab === 'crawler' && <CrawlerTab report={report}/>}
                 {report && report.published && tab === 'files' && <SiteFilesTab report={report}/>}
             </div>

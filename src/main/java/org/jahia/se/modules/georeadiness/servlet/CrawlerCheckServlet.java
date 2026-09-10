@@ -1,14 +1,13 @@
 package org.jahia.se.modules.georeadiness.servlet;
 
+import org.jahia.se.modules.georeadiness.check.GeoScore;
 import org.jahia.se.modules.georeadiness.check.RobotsRules;
 import org.jahia.se.modules.georeadiness.check.SiteFilesChecker;
 import org.jahia.se.modules.georeadiness.config.GeoReadinessConfigService;
+import org.jahia.se.modules.georeadiness.util.PublicUrls;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.content.JCRSessionWrapper;
-import org.jahia.bin.Jahia;
-import org.jahia.services.SpringContextSingleton;
-import org.jahia.services.seo.urlrewrite.UrlRewriteService;
 import org.jahia.services.usermanager.JahiaUser;
 import org.jahia.services.usermanager.JahiaUserManagerService;
 import org.json.JSONArray;
@@ -85,6 +84,14 @@ public class CrawlerCheckServlet extends HttpServlet {
     private static final Pattern META_REFRESH = Pattern.compile("(?is)<meta[^>]+http-equiv=[\"']refresh[\"'][^>]*content=[\"'][^\"']*?url=([^\"'>\\s]+)");
     private static final Pattern ANCHOR = Pattern.compile("(?is)<a\\s[^>]*href=");
     private static final Pattern JSONLD = Pattern.compile("(?is)application/ld\\+json");
+    private static final Pattern HTML_LANG = Pattern.compile("(?is)<html[^>]+\\blang=[\"']([^\"']+)[\"']");
+    private static final Pattern HREFLANG = Pattern.compile("(?is)<link[^>]+hreflang=[\"']([^\"']+)[\"']");
+    private static final Pattern H2 = Pattern.compile("(?is)<h2[\\s>]");
+    private static final Pattern IMG = Pattern.compile("(?is)<img\\s[^>]*>");
+    private static final Pattern IMG_ALT = Pattern.compile("(?is)\\balt=[\"']([^\"']*)[\"']");
+    private static final Pattern JSONLD_BLOCK = Pattern.compile("(?is)<script[^>]+application/ld\\+json[^>]*>(.*?)</script>");
+    private static final Pattern JSONLD_TYPE = Pattern.compile("(?is)[\"']@type[\"']\\s*:\\s*[\"']([^\"']+)[\"']");
+    private static final Pattern MODIFIED = Pattern.compile("(?is)[\"']dateModified[\"']\\s*:\\s*[\"']([^\"']+)[\"']|article:modified_time[\"'][^>]*content=[\"']([^\"']+)[\"']");
     private static final Pattern SCRIPTS = Pattern.compile("(?is)<(script|style|noscript|template)[^>]*>.*?</\\1>");
     private static final Pattern TAGS = Pattern.compile("(?s)<[^>]+>");
     private static final Pattern WS = Pattern.compile("\\s+");
@@ -234,6 +241,9 @@ public class CrawlerCheckServlet extends HttpServlet {
         out.put("blockedButAllowedCount", blockedButAllowed);
         out.put("reachableButDisallowedCount", reachableButDisallowed);
         out.put("controlWords", Math.max(controlWords, 0));
+        
+        // The score reads only what is already in the report. It adds no requests.
+        out.put("score", GeoScore.compute(out));
         writeJson(resp, HttpServletResponse.SC_OK, out);
     }
 
@@ -306,6 +316,56 @@ public class CrawlerCheckServlet extends HttpServlet {
         o.put("metaRefresh", mf.find() ? clip(mf.group(1).trim(), 300) : JSONObject.NULL);
         o.put("links", count(ANCHOR, html));
         o.put("jsonLd", count(JSONLD, html));
+
+        // Signals below cost nothing extra: the html is already in memory. They are
+        // what turns "the crawler got a page" into "the crawler got a USEFUL page".
+        Matcher lang = HTML_LANG.matcher(html);
+        o.put("lang", lang.find() ? clip(lang.group(1).trim(), 20) : JSONObject.NULL);
+
+        Matcher hl = HREFLANG.matcher(html);
+        JSONArray alts = new JSONArray();
+        while (hl.find() && alts.length() < 20) {
+            alts.put(clip(hl.group(1).trim(), 20));
+        }
+        o.put("hreflang", alts);
+
+        o.put("h2Count", count(H2, html));
+
+        // Alt text is how a text-only crawler learns what an image shows. An
+        // explicitly empty alt is a decorative image, correct but not descriptive.
+        Matcher im = IMG.matcher(html);
+        int images = 0;
+        int withAlt = 0;
+        while (im.find()) {
+            images++;
+            Matcher a = IMG_ALT.matcher(im.group());
+            if (a.find() && !a.group(1).trim().isEmpty()) {
+                withAlt++;
+            }
+        }
+        o.put("images", images);
+        o.put("imagesWithAlt", withAlt);
+
+        // A count of ld+json blocks says nothing. Which schema types are declared does.
+        Matcher jb = JSONLD_BLOCK.matcher(html);
+        JSONArray types = new JSONArray();
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        while (jb.find()) {
+            Matcher jt = JSONLD_TYPE.matcher(jb.group(1));
+            while (jt.find() && seen.size() < 15) {
+                seen.add(clip(jt.group(1).trim(), 40));
+            }
+        }
+        seen.forEach(types::put);
+        o.put("jsonLdTypes", types);
+
+        Matcher md = MODIFIED.matcher(html);
+        String modified = null;
+        if (md.find()) {
+            modified = md.group(1) != null ? md.group(1) : md.group(2);
+        }
+        o.put("dateModified", modified == null ? JSONObject.NULL : clip(modified.trim(), 40));
+
         String text = textOf(html);
         o.put("words", text.isEmpty() ? 0 : text.split(" ").length);
         return o;
@@ -334,66 +394,8 @@ public class CrawlerCheckServlet extends HttpServlet {
         return n;
     }
 
-    /**
-     * The public url of a published page, as Jahia itself would print it.
-     *
-     * We do not guess the url shape. {@link JCRNodeWrapper#getUrl()} gives the
-     * canonical render url, /cms/render/live/lang/sites/key/path.html, and the
-     * outbound url rewriter turns it into exactly what a link to this page
-     * looks like in the rendered site: vanity url when one exists, cms prefix
-     * and site key dropped when the server name rules allow it. That is the
-     * address a crawler follows.
-     *
-     * The host comes from PUBLIC_BASE_URL when set, else from the site's server
-     * name, else from the current request. Vanity urls are resolved by the
-     * rewriter in the LIVE workspace, which is what we want.
-     */
     private String publicUrlFor(JCRNodeWrapper node, HttpServletRequest req, HttpServletResponse resp) throws Exception {
-        String path = node.getUrl();
-        try {
-            UrlRewriteService rewriter = (UrlRewriteService) SpringContextSingleton.getBean("UrlRewriteService");
-            String rewritten = rewriter.rewriteOutbound(path, req, resp);
-            if (rewritten != null && !rewritten.isEmpty()) {
-                path = fixContextPath(rewritten, req);
-            }
-        } catch (Exception e) {
-            // Fall back to the render url. It is longer but always valid.
-            logger.debug("Outbound rewrite failed for {}, using render url", path, e);
-        }
-        if (path.startsWith("http://") || path.startsWith("https://")) {
-            return path;
-        }
-        return baseUrl(node, req) + path;
-    }
-
-    /**
-     * OSGi servlets are mounted behind the /modules bridge, and the request
-     * reports that as its context path. The rewriter prepends it faithfully,
-     * which gives /modules/sites/... instead of /sites/.... Swap it for the
-     * real webapp context path.
-     */
-    private static String fixContextPath(String url, HttpServletRequest req) {
-        String reqCtx = req.getContextPath() == null ? "" : req.getContextPath();
-        String realCtx = Jahia.getContextPath() == null ? "" : Jahia.getContextPath();
-        if (!reqCtx.isEmpty() && !reqCtx.equals(realCtx) && (url.equals(reqCtx) || url.startsWith(reqCtx + "/"))) {
-            return realCtx + url.substring(reqCtx.length());
-        }
-        return url;
-    }
-
-    /** Scheme and host only. The context path is already part of the rewritten path. */
-    private String baseUrl(JCRNodeWrapper node, HttpServletRequest req) throws Exception {
-        String base = config.getPublicBaseUrl();
-        if (base == null || base.trim().isEmpty()) {
-            String server = node.getResolveSite().getServerName();
-            if (server == null || server.isEmpty() || "localhost".equalsIgnoreCase(server)) {
-                base = req.getScheme() + "://" + req.getServerName()
-                        + (req.getServerPort() == 80 || req.getServerPort() == 443 ? "" : ":" + req.getServerPort());
-            } else {
-                base = "https://" + server;
-            }
-        }
-        return base.replaceAll("/+$", "");
+        return PublicUrls.forNode(node, req, resp, config.getPublicBaseUrl());
     }
 
     private Map<String, String> agents() {

@@ -14,8 +14,13 @@ Then point the module at it. In
 `digital-factory-data/karaf/etc/org.jahia.se.modules.georeadiness.cfg`:
 
 ```properties
-PUBLIC_BASE_URL=http://localhost:9090
+PUBLIC_BASE_URL=http://host.docker.internal:9090
 ```
+
+> `localhost` is wrong whenever Jahia runs in Docker: inside the container it means the container
+> itself, so every agent comes back with a connection error rather than the fixture. Use
+> `host.docker.internal` to reach the fixture running on your machine. Verified on Docker Desktop,
+> where the container resolves that name.
 
 That file reloads live, so no redeploy. Open any published page in jContent and run the check.
 Remember to blank `PUBLIC_BASE_URL` again when you are done, or every check will keep pointing

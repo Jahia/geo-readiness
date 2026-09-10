@@ -72,7 +72,29 @@
         "disallowed": "Interdit",
         "noRule": "Aucune règle ne correspond, donc autorisé",
         "sitemaps": "{{count}} sitemap déclaré :",
-        "sitemaps_plural": "{{count}} sitemaps déclarés :"
+        "sitemaps_plural": "{{count}} sitemaps déclarés :",
+        "control": {
+          "title": "Contrôler les robots IA",
+          "intro": "Définit la position du site pour chaque robot dans robots.txt. Les groupes que vous ne modifiez pas restent intacts, commentaires et lignes Sitemap compris.",
+          "stance": "Position",
+          "allow": "Autoriser",
+          "block": "Bloquer",
+          "loading": "Lecture de robots.txt…",
+          "changes": "Ce qui va changer",
+          "apply": "Appliquer et publier",
+          "confirm": "Confirmer le remplacement",
+          "applied": "Enregistré et publié. Relancez la vérification pour le voir.",
+          "cannotWrite": "Vous n'avez pas les droits pour modifier les paramètres de ce site.",
+          "noMixin": "Ce site n'a pas encore de robots.txt. L'appliquer en créera un.",
+          "placeholder": "Ce qui est enregistré est le texte par défaut du module, pas un vrai fichier.",
+          "error": "Impossible de lire ou d'écrire robots.txt.",
+          "rule": "Bloquer remplace les règles du robot par un refus global. Autoriser ne fait que lever un refus global : un robot ayant des règles de chemin comme Disallow: /docs/ n'est pas touché, car les aplatir détruirait ce travail. Un robot partageant un groupe est déplacé dans son propre groupe pour que les autres conservent leurs règles.",
+          "allowed": "Autorisé",
+          "errorTitle": "robots.txt",
+          "noMixinTitle": "Pas encore de robots.txt",
+          "placeholderTitle": "Texte par défaut",
+          "appliedTitle": "Enregistré"
+        }
       },
       "llms": {
         "title": "llms.txt",
@@ -83,10 +105,143 @@
         "summary": "Ligne de résumé",
         "sections": "Sections",
         "links": "Liens",
-        "contentType": "Type de contenu"
+        "contentType": "Type de contenu",
+        "generate": {
+          "title": "Générer depuis l'arborescence",
+          "intro": "Construit le fichier à partir des pages publiées, de leurs titres et de leurs descriptions. Aucun modèle, aucun service externe : le même site produit toujours le même fichier.",
+          "button": "Générer",
+          "running": "Génération en cours…",
+          "stats": "{{links}} liens dans {{sections}} sections",
+          "generated": "Généré",
+          "current": "Actuellement enregistré",
+          "unchanged": "Identique à ce qui est déjà enregistré. Rien à appliquer.",
+          "differs": "Le contenu diffère de ce qui est enregistré. Relisez-le avant d'appliquer.",
+          "placeholder": "Ce qui est enregistré est le texte par défaut du module, pas un vrai fichier.",
+          "noMixin": "Le site n'a pas encore de llms.txt. L'appliquer en créera un.",
+          "cannotWrite": "Vous n'avez pas les droits pour modifier les paramètres de ce site.",
+          "apply": "Appliquer et publier",
+          "confirm": "Confirmer le remplacement",
+          "applied": "Enregistré et publié. Relancez la vérification pour le voir.",
+          "error": "La génération a échoué.",
+          "rule": "Les pages masquées de la navigation sont exclues, et aucune description n'est inventée. Modifiez le texte avant d'appliquer si vous voulez autre chose : ce que vous voyez est exactement ce qui sera écrit.",
+          "changes": "Ce qui va changer",
+          "errorTitle": "llms.txt",
+          "noMixinTitle": "Pas encore de llms.txt",
+          "placeholderTitle": "Texte par défaut",
+          "appliedTitle": "Enregistré"
+        }
       },
       "llmsFull": {
         "label": "llms-full.txt"
+      },
+      "editedInSettings": "robots.txt et llms.txt concernent tout le site. Modifiez-les dans Additionnel, SEO, Préparation GEO."
+    },
+    "score": {
+      "tab": "Score",
+      "headline": "{{passed}} vérifications réussies sur {{total}}",
+      "criticalFailed": "{{count}} problème critique",
+      "criticalFailed_plural": "{{count}} problèmes critiques",
+      "importantFailed": "{{count}} problème important",
+      "importantFailed_plural": "{{count}} problèmes importants",
+      "allGood": "Tout ce que nous pouvons vérifier d'ici est conforme.",
+      "observed": "Constaté",
+      "why": "Pourquoi c'est important",
+      "group": {
+        "access": "Le robot peut-il y accéder",
+        "content": "Ce qui arrive est-il exploitable",
+        "files": "Fichiers au niveau du site"
+      },
+      "severity": {
+        "critical": "Critique",
+        "important": "Important",
+        "advisory": "Recommandé"
+      },
+      "rubric": "Chaque vérification lit un fait déjà présent dans ce rapport. Être interdit dans robots.txt n'est pas compté comme un échec : refuser un robot est un choix légitime. Une divergence entre la politique et le serveur, si.",
+      "check": {
+        "reachable": {
+          "label": "Tous les robots IA reçoivent la page",
+          "fix": "Au moins un robot a été refusé. C'est en général une règle de pare-feu ou d'anti-bot, pas un problème de contenu."
+        },
+        "policyMatchesReality": {
+          "label": "robots.txt correspond au comportement du serveur",
+          "fix": "La politique et le serveur divergent pour au moins un robot. L'un des deux a tort, et le rapport indique lequel."
+        },
+        "noClientRedirect": {
+          "label": "Aucune redirection côté client",
+          "fix": "La page demande au navigateur d'aller ailleurs. Les robots ne suivent pas, donc ils ne lisent que cette coquille vide."
+        },
+        "namedInRobots": {
+          "label": "Robots IA nommés dans robots.txt",
+          "fix": "Aucun robot IA n'est nommé. Ils suivent le groupe générique, vous n'avez donc pas de politique explicite pour eux."
+        },
+        "contentInInitialHtml": {
+          "label": "Du vrai texte dans le HTML initial",
+          "fix": "La page ne renvoie presque aucun texte avant l'exécution du JavaScript. La solution est le rendu côté serveur, pas robots.txt."
+        },
+        "sameContentForCrawlers": {
+          "label": "Les robots reçoivent le même texte qu'un navigateur",
+          "fix": "Au moins un robot reçoit beaucoup moins de texte que le navigateur. Vérifiez ce que le serveur fait varier selon l'agent."
+        },
+        "title": {
+          "label": "Titre présent et de longueur exploitable",
+          "fix": "Un titre de moins de 10 ou plus de 70 caractères est soit peu informatif, soit tronqué partout où il est cité."
+        },
+        "singleH1": {
+          "label": "Exactement un H1",
+          "fix": "Aucun ou plusieurs H1 rendent le sujet principal de la page ambigu."
+        },
+        "headingOutline": {
+          "label": "Des sous-titres structurent la page",
+          "fix": "La recherche découpe les pages sur les titres. Une page sans H2 forme un bloc indifférencié."
+        },
+        "metaDescription": {
+          "label": "Meta description présente",
+          "fix": "Sans elle, le résumé affiché à côté d'une réponse est généré à partir du premier texte venu."
+        },
+        "canonical": {
+          "label": "URL canonique déclarée",
+          "fix": "Sans canonique, un même contenu accessible à plusieurs adresses est traité comme plusieurs pages."
+        },
+        "langDeclared": {
+          "label": "Langue de la page déclarée",
+          "fix": "L'attribut lang du html est absent, la langue doit donc être devinée. Sur un site multilingue, c'est un vrai risque."
+        },
+        "structuredData": {
+          "label": "Données structurées présentes",
+          "fix": "Aucun JSON-LD trouvé. Les types de schéma sont le moyen le plus direct d'indiquer le sujet de la page."
+        },
+        "freshness": {
+          "label": "Date de modification publiée",
+          "fix": "Aucune dateModified trouvée. Les assistants tiennent compte de la fraîcheur, une page sans date ne peut pas prouver qu'elle est à jour."
+        },
+        "imageAlt": {
+          "label": "Les images portent un texte alternatif",
+          "fix": "Certaines images n'ont pas de texte alternatif. Pour un robot qui ne lit que du texte, ces images n'existent pas."
+        },
+        "robotsPresent": {
+          "label": "robots.txt est servi",
+          "fix": "Pas de robots.txt. Tout est autorisé par défaut, ce qui est une décision que vous n'avez pas prise."
+        },
+        "llmsPresent": {
+          "label": "llms.txt est servi",
+          "fix": "Pas de llms.txt. C'est le seul fichier qui indique à un assistant quelles pages comptent et pourquoi."
+        }
+      },
+      "checkColumn": "Vérification",
+      "severityLabel": "Gravité"
+    },
+    "diff": {
+      "identical": "Aucun changement. Le fichier serait écrit tel qu'il est aujourd'hui.",
+      "summary": "{{added}} lignes ajoutées, {{removed}} supprimées",
+      "unchanged": "… {{count}} lignes inchangées"
+    },
+    "dashboard": {
+      "navLabel": "Préparation GEO",
+      "title": "Préparation GEO du site {{site}} - {{language}}",
+      "intro": "Les deux fichiers qui indiquent aux robots IA quoi faire de ce site : robots.txt énonce la politique, llms.txt indique quelles pages comptent et pourquoi. Ils concernent tout le site, ils se modifient donc ici et non depuis une page.",
+      "tab": {
+        "robots": "robots.txt",
+        "llms": "llms.txt"
       }
     }
   }

@@ -5,16 +5,16 @@
 
 ## Core pages
 
-- [Home](http://localhost:9090/en/home.html): the landing page
-- [Products](http://localhost:9090/en/products.html): what the fixture pretends to sell
-- [Contact](http://localhost:9090/en/contact.html): a form that goes nowhere
+- [Home](http://localhost:8080/en/home.html): the landing page
+- [Products](http://localhost:8080/en/products.html): what the fixture pretends to sell
+- [Contact](http://localhost:8080/en/contact.html): a form that goes nowhere
 
 ## Documentation
 
-- [Getting started](http://localhost:9090/docs/public/start.html): allowed for every crawler
-- [API reference](http://localhost:9090/docs/public/api.html): also allowed
-- [Internal notes](http://localhost:9090/docs/internal.html): disallowed for PerplexityBot
+- [Getting started](http://localhost:8080/docs/public/start.html): allowed for every crawler
+- [API reference](http://localhost:8080/docs/public/api.html): also allowed
+- [Internal notes](http://localhost:8080/docs/internal.html): disallowed for PerplexityBot
 
 ## Optional
 
-- [Changelog](http://localhost:9090/en/changelog.html): release history
+- [Changelog](http://localhost:8080/en/changelog.html): release history

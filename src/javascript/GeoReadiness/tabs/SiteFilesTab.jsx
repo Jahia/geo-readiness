@@ -1,13 +1,12 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Typography} from '@jahia/moonstone';
+import {
+    Chip, Table, TableBody, TableBodyCell, TableHead, TableHeadCell, TableRow, Typography
+} from '@jahia/moonstone';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
-
-const Pill = ({tone, children}) => <span className={styles[tone]}>{children}</span>;
-Pill.propTypes = {tone: PropTypes.string.isRequired, children: PropTypes.node};
 
 export const SiteFilesTab = ({report}) => {
     const {t} = useTranslation(NS);
@@ -38,34 +37,38 @@ export const SiteFilesTab = ({report}) => {
                         {disallowed > 0 && ' ' + t('files.robots.someDisallowed', {count: disallowed})}
                     </div>
 
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>{t('crawler.agent')}</th>
-                                <th>{t('files.robots.declared')}</th>
-                                <th>{t('files.robots.effective')}</th>
-                                <th>{t('files.robots.rule')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <Table className={styles.mTable}>
+                        <TableHead>
+                            <TableRow>
+                                <TableHeadCell>{t('crawler.agent')}</TableHeadCell>
+                                <TableHeadCell width="130px">{t('files.robots.declared')}</TableHeadCell>
+                                <TableHeadCell width="130px">{t('files.robots.effective')}</TableHeadCell>
+                                <TableHeadCell>{t('files.robots.rule')}</TableHeadCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
                             {agents.map(a => (
-                                <tr key={a.name}>
-                                    <td>{a.name}</td>
-                                    <td>
-                                        <Pill tone={a.namedExplicitly ? 'on' : 'plain'}>
-                                            {a.namedExplicitly ? t('files.robots.byName') : t('files.robots.byWildcard')}
-                                        </Pill>
-                                    </td>
-                                    <td>
-                                        <Pill tone={a.allowed ? 'pillGood' : 'pillBad'}>
-                                            {a.allowed ? t('files.robots.allowed') : t('files.robots.disallowed')}
-                                        </Pill>
-                                    </td>
-                                    <td className={styles.rule}>{a.rule || t('files.robots.noRule')}</td>
-                                </tr>
+                                <TableRow key={a.name}>
+                                    <TableBodyCell>{a.name}</TableBodyCell>
+                                    <TableBodyCell>
+                                        <Chip
+                                            label={a.namedExplicitly ? t('files.robots.byName') : t('files.robots.byWildcard')}
+                                            color={a.namedExplicitly ? 'accent' : 'default'}
+                                        />
+                                    </TableBodyCell>
+                                    <TableBodyCell>
+                                        <Chip
+                                            label={a.allowed ? t('files.robots.allowed') : t('files.robots.disallowed')}
+                                            color={a.allowed ? 'success' : 'danger'}
+                                        />
+                                    </TableBodyCell>
+                                    <TableBodyCell className={styles.rule}>
+                                        {a.rule || t('files.robots.noRule')}
+                                    </TableBodyCell>
+                                </TableRow>
                             ))}
-                        </tbody>
-                    </table>
+                        </TableBody>
+                    </Table>
 
                     {(robots.sitemaps || []).length > 0 && (
                         <p className={styles.explain}>
@@ -104,6 +107,8 @@ export const SiteFilesTab = ({report}) => {
                 <strong>{llmsFull.present ? t('crawler.present') : t('crawler.missing')}</strong>
                 {' '}({llmsFull.status ?? '—'})
             </p>
+
+            <p className={styles.explain}>{t('files.editedInSettings')}</p>
         </div>
     );
 };

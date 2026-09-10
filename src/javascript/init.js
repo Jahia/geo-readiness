@@ -1,6 +1,8 @@
+import React from 'react';
 import i18next from 'i18next';
 import {registry} from '@jahia/ui-extender';
 import {GeoReadinessAction} from './GeoReadiness/GeoReadinessAction';
+import {GeoDashboard} from './GeoReadiness/dashboard/GeoDashboard';
 import en from '../main/resources/javascript/locales/en.json';
 import fr from '../main/resources/javascript/locales/fr.json';
 
@@ -27,6 +29,18 @@ function register() {
         buttonIcon,
         buttonLabel: `${NS}:action.open`,
         component: GeoReadinessAction
+    });
+
+    // Site-level settings live under Additional > SEO, next to Robots.txt and
+    // Sitemap, because robots.txt and llms.txt belong to the site and not to
+    // whichever page an editor happens to have open.
+    registry.add('adminRoute', 'siteSettingsSeo/geoReadiness', {
+        targets: ['jcontent-siteSettingsSeo:80'],
+        label: `${NS}:dashboard.navLabel`,
+        isSelectable: true,
+        requiredPermission: 'publish',
+        requireModuleInstalledOnSite: 'geo-readiness',
+        render: () => <GeoDashboard/>
     });
 }
 

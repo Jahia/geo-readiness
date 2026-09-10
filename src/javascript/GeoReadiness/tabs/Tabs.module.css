@@ -11,31 +11,6 @@
 
 .url { display: block; margin-bottom: 14px; word-break: break-all; }
 
-.table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.table th {
-    text-align: left;
-    font-size: 10.5px;
-    letter-spacing: .07em;
-    text-transform: uppercase;
-    color: #5c6b7a;
-    padding: 8px 8px 8px 0;
-    border-bottom: 1px solid #c9d3dc;
-    white-space: nowrap;
-}
-.table td { padding: 9px 8px 9px 0; border-bottom: 1px solid #eef2f6; vertical-align: top; }
-.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.rowBad td { background: #fdf3f2; }
-
-.pillGood, .pillBad {
-    display: inline-block;
-    padding: 1px 7px;
-    border-radius: 3px;
-    font-weight: 600;
-    font-size: 12px;
-}
-.pillGood { background: #dff0ea; color: #0e6a51; }
-.pillBad  { background: #fae6e4; color: #a5312a; }
-
 .marks { display: flex; flex-wrap: wrap; gap: 4px 6px; }
 .marks span {
     font-size: 11px;
@@ -65,28 +40,9 @@
 .facts { margin: 4px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
 .facts li { color: #24343f; }
 
-.tabs { display: flex; gap: 4px; border-bottom: 1px solid #dfe3e8; margin-bottom: 16px; }
-.tab {
-    appearance: none;
-    border: 0;
-    background: transparent;
-    padding: 8px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #5c6b7a;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-}
-.tab:hover { color: #24343f; }
-.tabActive { color: #0086bf; border-bottom-color: #0086bf; }
-.tabBadge {
-    display: inline-block;
-    margin-left: 6px;
-    padding: 0 6px;
-    border-radius: 8px;
-    background: #fae6e4;
-    color: #a5312a;
-    font-size: 11px;
+/* Moonstone's Tab owns its own layout and hover states; only spacing is ours. */
+.tabs {
+    margin-bottom: 1rem;
 }
 
 .mismatch {
@@ -97,4 +53,146 @@
     color: #8a5605;
     font-size: 12.5px;
     line-height: 1.5;
+}
+
+/* Score tab */
+.scoreHeadline {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-right: 0.75rem;
+}
+
+.scoreCount {
+    opacity: 0.85;
+    margin-right: 0.75rem;
+}
+
+.checkFix {
+    font-size: 0.82rem;
+    opacity: 0.75;
+    margin-top: 0.15rem;
+    max-width: 46ch;
+}
+
+.checkValue {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.8;
+}
+
+/* llms.txt generator */
+
+.genText {
+    width: 100%;
+    min-height: 16rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    padding: 0.6rem;
+    box-sizing: border-box;
+    border: 1px solid rgba(128, 128, 128, 0.4);
+    border-radius: 3px;
+    resize: vertical;
+}
+
+/* Diff */
+.diffSummary {
+    font-size: 0.82rem;
+    margin: 0.5rem 0 0.35rem;
+    opacity: 0.85;
+}
+
+.diff {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border: 1px solid rgba(128, 128, 128, 0.35);
+    border-radius: 3px;
+    padding: 0.5rem;
+    max-height: 22rem;
+    overflow: auto;
+    margin: 0 0 0.75rem;
+}
+
+.diffadd {
+    display: block;
+    background: rgba(46, 160, 67, 0.16);
+    border-left: 3px solid rgba(46, 160, 67, 0.85);
+    padding-left: 0.35rem;
+}
+
+.diffdel {
+    display: block;
+    background: rgba(214, 64, 64, 0.14);
+    border-left: 3px solid rgba(214, 64, 64, 0.85);
+    padding-left: 0.35rem;
+    text-decoration: line-through;
+    text-decoration-color: rgba(214, 64, 64, 0.5);
+}
+
+.diffctx {
+    display: block;
+    opacity: 0.6;
+    padding-left: 0.35rem;
+    border-left: 3px solid transparent;
+}
+
+.diffGap {
+    display: block;
+    opacity: 0.45;
+    font-style: italic;
+    padding-left: 0.35rem;
+    border-left: 3px solid transparent;
+}
+
+/* Robots panel */
+
+/* Settings panels (dashboard) */
+.panel {
+    padding-top: 0.5rem;
+}
+
+.panelTitle {
+    display: block;
+    margin-bottom: 0.35rem;
+}
+
+.panelIntro {
+    display: block;
+    max-width: 62ch;
+    opacity: 0.85;
+    margin-bottom: 1rem;
+}
+
+.panelSub {
+    display: block;
+    margin: 1.25rem 0 0.4rem;
+}
+
+.panelRule {
+    display: block;
+    max-width: 74ch;
+    opacity: 0.7;
+    margin-top: 1.25rem;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+}
+
+.mTable {
+    margin: 0.75rem 0 1rem;
+}
+
+.switchCell {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
 }

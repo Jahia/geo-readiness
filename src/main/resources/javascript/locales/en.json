@@ -72,7 +72,29 @@
         "disallowed": "Disallowed",
         "noRule": "No rule matches, so allowed",
         "sitemaps": "{{count}} sitemap declared:",
-        "sitemaps_plural": "{{count}} sitemaps declared:"
+        "sitemaps_plural": "{{count}} sitemaps declared:",
+        "control": {
+          "title": "Control AI crawlers",
+          "intro": "Sets each crawler's site-wide stance in robots.txt. Groups you have not changed are left exactly as they are, comments and Sitemap lines included.",
+          "stance": "Stance",
+          "allow": "Allow",
+          "block": "Block",
+          "loading": "Reading robots.txt…",
+          "changes": "What would change",
+          "apply": "Apply and publish",
+          "confirm": "Confirm overwrite",
+          "applied": "Written and published. Run the check again to see it.",
+          "cannotWrite": "You do not have permission to change this site's settings.",
+          "noMixin": "This site has no robots.txt yet. Applying will create one.",
+          "placeholder": "What is stored is the module's placeholder, not a real file.",
+          "error": "robots.txt could not be read or written.",
+          "rule": "Blocking replaces that crawler's rules with a site-wide refusal. Allowing only undoes a site-wide refusal: a crawler with path rules such as Disallow: /docs/ is left alone, because flattening that would throw away work. A crawler sharing a group with others is moved into its own group so the others keep their rules.",
+          "allowed": "Allowed",
+          "errorTitle": "robots.txt",
+          "noMixinTitle": "No robots.txt yet",
+          "placeholderTitle": "Placeholder only",
+          "appliedTitle": "Saved"
+        }
       },
       "llms": {
         "title": "llms.txt",
@@ -83,10 +105,143 @@
         "summary": "Summary line",
         "sections": "Sections",
         "links": "Links",
-        "contentType": "Content type"
+        "contentType": "Content type",
+        "generate": {
+          "title": "Generate from the page tree",
+          "intro": "Builds the file from published pages, their titles and their descriptions. No model, no external service: the same site always produces the same file.",
+          "button": "Generate",
+          "running": "Generating…",
+          "stats": "{{links}} links in {{sections}} sections",
+          "generated": "Generated",
+          "current": "Currently stored",
+          "unchanged": "Identical to what is already stored. Nothing to apply.",
+          "differs": "This differs from what is stored. Review it before applying.",
+          "placeholder": "What is stored is the module's placeholder, not a real file.",
+          "noMixin": "The site has no llms.txt yet. Applying will create one.",
+          "cannotWrite": "You do not have permission to change this site's settings.",
+          "apply": "Apply and publish",
+          "confirm": "Confirm overwrite",
+          "applied": "Written and published. Run the check again to see it.",
+          "error": "The generator could not run.",
+          "rule": "Pages hidden from the navigation are left out, and descriptions are never invented. Edit the text before applying if you want something different: what you see is exactly what gets written.",
+          "changes": "What would change",
+          "errorTitle": "llms.txt",
+          "noMixinTitle": "No llms.txt yet",
+          "placeholderTitle": "Placeholder only",
+          "appliedTitle": "Saved"
+        }
       },
       "llmsFull": {
         "label": "llms-full.txt"
+      },
+      "editedInSettings": "robots.txt and llms.txt belong to the whole site. Edit them under Additional, SEO, GEO readiness."
+    },
+    "score": {
+      "tab": "Score",
+      "headline": "{{passed}} of {{total}} checks passed",
+      "criticalFailed": "{{count}} critical issue",
+      "criticalFailed_plural": "{{count}} critical issues",
+      "importantFailed": "{{count}} important issue",
+      "importantFailed_plural": "{{count}} important issues",
+      "allGood": "Everything we can check from here passes.",
+      "observed": "Observed",
+      "why": "Why it matters",
+      "group": {
+        "access": "Can a crawler reach it",
+        "content": "Is what arrives usable",
+        "files": "Site-level files"
+      },
+      "severity": {
+        "critical": "Critical",
+        "important": "Important",
+        "advisory": "Advisory"
+      },
+      "rubric": "Each check reads one fact already in this report. Being disallowed in robots.txt is not counted as a failure: refusing a crawler is a legitimate choice. A disagreement between the policy and the server is.",
+      "check": {
+        "reachable": {
+          "label": "Every AI crawler gets the page",
+          "fix": "At least one crawler was refused. That is usually a firewall or bot-protection rule rather than a content problem."
+        },
+        "policyMatchesReality": {
+          "label": "robots.txt matches what the server does",
+          "fix": "The policy and the server disagree for at least one crawler. One of the two is wrong, and the report names which."
+        },
+        "noClientRedirect": {
+          "label": "No client-side redirect",
+          "fix": "The page tells a browser to go elsewhere. Crawlers do not follow that, so this shell is all they read."
+        },
+        "namedInRobots": {
+          "label": "AI crawlers named in robots.txt",
+          "fix": "No AI crawler is named. They fall to the wildcard group, so you have no explicit policy for them."
+        },
+        "contentInInitialHtml": {
+          "label": "Real text in the initial HTML",
+          "fix": "The page returns almost no text before JavaScript runs. Server-side rendering is the fix, not a robots.txt change."
+        },
+        "sameContentForCrawlers": {
+          "label": "Crawlers get the same text as a browser",
+          "fix": "At least one crawler receives far less text than the browser did. Check what the server varies on the user agent."
+        },
+        "title": {
+          "label": "Title present and a usable length",
+          "fix": "A title under 10 or over 70 characters is either uninformative or truncated wherever it is quoted."
+        },
+        "singleH1": {
+          "label": "Exactly one H1",
+          "fix": "Zero or several H1 headings leave the main subject of the page ambiguous."
+        },
+        "headingOutline": {
+          "label": "Sub-headings structure the page",
+          "fix": "Retrieval splits pages on headings. A page with no H2 is one undifferentiated block."
+        },
+        "metaDescription": {
+          "label": "Meta description present",
+          "fix": "Without it the summary shown alongside an answer is generated from whatever text comes first."
+        },
+        "canonical": {
+          "label": "Canonical URL declared",
+          "fix": "Without a canonical, the same content reachable at several addresses is treated as several pages."
+        },
+        "langDeclared": {
+          "label": "Page language declared",
+          "fix": "The html lang attribute is missing, so the language has to be guessed. On a multilingual site that is a real risk."
+        },
+        "structuredData": {
+          "label": "Structured data present",
+          "fix": "No JSON-LD was found. Schema types are the most direct way to state what this page is about."
+        },
+        "freshness": {
+          "label": "Modification date published",
+          "fix": "No dateModified was found. Assistants weigh recency, and an undated page cannot show it is current."
+        },
+        "imageAlt": {
+          "label": "Images carry alt text",
+          "fix": "Some images have no alt text. To a text-only crawler those images simply do not exist."
+        },
+        "robotsPresent": {
+          "label": "robots.txt is served",
+          "fix": "No robots.txt. Everything is allowed by default, which is a decision you did not get to make."
+        },
+        "llmsPresent": {
+          "label": "llms.txt is served",
+          "fix": "No llms.txt. It is the one file that tells an assistant which pages matter and why."
+        }
+      },
+      "checkColumn": "Check",
+      "severityLabel": "Severity"
+    },
+    "diff": {
+      "identical": "No change. The file would be written exactly as it is now.",
+      "summary": "{{added}} lines added, {{removed}} removed",
+      "unchanged": "… {{count}} unchanged lines"
+    },
+    "dashboard": {
+      "navLabel": "GEO readiness",
+      "title": "GEO readiness for site {{site}} - {{language}}",
+      "intro": "The two files that tell AI crawlers what to do with this site: robots.txt states the policy, llms.txt says which pages matter and why. Both belong to the whole site, so they are edited here rather than from a page.",
+      "tab": {
+        "robots": "robots.txt",
+        "llms": "llms.txt"
       }
     }
   }

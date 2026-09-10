@@ -29,6 +29,11 @@ For each of nine user agents, starting with a normal browser as the control:
 | **Words** | Words of real text in the initial HTML, scripts and styles stripped. |
 | **Initial HTML** | Whether H1, meta description, canonical and structured data are present before JavaScript runs, plus the link count. |
 
+It also reads six signals that cost no extra request, because the HTML is already in memory: the
+declared page language and its hreflang alternates, the sub-heading outline, alt-text coverage,
+which schema types are declared rather than merely how many, and whether a modification date is
+published.
+
 Then a verdict in plain language: every crawler can read it, some are blocked, some receive far
 less text than a browser, or, worst of all, even the browser receives an empty shell. That last
 case is a page whose content only exists after JavaScript runs or after a client-side redirect. It
@@ -37,6 +42,61 @@ was built to catch.
 
 A page that has never been published says so, rather than showing an error. There is no public
 URL to test until it is live.
+
+## The score
+
+A count of checks, never a rating out of 100. Seventeen checks in three groups, each reading one
+fact already in the report and each shown next to that fact, so an editor can disagree with a
+specific line rather than with a number they cannot see inside. Three severities: critical means
+an AI crawler cannot read the page at all, important means it can but materially less well, and
+advisory is worth doing rather than worth blocking on.
+
+One rule is deliberately absent. Being disallowed in `robots.txt` is **not** counted as a failure,
+because refusing a crawler is a legitimate decision. What is counted is a disagreement between the
+policy and what the server actually does, since one of the two is then wrong and somebody owns the
+fix.
+
+## Generating llms.txt
+
+The module can build an `llms.txt` from the site's own published page tree, and this is the only
+part of it that writes.
+
+Generation is deterministic. Site title, site description, then one section per part of the page
+tree, each page listed with its title, its public URL and its own `jcr:description`. No model call
+and no external service, so the same site produces the same file every time and an editor can
+predict the output. Pages hidden from the navigation are left out, descriptions are never invented,
+and pages that exist only in the editing workspace are ignored because `llms.txt` describes the
+public site.
+
+The write is never silent. Generate shows the text next to what is currently stored, the apply
+button needs a second click to confirm, and what gets written is exactly the text on screen, so
+hand-edits made before applying are kept rather than regenerated over. Applying adds the
+`jmix:llms` mixin if the site lacks it, sets `j:llms`, and publishes, because the community `llms`
+module serves that property from the live workspace.
+
+## Controlling AI crawlers in robots.txt
+
+The same generate, review, apply loop, but for the crawler policy. Each of the fifteen AI crawlers
+gets an allow or block choice, and the module merges those choices into the site's existing
+`robots.txt` rather than replacing it.
+
+The two choices are not symmetric, on purpose:
+
+- **Block** replaces that crawler's rules with a site-wide `Disallow: /`. Destructive, and meant
+  to be.
+- **Allow** only undoes a site-wide refusal. A crawler carrying path rules such as
+  `Disallow: /docs/` already allows the crawler, just not everywhere, and flattening that to
+  `Allow: /` would throw away the operator's work.
+
+Everything the module was not asked about is left byte for byte as it was found: the wildcard
+group, comments, `Sitemap:` lines, crawl delays, and any group naming an agent it does not manage.
+A crawler that shares a group with others is moved into its own group so the others keep their
+rules. Merging is stable, so applying the same choices twice produces the same file and no
+phantom diff.
+
+Both files show a highlighted line diff before anything is overwritten, and the apply button needs
+a second click to confirm. Re-running the check afterwards shows the policy change in the report,
+which is the fastest way to prove the edit did what was intended.
 
 ## Build and deploy
 
@@ -52,9 +112,20 @@ curl -s --user root:root --form bundle=@target/geo-readiness-1.0.0-SNAPSHOT.jar 
      --form start=true http://localhost:8080/modules/api/bundles
 ```
 
-Enable the module on the target site (Administration > Modules). The action guards with
-`requireModuleInstalledOnSite`, so it will not appear otherwise. It shows on `jnt:page` and
-`jmix:mainResource`.
+Enable the module on the target site (Administration > Modules). Both entry points guard with
+`requireModuleInstalledOnSite`, so neither appears otherwise.
+
+## Two entry points, two scopes
+
+| Where | Scope | What it does |
+|---|---|---|
+| **Page drawer**, the GEO readiness action on `jnt:page` and `jmix:mainResource` | One page | Runs the crawler check, scores the page, reports what robots.txt and llms.txt say about it |
+| **Additional > SEO > GEO readiness** | The whole site | Edits robots.txt and llms.txt |
+
+The split follows the data. A page drawer that edited `robots.txt` was changing the same site-wide
+file whichever page happened to be open, which is the wrong scope and made the drawer crowded. The
+drawer now reports on those files and points at the settings page; the settings page owns the
+edits, and sits beside Robots.txt and Sitemap where a site administrator already looks.
 
 ## Configuration
 
@@ -99,9 +170,14 @@ apply immediately, no redeploy.
   form instead, which is the form that actually works on that host. On a production host with a
   proper server name the vanity URL is used. Verified on 8.2.3.2: site path form resolves with 200,
   vanity form is emitted only when the host matches.
-- The crawler check and the site-files check are implemented. The rest of Wave 1, the GEO score
-  and actually **generating** the `llms.txt` body and the AI-crawler rules in `robots.txt`, is not
-  here yet. This module currently reports; it does not write.
+- **`llms-full.txt` cannot exist on this stack.** The community `llms` module declares one mixin
+  with one property, `jmix:llms` / `j:llms`, and one servlet. There is no second property and no
+  second route, so no amount of editing will produce an `llms-full.txt`. The report says the file
+  is absent, which is true but reads as a to-do; it is really unsupported by the installed module.
+- **The robots.txt merge is line-based, not a full RFC 9309 rewrite.** It understands groups,
+  `Allow`, `Disallow` and shared `User-agent` lines, which is what the AI-crawler decisions need.
+  It does not reorder, deduplicate or tidy a file, because a robots.txt an operator wrote by hand
+  should come back recognisable.
 - **robots.txt matching is a best effort, not RFC 9309.** Crawlers disagree on the details. We
   follow what the major ones do: consecutive `User-agent` lines share a group, the most specific
   matching group wins, the longest matching rule wins within it, `Allow` beats `Disallow` on a
