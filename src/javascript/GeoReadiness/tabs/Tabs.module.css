@@ -67,19 +67,7 @@
     margin-right: 0.75rem;
 }
 
-.checkFix {
-    font-size: 0.82rem;
-    opacity: 0.75;
-    margin-top: 0.15rem;
-    max-width: 46ch;
-}
 
-.checkValue {
-    text-align: right;
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-    opacity: 0.8;
-}
 
 /* llms.txt generator */
 
@@ -195,4 +183,63 @@
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+}
+
+/*
+ * The score is a list, not a Table. Moonstone table rows are a fixed 48px
+ * (64px with hasMultipleLines) and the body cell scrolls its overflow, which
+ * clips a check's explanation. Explanatory text needs to wrap, so the score
+ * uses a list and keeps Moonstone for the atoms inside it.
+ */
+.checkList {
+    list-style: none;
+    margin: 0.5rem 0 1rem;
+    padding: 0;
+}
+
+.checkItem {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--moon-color-gray_light, #dfe3e8);
+}
+
+.checkItem:last-child {
+    border-bottom: none;
+}
+
+.checkMark {
+    flex: 0 0 auto;
+    padding-top: 0.1rem;
+}
+
+.checkText {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.checkLabel {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.checkFix {
+    display: block;
+    margin-top: 0.15rem;
+    opacity: 0.75;
+    overflow-wrap: anywhere;
+}
+
+.checkMeta {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-top: 0.1rem;
+}
+
+.checkValue {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.8;
 }

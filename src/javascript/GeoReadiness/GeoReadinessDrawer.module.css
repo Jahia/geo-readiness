@@ -3,8 +3,8 @@
     top: 0;
     right: 0;
     bottom: 0;
-    width: 620px;
-    max-width: 92vw;
+    width: 820px;
+    max-width: 96vw;
     background: var(--color-light, #fff);
     border-left: 1px solid var(--color-gray-light, #dfe3e8);
     box-shadow: -8px 0 24px -16px rgba(0, 0, 0, .35);

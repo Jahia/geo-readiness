@@ -1,9 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {
-    Chip, Table, TableBody, TableBodyCell, TableHead, TableHeadCell, TableRow, Typography
-} from '@jahia/moonstone';
+import {Chip, Separator, Typography} from '@jahia/moonstone';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -51,44 +49,39 @@ export const ScoreTab = ({report}) => {
                         <Typography variant="subheading" className={styles.sectionTitle}>
                             {t(`score.group.${group}`)}
                         </Typography>
-                        <Table className={styles.mTable}>
-                            <TableHead>
-                                <TableRow>
-                                    <TableHeadCell width="40px"/>
-                                    <TableHeadCell>{t('score.checkColumn')}</TableHeadCell>
-                                    <TableHeadCell width="110px" textAlign="right">{t('score.observed')}</TableHeadCell>
-                                    <TableHeadCell width="110px">{t('score.severityLabel')}</TableHeadCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {rows.map(c => (
-                                    <TableRow key={c.id} hasMultipleLines={!c.passed}>
-                                        <TableBodyCell textAlign="center">
-                                            <Chip
-                                                label={c.passed ? '✓' : '✕'}
-                                                color={c.passed ? 'success' : 'danger'}
-                                            />
-                                        </TableBodyCell>
-                                        <TableBodyCell>
-                                            <div>{t(`score.check.${c.id}.label`)}</div>
-                                            {!c.passed && (
-                                                <div className={styles.checkFix}>{t(`score.check.${c.id}.fix`)}</div>
-                                            )}
-                                        </TableBodyCell>
-                                        <TableBodyCell textAlign="right" className={styles.checkValue}>
-                                            {c.value === null || c.value === undefined || c.value === '' ?
-                                                '' : String(c.value)}
-                                        </TableBodyCell>
-                                        <TableBodyCell>
-                                            <Chip
-                                                label={t(`score.severity.${c.severity}`)}
-                                                color={c.severity === 'critical' ? 'warning' : 'default'}
-                                            />
-                                        </TableBodyCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                        <ul className={styles.checkList}>
+                            {rows.map(c => (
+                                <li key={c.id} className={styles.checkItem}>
+                                    <span className={styles.checkMark}>
+                                        <Chip
+                                            label={c.passed ? '✓' : '✕'}
+                                            color={c.passed ? 'success' : 'danger'}
+                                        />
+                                    </span>
+                                    <span className={styles.checkText}>
+                                        <Typography variant="body" className={styles.checkLabel}>
+                                            {t(`score.check.${c.id}.label`)}
+                                        </Typography>
+                                        {!c.passed && (
+                                            <Typography variant="caption" className={styles.checkFix}>
+                                                {t(`score.check.${c.id}.fix`)}
+                                            </Typography>
+                                        )}
+                                    </span>
+                                    <span className={styles.checkMeta}>
+                                        {c.value !== null && c.value !== undefined && c.value !== '' && (
+                                            <Typography variant="caption" className={styles.checkValue}>
+                                                {String(c.value)}
+                                            </Typography>
+                                        )}
+                                        <Chip
+                                            label={t(`score.severity.${c.severity}`)}
+                                            color={c.severity === 'critical' ? 'warning' : 'default'}
+                                        />
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
                 );
             })}

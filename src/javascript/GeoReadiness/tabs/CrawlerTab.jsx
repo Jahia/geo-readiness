@@ -77,7 +77,9 @@ export const CrawlerTab = ({report}) => {
                         const ok = a.status === 200;
                         const words = a.html ? a.html.words : 0;
                         return (
-                            <TableRow key={a.name}>
+                            // The marks column wraps to two lines on a narrow drawer, and a
+                            // default 48px row would scroll-clip the second one.
+                            <TableRow key={a.name} hasMultipleLines>
                                 <TableBodyCell>{a.name}</TableBodyCell>
                                 <TableBodyCell textAlign="right">
                                     <Chip

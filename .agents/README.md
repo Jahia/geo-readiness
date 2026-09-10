@@ -140,6 +140,15 @@ language-to-country default map, and returns null when it cannot answer. A flag 
 locale is a language, so this is a convention: no flag beats the wrong flag, which is why the
 unknown case renders the name alone.
 
+**Moonstone `Table` rows are a fixed height.** 48px, or 64px with
+`hasMultipleLines`, and `TableBodyCell` sets `overflow-y: auto`, so anything taller is
+scroll-clipped rather than wrapped. That makes `Table` right for short tabular values and wrong
+for explanatory prose. The score list was a `Table` and its per-check explanations were being cut
+off; it is now a plain `<ul>` that wraps, still built from Moonstone `Chip`, `Typography` and
+`Separator`. The crawler table stays a `Table` (its values are short) but sets `hasMultipleLines`
+because the marks column wraps to two lines. Check any new column against the 48px budget before
+reaching for `Table`.
+
 **Use Moonstone, not raw markup.** The settings page is `LayoutContent` + `Header`, the same shape
 as the other Additional panels, with `Tab` / `TabItem` in the header's `toolbarLeft` slot to keep
 robots.txt and llms.txt apart. Inside, tables are `Table` / `TableHead` / `TableBody` /
