@@ -4,10 +4,10 @@ All notable changes to GEO Readiness are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/); this project follows semantic-ish versioning
 aligned with the Jahia module version.
 
-## [Unreleased]
+## [1.0.0] - 2026-09-11
 
-First release. Nothing here has shipped yet, so this section describes the whole module rather than
-a delta. It needs nothing from any external vendor.
+First release, so this section describes the whole module rather than a delta. It needs nothing
+from any external vendor.
 
 ### Added
 

@@ -49,9 +49,35 @@ Then the interesting part, which is the disagreements:
 
 A page that has never been published says so, rather than showing an error.
 
+Beside that, the drawer answers what only the whole site can answer, read from the last scan so it
+costs nothing per page:
+
+- **Where this page stands.** Its score next to the site average and its own section's average,
+  because sixteen of eighteen means nothing without a reference point.
+- **Who links here**, from navigation and from page content counted apart.
+- **Whether it is in the sitemap and in `llms.txt`**, and for `llms.txt` whether regenerating would
+  add it or the generator deliberately leaves it out.
+- **Which languages it is missing**, and any translation written but never published.
+- **Its addresses**, when a vanity URL is filed under a language the site does not serve, or the
+  page answers on several at once.
+- **Its structured data**, generated from its content type with a copy button, listing what the
+  content model cannot fill and flagging any value that would contradict the visible page.
+
 ## The site settings page
 
-Four tabs under **Additional > SEO**, beside Robots.txt and Sitemap.
+Ten panels under **Additional > SEO**, grouped into four. The groups are the same three the drawer
+sorts its checks into, so there is one vocabulary rather than two, with the site score standing
+outside them as the summary of all three.
+
+| Group | Panels |
+|---|---|
+| **Overview** | Site score |
+| **Can a crawler reach it** | Invisible content · Internal links · Addresses |
+| **Is what arrives usable** | Structured data · Languages · Freshness |
+| **Site-level files** | Sitemap vs reality · robots.txt · llms.txt |
+
+Everything except the site scan is a repository query, so most panels answer immediately rather
+than waiting for a walk of the site.
 
 **Site score.** Every published page scored on a schedule you set, one fetch each. Shows the
 overall figure and the movement since the last run, a breakdown by section, the pages with
@@ -75,6 +101,35 @@ marked `noindex`, are left out.
 
 **Invisible content.** Published pages no crawler can ever read. Pages closed on purpose are listed
 apart from pages closed by accident, because a members area is not a defect.
+
+**Sitemap vs reality.** Every `sitemap.xml` entry resolved back to a node instead of fetched, so a
+site of any size costs no requests to check: pages the map never mentions, entries resolving to
+nothing, dates that contradict the content, pages advertised while their own markup says `noindex`,
+and pages listed at an address that redirects.
+
+**Internal links.** A crawler reports what it found; it cannot report what it missed. The link
+graph is read from the rendered HTML of every page the scan already fetched, so a menu built from
+the page tree, a listing, a rich text link and a configured button all count alike. Navigation and
+content links are counted apart: being in a menu that lists everything is not the same as somebody
+choosing to link to you.
+
+**Addresses.** Every address a page answers on, from the vanity URL service. Aliases filed under a
+language the site does not serve return a 404 to everybody; one page on several live addresses
+splits the signal; a page with aliases and no canonical leaves engines guessing.
+
+**Structured data.** schema.org derived from the content type rather than inferred from the words
+on a page. Map each type once and every item of it produces JSON-LD. Required properties the model
+cannot fill are named, never invented, and a generated value that contradicts the page is reported
+rather than emitted. Nothing is written into a page: the drawer shows the snippet and a person
+places it.
+
+**Languages.** Coverage and score for each language the site declares, side by side, so a strong
+language cannot average out a weak one. A language nobody has scanned reports as *not measured*,
+never as zero.
+
+**Freshness.** How old everything published actually is, grouped by content type and by section
+rather than ranked, so a legal notice is not flagged next to a news article. A group is flagged
+only when its *newest* item is past a threshold you set.
 
 ## The score
 
@@ -104,7 +159,7 @@ else needs installing. `yarn.lock` is committed and must stay committed.
 
 ```bash
 mvn clean install
-curl -s --user root:root --form bundle=@target/geo-readiness-1.0.0-SNAPSHOT.jar \
+curl -s --user root:root --form bundle=@target/geo-readiness-1.0.0.jar \
      --form start=true http://localhost:8080/modules/api/bundles
 ```
 
@@ -136,10 +191,12 @@ redeploy.
 - **One language per scheduled run.** A multilingual site needs one schedule per language.
 - **`llms-full.txt` cannot exist on this stack.** The community `llms` module declares one property
   and one route, so the report calls the file absent when it is really unsupported.
-- **Vanity URLs are host-dependent by Jahia design.** The rewriter emits one only when the
-  request's server name resolves to the page's site, so on a box where several sites share
-  `localhost` the report falls back to the `/sites/<key>/...` form, which is the form that actually
-  works there.
+- **The link graph and the freshness picture judge one language per scan**, since only that
+  language's pages were fetched. A multilingual site needs a scan per language to see all of it.
+- **The sitemap comparison resolves rather than fetches**, so it cannot see a redirect inside the
+  sitemap's own entries.
+- **Structured data is generated, never injected.** Deliberate, but it means somebody has to place
+  the snippet in a template for it to reach a visitor.
 - **The robots.txt merge is line-based**, not a full RFC 9309 rewrite. It does not reorder,
   deduplicate or tidy, so a hand-written file comes back recognisable.
 - **The check fetches a page even when robots.txt disallows it**, deliberately. Knowing that a

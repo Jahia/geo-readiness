@@ -16,7 +16,10 @@ Read in the order that matches why you are here.
 
 ## If you want to know what it checks, or how it works
 
-- **[`checks.md`](checks.md)** is the reference for all eighteen checks: what each one means, when
+- **[`checks.md`](checks.md)** is the reference for the eighteen page checks *and* for the six
+  site-level comparisons that are not checks at all - the sitemap, the link graph, vanity
+  addresses, llms.txt freshness, content age and per-language readiness. Each says what it means,
+  when it fires, and what it deliberately does not do: what each one means, when
   it fails, and why it matters. The two rules that govern what is deliberately *not* checked are at
   the top.
 - **[`architecture.md`](architecture.md)** is the shape of the module: the one decision everything
@@ -25,10 +28,12 @@ Read in the order that matches why you are here.
 
 ## If you are deciding what to build next
 
-- **[`geo-backlog.md`](geo-backlog.md)** is GEO-17 to GEO-25: the Jahia-native stories. They need
-  nothing from any vendor and they exist because Jahia knows things a crawler cannot know, at a
-  scale a metered tool cannot afford. Start here. The suggested order is at the bottom of the
-  file.
+- **[`geo-backlog.md`](geo-backlog.md)** is GEO-17 to GEO-25, the Jahia-native stories. **All nine
+  are built as of 1.0.0**, and each now carries a "what was built, against that acceptance" note
+  saying where the delivered thing differs from the story and why. Read those before proposing
+  anything adjacent: several record a deliberate refusal - not guessing a content type's meaning
+  from its name, not shipping a check that cannot fire - that a later story should not quietly
+  reverse.
 - **[`botrank-backlog.md`](botrank-backlog.md)** is GEO-1 to GEO-16: the BotRank integration.
   Wave 1 of it is what this module is. Wave 2 onward is gated on an API contract that does not
   exist yet, so treat it as a plan for a conversation rather than a plan for a sprint.
