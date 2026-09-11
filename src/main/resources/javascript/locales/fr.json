@@ -229,6 +229,10 @@
         "llmsPresent": {
           "label": "llms.txt est servi",
           "fix": "Pas de llms.txt. C'est le seul fichier qui indique à un assistant quelles pages comptent et pourquoi."
+        },
+        "guestReadable": {
+          "label": "Un visiteur sans compte peut la lire",
+          "fix": "Un visiteur anonyme ne peut pas lire cette page, donc aucun robot ne le pourra. Certains serveurs renvoient un formulaire de connexion avec un code 200, ce qui ressemble à un succès. Vérifiez les restrictions d'accès de la page."
         }
       },
       "checkColumn": "Vérification",
@@ -245,7 +249,31 @@
       "intro": "Les deux fichiers qui indiquent aux robots IA quoi faire de ce site : robots.txt énonce la politique, llms.txt indique quelles pages comptent et pourquoi. Ils concernent tout le site, ils se modifient donc ici et non depuis une page.",
       "tab": {
         "robots": "robots.txt",
-        "llms": "llms.txt"
+        "llms": "llms.txt",
+        "visibility": "Contenu invisible"
+      }
+    },
+    "visibility": {
+      "title": "Contenu qu'aucune IA ne peut lire",
+      "intro": "Pages publiées qu'un visiteur sans compte ne peut pas lire. Un robot à qui l'on sert un formulaire de connexion reçoit un code 200 et conclut au succès : seul le référentiel sait que ces pages sont invisibles.",
+      "scan": "Analyser le site",
+      "scanning": "Lecture de toutes les pages publiées…",
+      "rescan": "Relancer l'analyse",
+      "summary": "{{readable}} pages publiées sur {{scanned}} sont lisibles par un visiteur sans compte",
+      "noFindings": "Toutes les pages publiées sont lisibles sans compte.",
+      "truncated": "Seules les {{scanned}} premières pages ont été analysées. Les autres n'ont pas été examinées.",
+      "findingsTitle": "Probablement involontaire",
+      "deliberateTitle": "Fermé volontairement",
+      "deliberateIntro": "Pages situées dans une branche fermée dans son ensemble, ce qui correspond normalement à un espace membres et non à une erreur.",
+      "page": "Page",
+      "reason": "Raison",
+      "error": "L'analyse n'a pas pu aboutir.",
+      "errorTitle": "Échec de l'analyse",
+      "kind": {
+        "isolatedRestriction": "Fermée, dans une section ouverte",
+        "expiredCondition": "Une condition de visibilité s'est terminée le {{date}}",
+        "hiddenByCondition": "Masquée actuellement par une condition de visibilité",
+        "gatedBranch": "Dans une branche fermée"
       }
     }
   }

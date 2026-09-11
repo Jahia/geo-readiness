@@ -67,6 +67,17 @@ public final class GeoScore {
         int named = robots == null ? 0 : robots.optInt("namedAiBotCount", 0);
         add(checks, "namedInRobots", ACCESS, ADVISORY, named > 0, named);
 
+        // GEO-19. A page a guest cannot read is unreadable to every crawler for
+        // good, whatever the fetch returned: some servers answer a gated page
+        // with a login form and a cheerful 200. Only added when the repository
+        // actually answered, so an unavailable check never reads as a failure.
+        JSONObject vis = report.optJSONObject("visibility");
+        if (vis != null && vis.has("guestReadable")) {
+            boolean guestReadable = vis.optBoolean("guestReadable", true);
+            add(checks, "guestReadable", ACCESS, CRITICAL, guestReadable,
+                    guestReadable ? null : vis.optString("kind", null));
+        }
+
         // ---- Content: is what arrives actually usable ----
         add(checks, "contentInInitialHtml", CONTENT, CRITICAL, controlWords >= MIN_WORDS, controlWords);
 

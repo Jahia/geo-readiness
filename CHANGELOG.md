@@ -55,6 +55,12 @@ rather than a delta. It needs nothing from any external vendor.
 - English and French throughout, including every check label and its
   explanation.
 
+- **Content no AI can ever read (GEO-19).** Every published page is read again
+  as `guest` and the ones a crawler could never see are listed, with pages
+  closed on purpose separated from pages closed by accident. A members area is
+  not a defect. Also a critical check in the page score, since a gated page
+  scores nothing whatever else is right about it.
+
 ### Changed
 
 - All fifteen AI crawlers are now fetched, not eight. The robots.txt checker

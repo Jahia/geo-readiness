@@ -229,6 +229,10 @@
         "llmsPresent": {
           "label": "llms.txt is served",
           "fix": "No llms.txt. It is the one file that tells an assistant which pages matter and why."
+        },
+        "guestReadable": {
+          "label": "A visitor with no account can read it",
+          "fix": "A guest cannot read this page, so no crawler ever will. Some servers answer a gated page with a login form and a 200, which looks like success. Check the page's access restrictions."
         }
       },
       "checkColumn": "Check",
@@ -245,7 +249,31 @@
       "intro": "The two files that tell AI crawlers what to do with this site: robots.txt states the policy, llms.txt says which pages matter and why. Both belong to the whole site, so they are edited here rather than from a page.",
       "tab": {
         "robots": "robots.txt",
-        "llms": "llms.txt"
+        "llms": "llms.txt",
+        "visibility": "Invisible content"
+      }
+    },
+    "visibility": {
+      "title": "Content no AI can read",
+      "intro": "Published pages that a visitor with no account cannot read. A crawler served a login form gets a cheerful 200 and reports success, so only the repository knows these pages are invisible.",
+      "scan": "Scan the site",
+      "scanning": "Reading every published page…",
+      "rescan": "Scan again",
+      "summary": "{{readable}} of {{scanned}} published pages can be read by a visitor with no account",
+      "noFindings": "Every published page can be read without an account.",
+      "truncated": "Only the first {{scanned}} pages were scanned. The rest were not looked at.",
+      "findingsTitle": "Probably not intended",
+      "deliberateTitle": "Closed on purpose",
+      "deliberateIntro": "Pages inside a branch that is closed as a whole, which normally means a members area rather than a mistake.",
+      "page": "Page",
+      "reason": "Reason",
+      "error": "The scan could not be completed.",
+      "errorTitle": "Scan failed",
+      "kind": {
+        "isolatedRestriction": "Closed, inside an open section",
+        "expiredCondition": "A visibility condition ended on {{date}}",
+        "hiddenByCondition": "Hidden right now by a visibility condition",
+        "gatedBranch": "Part of a closed branch"
       }
     }
   }

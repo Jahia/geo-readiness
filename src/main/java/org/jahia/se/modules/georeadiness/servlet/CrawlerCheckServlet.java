@@ -2,6 +2,7 @@ package org.jahia.se.modules.georeadiness.servlet;
 
 import org.jahia.se.modules.georeadiness.check.AiCrawlers;
 import org.jahia.se.modules.georeadiness.check.GeoScore;
+import org.jahia.se.modules.georeadiness.check.GuestVisibility;
 import org.jahia.se.modules.georeadiness.check.RobotsRules;
 import org.jahia.se.modules.georeadiness.check.SiteFilesChecker;
 import org.jahia.se.modules.georeadiness.config.GeoReadinessConfigService;
@@ -283,6 +284,14 @@ public class CrawlerCheckServlet extends HttpServlet {
         out.put("reachableButDisallowedCount", reachableButDisallowed);
         out.put("controlWords", Math.max(controlWords, 0));
         
+        // GEO-19 for this one page. A crawler served a login form gets a cheerful
+        // 200, so the fetch above cannot tell the difference. The repository can.
+        try {
+            out.put("visibility", GuestVisibility.forPage(path, language));
+        } catch (Exception e) {
+            logger.debug("visibility check failed for {}", path, e);
+        }
+
         // The score reads only what is already in the report. It adds no requests.
         out.put("score", GeoScore.compute(out));
         writeJson(resp, HttpServletResponse.SC_OK, out);

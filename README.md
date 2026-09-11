@@ -74,6 +74,21 @@ hand-edits made before applying are kept rather than regenerated over. Applying 
 `jmix:llms` mixin if the site lacks it, sets `j:llms`, and publishes, because the community `llms`
 module serves that property from the live workspace.
 
+## Content no AI can ever read
+
+A crawler served a login form gets a cheerful 200 and reports success. Only the repository knows
+the page is invisible, which is why no external audit tool can produce this list.
+
+The settings panel scans every published page of the site and reads each one again as `guest`,
+which is what a crawler is. What matters is the second half: pages closed **on purpose** are
+separated from pages closed **by accident**. A page inside a branch that is closed as a whole is a
+members area and is listed apart, not reported as a problem. A closed page sitting inside an open
+section is the finding, and so is a visibility condition whose end date has passed while the page
+is still published.
+
+The drawer states it for the page in view, because it is absolute. No amount of editing makes a
+gated page citable, and an author should know that before spending a week on it.
+
 ## Controlling AI crawlers in robots.txt
 
 The same generate, review, apply loop, but for the crawler policy. Each of the fifteen AI crawlers

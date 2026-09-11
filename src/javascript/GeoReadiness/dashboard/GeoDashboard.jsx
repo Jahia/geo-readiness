@@ -5,6 +5,7 @@ import {useSiteInfo} from '@jahia/data-helper';
 import {Header, LayoutContent, Tab, TabItem} from '@jahia/moonstone';
 import {RobotsControlPanel} from '../tabs/RobotsControlPanel';
 import {LlmsGeneratorPanel} from '../tabs/LlmsGeneratorPanel';
+import {VisibilityPanel} from '../tabs/VisibilityPanel';
 import {languageLabel} from '../util/languageFlag';
 import styles from './GeoDashboard.module.css';
 
@@ -70,6 +71,11 @@ export const GeoDashboard = () => {
                                 isSelected={tab === 'llms'}
                                 onClick={() => setTab('llms')}
                             />
+                            <TabItem
+                                label={t('dashboard.tab.visibility')}
+                                isSelected={tab === 'visibility'}
+                                onClick={() => setTab('visibility')}
+                            />
                         </Tab>
                     }
                 />
@@ -78,6 +84,7 @@ export const GeoDashboard = () => {
             <div className={styles.content}>
                 {tab === 'robots' && <RobotsControlPanel path={sitePath} language={language}/>}
                 {tab === 'llms' && <LlmsGeneratorPanel path={sitePath} language={language}/>}
+                {tab === 'visibility' && <VisibilityPanel path={sitePath} language={language}/>}
             </div>
         </LayoutContent>
     );

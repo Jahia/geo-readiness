@@ -130,6 +130,19 @@ The component reads its context from the store, `state.site` and `state.language
 `/sites/<siteKey>` as the path. The servlet resolves the site from any path under `/sites/`, so a
 site node works exactly as a page path does.
 
+**`doExecuteWithSystemSessionAsUser` does NOT enforce ACLs.** It is a system session merely
+attributed to a user, so it reads everything. `GuestVisibility` used it first and reported every
+page readable, which would have shipped a permissions check that could never find anything. Use
+`JCRTemplate.doExecute(user, workspace, locale, callback)` when the question is what that user can
+actually see. Proven on 8.2.3.2 against a page with ACL inheritance broken: the system variant
+read it, `doExecute` threw `PathNotFoundException`, and an anonymous HTTP request got a 404.
+
+**Restricting a page means breaking ACL inheritance, not adding a DENY.** A `DENY` ace for
+`g:guest` on a page changed nothing: guest still read it, because its read comes from an inherited
+grant higher up and Jahia did not let the local deny override it. `setAclInheritanceBreak(true)`,
+which is what jContent's restrict-access does, is what actually closes a page. Test fixtures must
+use that, or they prove nothing.
+
 **Header pattern.** Settings panels title themselves after the thing they act on, the way
 site-settings-seo does (`"<label> - <site displayName>"`). Ours reads *GEO readiness for site
 {{site}} - {{language}}*, with the site's **displayName** from `useSiteInfo` rather than the site

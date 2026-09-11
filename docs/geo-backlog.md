@@ -92,6 +92,8 @@ space.
 
 ## GEO-19 · Content no AI can ever read
 
+**BUILT.** Scan in the settings panel, one critical check plus a banner in the drawer.
+
 **As a** site manager, **I want** to know which published pages are unreachable to a crawler
 because of permissions or visibility conditions, **so that** I stop counting them as content that
 works for us.
@@ -112,6 +114,24 @@ the page is invisible.
 a gated page citable, and an author needs to know before spending a week on it.
 
 **Effort** M. High signal for the cost, and it demonstrates well.
+
+**How it shipped.** `GuestVisibility` lists published pages with a system session, then reads each
+one again in a session owned by `guest`. Readability is asked, not reasoned about from ACLs.
+Classification is by position in the tree: closed inside an open section is the finding, closed
+inside a closed branch is a members area and is listed separately. An expired visibility condition
+is read generically off any condition carrying `j:end`, so a custom condition with the same
+property is handled and an unknown one is ignored rather than guessed at.
+
+Two things had to be learned the hard way and are now in `.agents/README.md`.
+`doExecuteWithSystemSessionAsUser` does not enforce ACLs, so the first version reported every page
+readable. And a `DENY` ace does not close a page against an inherited grant; breaking ACL
+inheritance does, which is what jContent's restrict-access uses. A fixture built on the deny would
+have proved nothing.
+
+Not done: the scan is synchronous and capped at 2000 pages, so a large site needs the background
+job from GEO-17 before this covers everything. The cross-check against the crawler result is
+implicit rather than explicit: the drawer shows both facts on the same tab, but nothing yet says
+"this page returns 200 to a bot and is unreadable by guest, so it is serving a login page".
 
 ---
 
@@ -245,7 +265,8 @@ Jahia owns the vanity URL service, so this is a repository query rather than a c
 
 ## Suggested order
 
-1. **GEO-19**, invisible content. Small, startling in a demo, needs no new plumbing.
+1. ~~**GEO-19**, invisible content.~~ **Built.** Small, startling in a demo, needed no new
+   plumbing, exactly as predicted.
 2. **GEO-17 + GEO-18** together. The background job and the template roll-up share the same
    foundation, and together they turn this from a page tool into a platform capability.
 3. **GEO-21, GEO-22, GEO-25**, the cheap structural checks, once the job exists to run them.
