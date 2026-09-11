@@ -213,6 +213,19 @@ public final class SiteScorer {
             logger.debug("vanity url check failed for {}", sitePath, e);
         }
 
+        // GEO-24. Pure repository work, so the scheduled run keeps it current at
+        // no cost; the tab can also ask for it directly at any time.
+        try {
+            int staleDays = ScanStore.read(sitePath, language).optInt("staleDays", 0);
+            if (staleDays <= 0) {
+                staleDays = Freshness.DEFAULT_STALE_DAYS;
+            }
+            ScanStore.saveFreshness(sitePath, language,
+                    Freshness.check(sitePath, language, siteBase, staleDays), staleDays);
+        } catch (Exception e) {
+            logger.debug("freshness failed for {}", sitePath, e);
+        }
+
         // Is the published llms.txt still about this site? Compared against what
         // regenerating would produce now, using the copy the site files check
         // already fetched, so it costs one generation and no request.

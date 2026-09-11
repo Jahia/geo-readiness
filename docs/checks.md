@@ -268,6 +268,29 @@ the score is about crawler access and what arrives in the HTML - so prompting fo
 send somebody to do something that changes nothing they were looking at.
 
 
+## How old the content is
+
+Freshness is one of the criteria a crawl-based tool scores a site on, and one of the few it cannot
+compute properly: it sees the dates a site chooses to publish, on the pages it happened to crawl.
+The repository has the real modification date of everything published.
+
+Reported as a distribution - last month, 1-3 months, 3-6 months, 6-12 months, over a year - and
+then twice more, **by content type** and **by section**. Those two breakdowns are the whole design.
+Ranking every page by age would put a legal notice next to a news article and call both old, which
+is how a freshness report gets ignored; judging each type against its own list is what keeps them
+apart. Nothing attempts to decide which types are "evergreen", because that would be a guess at
+somebody's content model.
+
+A group is flagged when its **newest** item is past the threshold - not its oldest, not its
+average. "Nothing in here has been touched in a year" is actionable. "The oldest item is old" is
+true of every site that has ever existed.
+
+The threshold is configurable and remembered, so a scheduled run measures against the same line an
+editor chose. Measured per language: a translation carries its own dates.
+
+No drawer line, deliberately. An author editing a page already knows how old it is.
+
+
 ## Where each one is computed
 
 Everything in **Is what arrives usable** is read from the HTML of a single fetch, so it costs

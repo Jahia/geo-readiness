@@ -67,6 +67,9 @@ public final class ScanStore {
     private static final String VANITY = "geoVanity";
     /** Whether the served llms.txt still matches what generating would produce. */
     private static final String LLMS = "geoLlms";
+    /** GEO-24, and the threshold it was computed against. */
+    private static final String FRESHNESS = "geoFreshness";
+    private static final String STALE_DAYS = "geoStaleDays";
 
     private ScanStore() {
     }
@@ -79,6 +82,7 @@ public final class ScanStore {
             out.put("enabled", bool(store, ENABLED, false));
             out.put("scope", str(store, SCOPE, ""));
             out.put("baseUrl", str(store, BASE_URL, ""));
+            out.put("staleDays", (int) num(store, STALE_DAYS));
             out.put("language", language);
 
             JSONObject run = new JSONObject();
@@ -103,6 +107,7 @@ public final class ScanStore {
                 out.put("links", json(l, LINKS));
                 out.put("vanity", json(l, VANITY));
                 out.put("llms", json(l, LLMS));
+                out.put("freshness", json(l, FRESHNESS));
             }
             return out;
         });
@@ -213,6 +218,22 @@ public final class ScanStore {
         inStore(sitePath, (store, session) -> {
             JCRNodeWrapper l = language(store, language);
             l.setProperty(LLMS, llms.toString());
+            session.save();
+            return null;
+        });
+    }
+
+    /**
+     * Records the freshness picture and the threshold it was measured against.
+     * The threshold lives on the site, not the language, so a scheduled run in
+     * any language uses the one somebody chose.
+     */
+    public static void saveFreshness(String sitePath, String language, JSONObject freshness, int staleDays)
+            throws RepositoryException {
+        inStore(sitePath, (store, session) -> {
+            store.setProperty(STALE_DAYS, staleDays);
+            JCRNodeWrapper l = language(store, language);
+            l.setProperty(FRESHNESS, freshness.toString());
             session.save();
             return null;
         });

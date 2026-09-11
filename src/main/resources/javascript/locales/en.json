@@ -311,7 +311,8 @@
         "score": "Site score",
         "sitemap": "Sitemap",
         "links": "Internal links",
-        "vanity": "Addresses"
+        "vanity": "Addresses",
+        "freshness": "Freshness"
       }
     },
     "visibility": {
@@ -524,6 +525,37 @@
         "canonicalTitle": "This page's canonical needs checking",
         "canonical": "The canonical tag does not name this page's own address or any of its aliases."
       }
+    },
+    "freshness": {
+      "title": "Where the site has gone stale",
+      "intro": "How old everything a visitor can read actually is, taken from the repository rather than from the dates pages choose to publish. Grouped rather than ranked: a legal notice and a property listing age for different reasons, and a single list of oldest-first would put them side by side.",
+      "counts": "{{total}} published items dated, {{undated}} with no modification date.",
+      "thresholdLabel": "Flag a group when nothing in it has changed in",
+      "threshold": {
+        "90": "3 months",
+        "180": "6 months",
+        "365": "a year",
+        "730": "two years"
+      },
+      "measuring": "measuring…",
+      "neverTitle": "Nothing measured yet",
+      "never": "Pick a threshold above to age the published content. It is a repository query, so it answers straight away.",
+      "bucket": {
+        "month": "Changed in the last month",
+        "quarter": "1 to 3 months ago",
+        "halfYear": "3 to 6 months ago",
+        "year": "6 months to a year ago",
+        "older": "More than a year ago"
+      },
+      "byType": "By content type",
+      "byTypeHelp": "The distinction that stops a legal page being flagged next to a news article: each kind of content is judged against its own list.",
+      "bySection": "By section",
+      "bySectionHelp": "The same content grouped the way the work is usually divided up.",
+      "group": "{{count}} items · newest changed {{newest}} ago · half older than {{median}}",
+      "stale": "nothing changed",
+      "days": "{{count}} days",
+      "months": "{{count}} months",
+      "limits": "A group is flagged on its newest item, not its oldest or its average: \"nothing here has been touched\" is actionable, while \"the oldest item is old\" is true of every site. Dates are the repository's own, so a page rebuilt without content changes does not count as fresh. Only the language shown is measured, since a translation carries its own dates."
     }
   }
 }

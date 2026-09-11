@@ -56,6 +56,10 @@ public final class PublishedMap {
         public final String jcrPath;
         public final String title;
         public final String modifiedOn;
+        /** The same date as epoch millis, or -1 when the node carries none. */
+        public final long modifiedAt;
+        /** Primary node type, so freshness can be read per kind of content. */
+        public final String nodeType;
         public final boolean noindex;
         /** True for `jnt:page`, false for content that merely has its own URL. */
         public final boolean page;
@@ -65,11 +69,13 @@ public final class PublishedMap {
          * reported against the English page.
          */
         public final String language;
-        Entry(String jcrPath, String title, String modifiedOn, boolean noindex, boolean page,
-                String language) {
+        Entry(String jcrPath, String title, String modifiedOn, long modifiedAt, String nodeType,
+                boolean noindex, boolean page, String language) {
             this.jcrPath = jcrPath;
             this.title = title;
             this.modifiedOn = modifiedOn;
+            this.modifiedAt = modifiedAt;
+            this.nodeType = nodeType;
             this.noindex = noindex;
             this.page = page;
             this.language = language;
@@ -99,7 +105,8 @@ public final class PublishedMap {
                         try {
                             // Read now, inside the session, never after it closes.
                             out.put(pathOf(PublicUrls.forNode(n, base)), new Entry(
-                                    n.getPath(), titleOf(n), modifiedOn(n), isNoindex(n),
+                                    n.getPath(), titleOf(n), modifiedOn(n), modifiedAt(n),
+                                    n.getPrimaryNodeTypeName(), isNoindex(n),
                                     n.isNodeType("jnt:page"), lang));
                         } catch (Exception e) {
                             logger.debug("no public url for {}", n.getPath(), e);
@@ -187,6 +194,17 @@ public final class PublishedMap {
     private static final java.util.regex.Pattern LANG_PREFIX =
             java.util.regex.Pattern.compile("^/[a-z]{2}(?:_[A-Z]{2})?/");
 
+    /** The first path segment under the site, which is what people call a section. */
+    public static String sectionOf(String sitePath, String jcrPath) {
+        String rel = jcrPath.startsWith(sitePath) ? jcrPath.substring(sitePath.length()) : jcrPath;
+        while (rel.startsWith("/")) {
+            rel = rel.substring(1);
+        }
+        int slash = rel.indexOf('/');
+        String first = slash < 0 ? rel : rel.substring(0, slash);
+        return first.isEmpty() ? "/" : first;
+    }
+
     /** Compared on path, not on the whole url: host and scheme differ legitimately. */
     public static String pathOf(String url) {
         try {
@@ -206,6 +224,18 @@ public final class PublishedMap {
             return c == null ? null : String.format("%1$tY-%1$tm-%1$td", c);
         } catch (RepositoryException e) {
             return null;
+        }
+    }
+
+    private static long modifiedAt(JCRNodeWrapper n) {
+        try {
+            if (!n.hasProperty("jcr:lastModified")) {
+                return -1L;
+            }
+            Calendar c = n.getProperty("jcr:lastModified").getDate();
+            return c == null ? -1L : c.getTimeInMillis();
+        } catch (RepositoryException e) {
+            return -1L;
         }
     }
 

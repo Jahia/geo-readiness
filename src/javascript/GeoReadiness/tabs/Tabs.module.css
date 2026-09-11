@@ -377,3 +377,17 @@
     gap: 0.5rem;
     margin-bottom: 0.15rem;
 }
+
+/*
+ * Age distribution. A bar per bucket rather than a chart library: five numbers
+ * whose shape is the whole point, and a dependency that would need its own
+ * light and dark palette to say the same thing.
+ */
+.ageBar {
+    display: block;
+    height: 0.45rem;
+    min-width: 2px;
+    margin-top: 0.35rem;
+    border-radius: 2px;
+    background-color: var(--moon-color-accent_light, #c2d9ee);
+}

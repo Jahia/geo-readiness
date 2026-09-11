@@ -29,5 +29,12 @@ export const runScan = ({path, language, scope}) => call({action: 'runScan', pat
  */
 export const checkSitemap = ({path, language}) => call({action: 'sitemap', path, language});
 
+/**
+ * Ages published content against a threshold. A repository query, so it answers
+ * without a scan; passing staleDays both recomputes and remembers the choice.
+ */
+export const checkFreshness = ({path, language, staleDays}) =>
+    call({action: 'freshness', path, language, staleDays});
+
 export const saveSchedule = ({path, language, cron, enabled, scope}) =>
     call({action: 'saveSchedule', path, language, cron, enabled, scope});

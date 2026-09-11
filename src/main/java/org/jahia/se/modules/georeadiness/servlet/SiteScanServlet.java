@@ -1,6 +1,7 @@
 package org.jahia.se.modules.georeadiness.servlet;
 
 import org.jahia.se.modules.georeadiness.check.GuestVisibility;
+import org.jahia.se.modules.georeadiness.check.Freshness;
 import org.jahia.se.modules.georeadiness.check.ScanStore;
 import org.jahia.se.modules.georeadiness.check.SiteScorer;
 import org.jahia.se.modules.georeadiness.check.SitemapCheck;
@@ -97,7 +98,8 @@ public class SiteScanServlet extends HttpServlet {
             // Only the expensive actions are rate limited. Reading the stored
             // state is what the dashboard polls while a scan runs, and limiting
             // that would make a long scan look like a failure after a minute.
-            if (("guestVisibility".equals(action) || "runScan".equals(action) || "sitemap".equals(action))
+            if (("guestVisibility".equals(action) || "runScan".equals(action) || "sitemap".equals(action)
+                    || "freshness".equals(action))
                     && !rateLimitOk(user.getUserKey())) {
                 deny(resp, 429, "rate limit");
                 return;
@@ -117,6 +119,22 @@ public class SiteScanServlet extends HttpServlet {
                             baseUrlFor(sitePath, language, req),
                             config.getFetchTimeoutMs(), config.getMaxBodyBytes());
                     ScanStore.saveSitemap(sitePath, language, sitemap);
+                    writeJson(resp, HttpServletResponse.SC_OK, ScanStore.read(sitePath, language));
+                    return;
+                case "freshness":
+                    // A repository query, so it answers now and does not wait
+                    // for a walk of the site. Stored as well as returned, so a
+                    // scheduled run keeps it current with the same threshold.
+                    int staleDays = body.optInt("staleDays", 0);
+                    if (staleDays <= 0) {
+                        staleDays = ScanStore.read(sitePath, language).optInt("staleDays", 0);
+                    }
+                    if (staleDays <= 0) {
+                        staleDays = Freshness.DEFAULT_STALE_DAYS;
+                    }
+                    JSONObject freshness = Freshness.check(sitePath, language,
+                            baseUrlFor(sitePath, language, req), staleDays);
+                    ScanStore.saveFreshness(sitePath, language, freshness, staleDays);
                     writeJson(resp, HttpServletResponse.SC_OK, ScanStore.read(sitePath, language));
                     return;
                 case "scanStatus":

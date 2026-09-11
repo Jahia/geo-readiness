@@ -95,6 +95,14 @@ a delta. It needs nothing from any external vendor.
   is gone, or it is published and missing from the file. Not tied to the readiness score, which
   regenerating does not move.
 
+- **Where the site has gone stale.** The age of everything a visitor can read, taken from the
+  repository rather than from the dates pages choose to publish, in five buckets and broken down by
+  content type and by section. Grouped rather than ranked, because a single oldest-first list puts
+  a legal notice next to a news article and gets ignored; each type is judged against its own list
+  instead, and nothing tries to guess which types are meant to age. A group is flagged only when
+  its *newest* item is past a configurable threshold. A repository query, so it answers without
+  waiting for a scan, and changing the threshold recomputes rather than filtering.
+
 **Writing, behind generate → diff → confirm**
 
 - **llms.txt generated from the published page tree.** Deterministic: no model call and no external

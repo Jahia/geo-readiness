@@ -315,6 +315,9 @@ both cheaper and more accurate, and it is a genuinely different approach.
 
 ## GEO-24 · Where the site has gone stale
 
+**BUILT.** Repository query with its own dashboard tab and a configurable threshold. No drawer
+line, as the story asks.
+
 **As a** content manager, **I want** to see which sections have not been updated in a long time,
 **so that** I can plan a refresh before an engine decides we are out of date.
 
@@ -331,6 +334,22 @@ instantly and they cannot.
 it is, and a date in the drawer would be noise.
 
 **Effort** S.
+
+**What was built, against that acceptance.** Age distribution in five buckets, plus the two
+breakdowns. The evergreen criterion is met by *grouping* rather than by classifying: nothing tries
+to decide which types are time-sensitive, because that would be a guess at somebody's content
+model. Each type is judged against its own list, which is what stops a legal notice being flagged
+next to a news article, and each group is flagged on its **newest** item rather than its oldest or
+its average - "nothing here has been touched in a year" is a fact somebody can act on, while "the
+oldest item is old" is true of every site that has ever existed.
+
+The threshold is a dropdown that recomputes rather than filtering a stored answer, and the choice
+is remembered so the scheduled run measures against the same line. The whole thing is a repository
+query, so it answers immediately and never waits for a scan.
+
+Measured per language, like the link graph and for the same reason: a translation carries its own
+modification date, and a French page left behind while the English one is maintained is exactly the
+finding worth having.
 
 ---
 

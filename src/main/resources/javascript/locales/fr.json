@@ -311,7 +311,8 @@
         "score": "Score du site",
         "sitemap": "Sitemap",
         "links": "Liens internes",
-        "vanity": "Adresses"
+        "vanity": "Adresses",
+        "freshness": "Fraîcheur"
       }
     },
     "visibility": {
@@ -524,6 +525,37 @@
         "canonicalTitle": "La balise canonique de cette page est à vérifier",
         "canonical": "La balise canonique ne désigne ni l'adresse propre de cette page ni l'un de ses alias."
       }
+    },
+    "freshness": {
+      "title": "Où le site a vieilli",
+      "intro": "L'âge réel de tout ce qu'un visiteur peut lire, pris dans le référentiel plutôt que dans les dates que les pages choisissent d'afficher. Regroupé plutôt que classé : des mentions légales et une annonce immobilière vieillissent pour des raisons différentes, et une simple liste du plus ancien au plus récent les mettrait côte à côte.",
+      "counts": "{{total}} contenus publiés datés, {{undated}} sans date de modification.",
+      "thresholdLabel": "Signaler un groupe quand rien n'y a changé depuis",
+      "threshold": {
+        "90": "3 mois",
+        "180": "6 mois",
+        "365": "un an",
+        "730": "deux ans"
+      },
+      "measuring": "mesure en cours…",
+      "neverTitle": "Rien n'a encore été mesuré",
+      "never": "Choisissez un seuil ci-dessus pour dater les contenus publiés. C'est une requête sur le référentiel : la réponse est immédiate.",
+      "bucket": {
+        "month": "Modifié le mois dernier",
+        "quarter": "Il y a 1 à 3 mois",
+        "halfYear": "Il y a 3 à 6 mois",
+        "year": "Il y a 6 mois à un an",
+        "older": "Il y a plus d'un an"
+      },
+      "byType": "Par type de contenu",
+      "byTypeHelp": "La distinction qui évite qu'une page légale soit signalée à côté d'un article d'actualité : chaque type de contenu est jugé sur sa propre liste.",
+      "bySection": "Par section",
+      "bySectionHelp": "Les mêmes contenus regroupés selon la façon dont le travail se répartit habituellement.",
+      "group": "{{count}} contenus · le plus récent modifié il y a {{newest}} · la moitié plus ancienne que {{median}}",
+      "stale": "rien n'a changé",
+      "days": "{{count}} jours",
+      "months": "{{count}} mois",
+      "limits": "Un groupe est signalé sur son contenu le plus récent, pas le plus ancien ni la moyenne : « rien n'a été touché ici » est actionnable, alors que « le plus ancien est ancien » est vrai de tous les sites. Les dates sont celles du référentiel : une page régénérée sans modification de contenu ne compte donc pas comme fraîche. Seule la langue affichée est mesurée, car une traduction porte ses propres dates."
     }
   }
 }
