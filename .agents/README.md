@@ -106,6 +106,17 @@ Concretely, the servlet must keep:
   their 200 homepage for any unknown path. Check the body and the content type, not just the
   status code.
 
+## Documentation
+
+Four files, each with one job. `README.md` is the front door: what it does, the two entry points,
+configuration, known gaps. `docs/checks.md` is the reference for all eighteen checks.
+`docs/architecture.md` is the shape of the code. `CHANGELOG.md` carries the behaviour notes that
+explain choices the code cannot explain by itself. This file is the invariants and the traps.
+
+Every factual claim in them — check counts, crawler counts, thresholds, endpoint aliases, config
+keys — is checkable against the code, and was checked rather than remembered when written. A
+number in a README that drifted from the code is worse than no number, because it is believed.
+
 ## Two entry points
 
 - `GeoReadinessAction` -> portal drawer, registered on `headerPrimaryActions:890`. **Page scope.**

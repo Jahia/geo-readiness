@@ -1,6 +1,6 @@
 # Documentation index
 
-Five files. Read them in this order depending on why you are here.
+Read in the order that matches why you are here.
 
 ## If you are an agent about to change this code
 
@@ -13,6 +13,15 @@ Five files. Read them in this order depending on why you are here.
 3. **[`../test-fixtures/README.md`](../test-fixtures/README.md)** before claiming anything works.
    A zero-dependency simulator with flags for every failure mode, and a table of expected results
    per flag combination.
+
+## If you want to know what it checks, or how it works
+
+- **[`checks.md`](checks.md)** is the reference for all eighteen checks: what each one means, when
+  it fails, and why it matters. The two rules that govern what is deliberately *not* checked are at
+  the top.
+- **[`architecture.md`](architecture.md)** is the shape of the module: the one decision everything
+  follows from, the two surfaces and why they fetch differently, every class and what it does,
+  where results are stored and why there is no CND.
 
 ## If you are deciding what to build next
 
