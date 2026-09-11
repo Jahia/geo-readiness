@@ -157,6 +157,19 @@ language-to-country default map, and returns null when it cannot answer. A flag 
 locale is a language, so this is a convention: no flag beats the wrong flag, which is why the
 unknown case renders the name alone.
 
+**A background job has no HTTP request, and Jahia's URL rewriter needs one.** `util/MockHttp`
+builds a request and response as dynamic proxies so `PublicUrls` works from a scheduled scan. The
+sitemap module solves the same problem with two hand-written mock classes. The mock must answer
+`getAttribute` and `setAttribute`, because the vanity URL rule stores what it finds in a request
+attribute.
+
+**Quartz reads cron in the server's timezone, not yours.** A trigger tested with a locally
+computed expression fires hours later and looks broken. The container here runs UTC.
+
+**Never rate limit the endpoint a UI polls.** The scan status share the servlet with the scans
+themselves, and a long scan plus a four-second poll blew the limit in a minute, which the
+dashboard would have shown as a failure. Only the expensive actions are limited now.
+
 **Bump `CACHE_SCHEMA` in the drawer whenever the report grows a field, not only when it changes
 shape incompatibly.** The symptom is nasty: the API returns the new data, the code is correct, and
 the feature is invisible to every person who had opened the drawer before, because their cached

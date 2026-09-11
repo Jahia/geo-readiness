@@ -138,9 +138,15 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                   * inside one: they frame every number below them, and the
                   * drawer does not open on the tab that used to hold them.
                   */}
+                {/*
+                  * Its own wording, not the score check's. A check label is
+                  * phrased as the passing condition because it sits beside a
+                  * pass mark; as a failure banner that reads as the opposite of
+                  * what happened.
+                  */}
                 {report && report.visibility && report.visibility.guestReadable === false && (
-                    <Banner variant="danger" title={t('score.check.guestReadable.label')}>
-                        {t('score.check.guestReadable.fix')}
+                    <Banner variant="danger" title={t('visibility.gatedTitle')}>
+                        {t('visibility.gated')}
                     </Banner>
                 )}
 

@@ -292,7 +292,8 @@
       "tab": {
         "robots": "robots.txt",
         "llms": "llms.txt",
-        "visibility": "Invisible content"
+        "visibility": "Invisible content",
+        "score": "Site score"
       }
     },
     "visibility": {
@@ -319,7 +320,43 @@
         "noindex": "Set to noindex, so it will not be cited"
       },
       "noindexTitle": "This page is set to noindex",
-      "noindex": "Search engines and AI crawlers are told not to index this page, so it will not be cited. That is often deliberate for legal or utility pages. If it is not, the setting is on the page itself."
+      "noindex": "Search engines and AI crawlers are told not to index this page, so it will not be cited. That is often deliberate for legal or utility pages. If it is not, the setting is on the page itself.",
+      "gatedTitle": "No visitor can read this page",
+      "gated": "A visitor with no account cannot open this page, so no AI crawler ever will. Some servers answer a gated page with a login form and a 200, which looks like success from outside. The setting is in the page's access restrictions."
+    },
+    "score17": {
+      "title": "Site score",
+      "intro": "Every published page scored, one fetch each, on a schedule you set. The per-page drawer fetches as sixteen crawlers to compare them; doing that site-wide would be hundreds of thousands of requests, so a scan fetches once per page as a single AI crawler.",
+      "headline": "{{percent}}% of checks pass across the site",
+      "up": "up {{n}} points since the last run",
+      "down": "down {{n}} points since the last run",
+      "counts": "{{scored}} pages scored · {{critical}} with a critical failure · {{unreadable}} no visitor can read",
+      "runNow": "Scan now",
+      "scanning": "Scanning…",
+      "runningTitle": "Scan in progress",
+      "running": "{{done}} of {{total}} pages",
+      "failedTitle": "Last scan failed",
+      "failed": "The run did not finish. The server log has the detail.",
+      "lastRun": "Last scan: {{date}}",
+      "nextRun": "Next scheduled: {{date}}",
+      "bySection": "By section",
+      "pages": "{{count}} page",
+      "pages_plural": "{{count}} pages",
+      "worstPages": "Pages with findings",
+      "template": "template {{name}}",
+      "critical": "{{count}} critical",
+      "schedule": "Schedule",
+      "scheduleHelp": "A Quartz cron expression, in the server's timezone. Leave the scope empty to scan the whole site, or give a path to scan one branch. A running scan appears in the administration job list.",
+      "scopePlaceholder": "whole site",
+      "enabled": "Scheduled",
+      "disabled": "Not scheduled",
+      "save": "Save schedule",
+      "badCron": "That is not a cron expression Quartz accepts. Nothing was saved.",
+      "rateLimit": "Too many scans in a short time. Try again in a few minutes.",
+      "error": "The scan state could not be read.",
+      "errorTitle": "Site score",
+      "truncatedTitle": "Not every page was scanned",
+      "truncated": "The scan stopped at {{pages}} pages. Narrow the scope, or raise the limit."
     }
   }
 }

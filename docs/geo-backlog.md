@@ -40,6 +40,8 @@ plugin".
 
 ## GEO-17 · Score the whole site, not one page at a time
 
+**BUILT.** Quartz cron job, results on the site, dashboard tab with schedule and scope.
+
 **As a** site manager, **I want** every published page scored for AI readability on a schedule,
 **so that** I can see where the site is weak instead of discovering it one page at a time.
 
@@ -63,6 +65,33 @@ nothing without a scale.
 
 **Effort** L. This is the plumbing story, so it costs more than it looks and everything after it
 costs less.
+
+**How it shipped.**
+
+*One fetch per page, not sixteen.* The drawer fetches as every crawler because comparing them is
+the point there. Site-wide that is 800,000 requests for a 50,000 page site and about fifteen
+hours. Once per page as a single AI crawler is roughly an hour. The cost is the thin-content
+ratio, which needs a second fetch to compare against; a page that only renders through JavaScript
+is still caught by the word-count check, so the ratio stays a drawer diagnostic. The one check
+that genuinely needs several agents is dropped from the site score rather than allowed to pass for
+free, which is why a site score is out of 17 and a page score out of 18.
+
+*One scorer.* A scanned page is scored by building a report shaped exactly like the drawer's and
+running the same `GeoScore` over it. The two can therefore not drift apart.
+
+*Storage.* A hidden `nt:unstructured` node on the site, so no CND ships and nothing can fail to
+register. `jmix:nolive` keeps it unpublished. Aggregate plus the pages that failed something,
+never a row per page: measured at 2.7 KB for 13 pages, about 2 MB extrapolated to 10,000. The
+previous aggregate is kept so "movement since the last run" costs one extra property.
+
+*Schedule.* A Quartz cron trigger per site and language, validated before anything is stored, with
+the scope and an enable toggle in the dashboard. A running scan appears in the administration job
+list for free, and `isProcessingServer()` keeps a cluster from scanning the same site on every
+node.
+
+Not done: the template is recorded on every finding but nothing groups by it yet, which is GEO-18.
+Only the current language is scanned per run, so a multilingual site needs one schedule per
+language.
 
 ---
 
@@ -272,8 +301,8 @@ Jahia owns the vanity URL service, so this is a repository query rather than a c
 
 1. ~~**GEO-19**, invisible content.~~ **Built.** Small, startling in a demo, needed no new
    plumbing, exactly as predicted.
-2. **GEO-17 + GEO-18** together. The background job and the template roll-up share the same
-   foundation, and together they turn this from a page tool into a platform capability.
+2. ~~**GEO-17**~~ **built.** **GEO-18** is now the cheap half: every finding already records its
+   template, so the roll-up is a grouping and a UI rather than new plumbing.
 3. **GEO-21, GEO-22, GEO-25**, the cheap structural checks, once the job exists to run them.
 4. **GEO-20**, per-language, which pairs with the strongest story in the BotRank analysis.
 5. **GEO-23**, structured data, when there is appetite for something larger.

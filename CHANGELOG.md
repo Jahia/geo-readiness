@@ -82,6 +82,11 @@ rather than a delta. It needs nothing from any external vendor.
 
 ### Fixed
 
+- The gated-page banner in the drawer was titled with the score check's label,
+  which is phrased as the passing condition because it sits beside a pass mark
+  in the list. As a failure banner it said a visitor could read a page it was
+  reporting as unreadable.
+
 - The noindex notice never reached the drawer. Two causes: the report shape
   gained a `visibility` section without a `CACHE_SCHEMA` bump, so anyone who
   had opened the drawer before got a cached report with no such section, and
@@ -91,6 +96,15 @@ rather than a delta. It needs nothing from any external vendor.
 - The settings panel crashed with "Cannot access before initialization". The
   effect that runs the access check on open referenced the callback above its
   own declaration.
+
+- **The whole site, scored on a schedule (GEO-17).** A Quartz cron job walks
+  every published page, fetches each one once as an AI crawler, and stores an
+  aggregate plus the pages that failed something. The dashboard shows the
+  overall figure, the movement since the last run, a breakdown by section and
+  the pages with findings, and carries the cron expression, the scope and an
+  enable toggle. Results live on the site itself, on a hidden node that never
+  publishes, so no content type ships and deleting a site takes its scan with
+  it.
 
 ### Changed
 

@@ -6,6 +6,7 @@ import {Header, LayoutContent, Tab, TabItem} from '@jahia/moonstone';
 import {RobotsControlPanel} from '../tabs/RobotsControlPanel';
 import {LlmsGeneratorPanel} from '../tabs/LlmsGeneratorPanel';
 import {VisibilityPanel} from '../tabs/VisibilityPanel';
+import {SiteScorePanel} from '../tabs/SiteScorePanel';
 import {languageLabel} from '../util/languageFlag';
 import styles from './GeoDashboard.module.css';
 
@@ -27,7 +28,7 @@ export const GeoDashboard = () => {
     const siteKey = useSelector(state => state.site);
     const language = useSelector(state => state.language);
     const uilang = useSelector(state => state.uilang);
-    const [tab, setTab] = useState('robots');
+    const [tab, setTab] = useState('score');
 
     const {siteInfo} = useSiteInfo({
         siteKey,
@@ -62,6 +63,11 @@ export const GeoDashboard = () => {
                     toolbarLeft={
                         <Tab>
                             <TabItem
+                                label={t('dashboard.tab.score')}
+                                isSelected={tab === 'score'}
+                                onClick={() => setTab('score')}
+                            />
+                            <TabItem
                                 label={t('dashboard.tab.robots')}
                                 isSelected={tab === 'robots'}
                                 onClick={() => setTab('robots')}
@@ -82,6 +88,7 @@ export const GeoDashboard = () => {
             }
         >
             <div className={styles.content}>
+                {tab === 'score' && <SiteScorePanel path={sitePath} language={language}/>}
                 {tab === 'robots' && <RobotsControlPanel path={sitePath} language={language}/>}
                 {tab === 'llms' && <LlmsGeneratorPanel path={sitePath} language={language}/>}
                 {tab === 'visibility' && <VisibilityPanel path={sitePath} language={language}/>}

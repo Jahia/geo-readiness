@@ -292,7 +292,8 @@
       "tab": {
         "robots": "robots.txt",
         "llms": "llms.txt",
-        "visibility": "Contenu invisible"
+        "visibility": "Contenu invisible",
+        "score": "Score du site"
       }
     },
     "visibility": {
@@ -319,7 +320,43 @@
         "noindex": "Marquée noindex, elle ne sera pas citée"
       },
       "noindexTitle": "Cette page est marquée noindex",
-      "noindex": "Les moteurs et les robots IA sont priés de ne pas indexer cette page, elle ne sera donc pas citée. C'est souvent volontaire pour une page légale ou utilitaire. Si ce n'est pas le cas, le réglage se trouve sur la page elle-même."
+      "noindex": "Les moteurs et les robots IA sont priés de ne pas indexer cette page, elle ne sera donc pas citée. C'est souvent volontaire pour une page légale ou utilitaire. Si ce n'est pas le cas, le réglage se trouve sur la page elle-même.",
+      "gatedTitle": "Aucun visiteur ne peut lire cette page",
+      "gated": "Un visiteur sans compte ne peut pas ouvrir cette page, aucun robot IA ne le pourra donc jamais. Certains serveurs renvoient un formulaire de connexion avec un code 200, ce qui ressemble à un succès vu de l'extérieur. Le réglage se trouve dans les restrictions d'accès de la page."
+    },
+    "score17": {
+      "title": "Score du site",
+      "intro": "Chaque page publiée est évaluée, une requête par page, selon la planification que vous définissez. Le tiroir interroge seize robots pour les comparer ; le faire sur tout le site représenterait des centaines de milliers de requêtes, l'analyse n'interroge donc qu'un seul robot IA par page.",
+      "headline": "{{percent}} % des vérifications réussissent sur le site",
+      "up": "{{n}} points de plus qu'à la dernière analyse",
+      "down": "{{n}} points de moins qu'à la dernière analyse",
+      "counts": "{{scored}} pages évaluées · {{critical}} avec un échec critique · {{unreadable}} qu'aucun visiteur ne peut lire",
+      "runNow": "Analyser maintenant",
+      "scanning": "Analyse en cours…",
+      "runningTitle": "Analyse en cours",
+      "running": "{{done}} pages sur {{total}}",
+      "failedTitle": "La dernière analyse a échoué",
+      "failed": "L'exécution ne s'est pas terminée. Le détail est dans le journal du serveur.",
+      "lastRun": "Dernière analyse : {{date}}",
+      "nextRun": "Prochaine planifiée : {{date}}",
+      "bySection": "Par section",
+      "pages": "{{count}} page",
+      "pages_plural": "{{count}} pages",
+      "worstPages": "Pages avec des constats",
+      "template": "gabarit {{name}}",
+      "critical": "{{count}} critique",
+      "schedule": "Planification",
+      "scheduleHelp": "Une expression cron Quartz, dans le fuseau horaire du serveur. Laissez la portée vide pour analyser tout le site, ou indiquez un chemin pour n'analyser qu'une branche. Une analyse en cours apparaît dans la liste des tâches d'administration.",
+      "scopePlaceholder": "tout le site",
+      "enabled": "Planifiée",
+      "disabled": "Non planifiée",
+      "save": "Enregistrer la planification",
+      "badCron": "Quartz n'accepte pas cette expression cron. Rien n'a été enregistré.",
+      "rateLimit": "Trop d'analyses en peu de temps. Réessayez dans quelques minutes.",
+      "error": "Impossible de lire l'état de l'analyse.",
+      "errorTitle": "Score du site",
+      "truncatedTitle": "Toutes les pages n'ont pas été analysées",
+      "truncated": "L'analyse s'est arrêtée à {{pages}} pages. Réduisez la portée ou augmentez la limite."
     }
   }
 }

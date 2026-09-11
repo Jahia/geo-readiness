@@ -1,6 +1,11 @@
 package org.jahia.se.modules.georeadiness.servlet;
 
 import org.jahia.se.modules.georeadiness.check.GuestVisibility;
+import org.jahia.se.modules.georeadiness.check.ScanStore;
+import org.jahia.se.modules.georeadiness.check.SiteScorer;
+import org.jahia.se.modules.georeadiness.scheduler.ScanScheduler;
+import org.jahia.se.modules.georeadiness.scheduler.SiteScanJob;
+import org.jahia.se.modules.georeadiness.config.GeoReadinessConfigService;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.content.JCRSessionWrapper;
@@ -45,12 +50,15 @@ public class SiteScanServlet extends HttpServlet {
     private static final Logger logger = LoggerFactory.getLogger(SiteScanServlet.class);
 
     private static final int MAX_BODY = 64_000;
-    /** A scan reads every published page. Cheaper than the crawler check, not free. */
+    /** Applies to the scans only, never to reading their results. */
     private static final int RATE_MAX_CALLS = 30;
     private static final long RATE_WINDOW_MS = 600_000L;
     private static final int MAX_PAGES = 2000;
 
     private final Map<String, Deque<Long>> callWindows = new ConcurrentHashMap<>();
+
+    @org.osgi.service.component.annotations.Reference
+    private GeoReadinessConfigService config;
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -64,11 +72,6 @@ public class SiteScanServlet extends HttpServlet {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "json required");
             return;
         }
-        if (!rateLimitOk(user.getUserKey())) {
-            deny(resp, 429, "rate limit");
-            return;
-        }
-
         JSONObject body;
         try {
             body = new JSONObject(read(req.getInputStream(), MAX_BODY));
@@ -86,17 +89,39 @@ public class SiteScanServlet extends HttpServlet {
         }
 
         try {
-            if (!"guestVisibility".equals(action)) {
-                deny(resp, HttpServletResponse.SC_BAD_REQUEST, "unknown action");
+            // The caller must be able to see the site in the editing workspace
+            // before we tell them anything about it. The scans themselves then
+            // run with a system session, because reporting what guest CANNOT see
+            // is the whole point and a caller-scoped session could not do it.
+            // Only the expensive actions are rate limited. Reading the stored
+            // state is what the dashboard polls while a scan runs, and limiting
+            // that would make a long scan look like a failure after a minute.
+            if (("guestVisibility".equals(action) || "runScan".equals(action))
+                    && !rateLimitOk(user.getUserKey())) {
+                deny(resp, 429, "rate limit");
                 return;
             }
-            // The caller must be able to see the site in the editing workspace
-            // before we tell them anything about it. The scan itself then runs
-            // with a system session, because listing what guest CANNOT see is
-            // the whole point and a caller-scoped session could not do it.
+
             String sitePath = resolveSite(path, language);
-            writeJson(resp, HttpServletResponse.SC_OK,
-                    GuestVisibility.scanSite(sitePath, language, MAX_PAGES));
+            switch (action) {
+                case "guestVisibility":
+                    writeJson(resp, HttpServletResponse.SC_OK,
+                            GuestVisibility.scanSite(sitePath, language, MAX_PAGES));
+                    return;
+                case "scanStatus":
+                    writeJson(resp, HttpServletResponse.SC_OK, status(sitePath, language));
+                    return;
+                case "saveSchedule":
+                    writeJson(resp, HttpServletResponse.SC_OK,
+                            saveSchedule(sitePath, language, body, req));
+                    return;
+                case "runScan":
+                    runScan(sitePath, language, body.optString("scope", ""), req);
+                    writeJson(resp, HttpServletResponse.SC_OK, ScanStore.read(sitePath, language));
+                    return;
+                default:
+                    deny(resp, HttpServletResponse.SC_BAD_REQUEST, "unknown action");
+            }
         } catch (javax.jcr.PathNotFoundException | javax.jcr.AccessDeniedException e) {
             deny(resp, HttpServletResponse.SC_FORBIDDEN, "cannot read node");
         } catch (Exception e) {
@@ -104,6 +129,84 @@ public class SiteScanServlet extends HttpServlet {
             logger.debug("site-scan failure", e);
             deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "operation failed");
         }
+    }
+
+    /** The stored state plus what only the scheduler knows. */
+    private JSONObject status(String sitePath, String language) throws Exception {
+        JSONObject out = ScanStore.read(sitePath, language);
+        java.util.Date next = ScanScheduler.nextRun(sitePath, language);
+        out.put("nextRun", next == null ? JSONObject.NULL : next.toInstant().toString());
+        return out;
+    }
+
+    /**
+     * Validates the cron before storing anything, then installs or removes the
+     * trigger so the stored config and the scheduler cannot disagree.
+     */
+    private JSONObject saveSchedule(String sitePath, String language, JSONObject body, HttpServletRequest req)
+            throws Exception {
+        String cron = body.optString("cron", "").trim();
+        boolean enabled = body.optBoolean("enabled", false);
+        String scope = body.optString("scope", "").trim();
+
+        if (enabled && !ScanScheduler.isValidCron(cron)) {
+            JSONObject err = new JSONObject();
+            err.put("error", "invalid cron");
+            return err;
+        }
+
+        String base = baseUrlFor(sitePath, language, req);
+        ScanStore.saveConfig(sitePath, cron, enabled, scope, base);
+
+        if (enabled) {
+            org.quartz.JobDataMap data = new org.quartz.JobDataMap();
+            data.put(SiteScanJob.SITE_PATH, sitePath);
+            data.put(SiteScanJob.LANGUAGE, language);
+            data.put(SiteScanJob.SCOPE, scope);
+            data.put(SiteScanJob.BASE_URL, base);
+            data.put(SiteScanJob.TIMEOUT_MS, config.getFetchTimeoutMs());
+            data.put(SiteScanJob.MAX_BYTES, config.getMaxBodyBytes());
+            data.put(SiteScanJob.MAX_PAGES, MAX_PAGES);
+            ScanScheduler.schedule(sitePath, language, cron, data);
+        } else {
+            ScanScheduler.unschedule(sitePath, language);
+        }
+        return status(sitePath, language);
+    }
+
+    /**
+     * Runs the scan now, in the request thread. Honest about what that costs:
+     * one fetch per page, so a large site will outlast a browser's patience.
+     * The scheduled job is the way to scan a big site; this button is for
+     * seeing it work and for sites small enough not to care.
+     */
+    private void runScan(String sitePath, String language, String scope, HttpServletRequest req)
+            throws Exception {
+        SiteScorer.Options opts = new SiteScorer.Options();
+        opts.fetchTimeoutMs = config.getFetchTimeoutMs();
+        opts.maxBodyBytes = config.getMaxBodyBytes();
+        // A manual run has a request, so the base url is known exactly rather
+        // than assumed. The scheduled job has no request and uses whatever was
+        // recorded when the schedule was saved.
+        opts.publicBaseUrl = baseUrlFor(sitePath, language, req);
+        opts.maxPages = MAX_PAGES;
+        opts.scope = scope;
+        try {
+            SiteScorer.scan(sitePath, language, opts);
+        } catch (Exception e) {
+            ScanStore.failRun(sitePath, language, "scan failed");
+            throw e;
+        }
+    }
+
+    private String baseUrlFor(String sitePath, String language, HttpServletRequest req) throws Exception {
+        String configured = config.getPublicBaseUrl();
+        if (configured != null && !configured.trim().isEmpty()) {
+            return configured.trim();
+        }
+        JCRSessionWrapper live = JCRSessionFactory.getInstance()
+                .getCurrentUserSession("live", Locale.forLanguageTag(language));
+        return org.jahia.se.modules.georeadiness.util.PublicUrls.base(live.getNode(sitePath), req, "");
     }
 
     private String resolveSite(String path, String language) throws Exception {

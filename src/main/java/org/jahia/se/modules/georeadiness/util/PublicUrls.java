@@ -29,6 +29,20 @@ public final class PublicUrls {
     private PublicUrls() {
     }
 
+    /**
+     * Absolute public url for a node with no HTTP request in hand, for the
+     * scheduled scan. The rewriter still runs, over a mock request built from
+     * the site's own server name, so a scanned url is the same url a visitor
+     * would follow rather than one we assembled by hand.
+     */
+    public static String forNode(JCRNodeWrapper node, String configuredBase) throws Exception {
+        String base = base(node, null, configuredBase);
+        java.net.URL u = new java.net.URL(base);
+        int port = u.getPort() == -1 ? u.getDefaultPort() : u.getPort();
+        HttpServletRequest req = MockHttp.request(u.getProtocol(), u.getHost(), port, Jahia.getContextPath());
+        return forNode(node, req, MockHttp.response(), configuredBase);
+    }
+
     /** Absolute public url for a node. `configuredBase` is PUBLIC_BASE_URL, blank to derive it. */
     public static String forNode(JCRNodeWrapper node, HttpServletRequest req, HttpServletResponse resp,
             String configuredBase) throws Exception {
@@ -73,10 +87,17 @@ public final class PublicUrls {
      * when the site has a real server name that differs from the request host
      * (edit host versus public host), assume https on the default port.
      */
-    public static String base(JCRNodeWrapper node, HttpServletRequest req, String configuredBase) throws Exception {
+    public static String base(JCRNodeWrapper node, HttpServletRequest req, String configuredBase)
+            throws javax.jcr.RepositoryException {
         String b = configuredBase;
         if (b == null || b.trim().isEmpty()) {
             String server = node.getResolveSite().getServerName();
+            boolean hasHost = server != null && !server.isEmpty() && !"localhost".equalsIgnoreCase(server);
+            if (req == null) {
+                // No request at all: the scheduled scan. The site's own server name
+                // is the only statement of where it lives that we have.
+                return hasHost ? "https://" + server : "http://localhost:8080";
+            }
             String reqHost = req.getServerName();
             boolean siteHasHost = server != null && !server.isEmpty() && !"localhost".equalsIgnoreCase(server);
             if (!siteHasHost || server.equalsIgnoreCase(reqHost)) {
