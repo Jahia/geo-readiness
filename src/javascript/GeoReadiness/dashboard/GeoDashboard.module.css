@@ -17,3 +17,14 @@
     max-width: 64rem;
     padding: 0.5rem 0 4rem;
 }
+
+/*
+ * Moonstone's Header already carries `box-shadow: 0 1px 8px`, but the scrolling
+ * content div is its next sibling and paints its own background over it. With a
+ * grey ground the contrast hid that; on white the header lost its edge
+ * entirely. Lifting the header puts the shadow back on top where it belongs.
+ */
+.layout :global(.moonstone-header) {
+    position: relative;
+    z-index: 1;
+}

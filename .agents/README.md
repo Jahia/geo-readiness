@@ -211,6 +211,11 @@ long page goes white at the top and grey further down, which is what shipped onc
 `.yourClass :global(.moonstone-layoutContent)`; the plain class is emitted alongside the hashed
 module one, so a global match is safe.
 
+**A white ground costs you the Header's shadow.** `Header` already carries `box-shadow: 0 1px 8px`,
+but the scrolling content div is its next sibling and paints its own background over it. Against a
+grey ground the contrast hid the loss; on white the header simply has no edge. Add
+`position: relative; z-index: 1` to `:global(.moonstone-header)` so the shadow paints on top.
+
 Panels sit on one white ground, not on cards: Jahia's settings panels are a
 single white surface, and boxing each section made the page feel cramped. `Separator` with
 `spacing="big"` carries the structure instead, which is what it is for. The only fills left are
