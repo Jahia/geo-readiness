@@ -296,7 +296,8 @@
         "visibility": "Invisible content",
         "score": "Site score",
         "sitemap": "Sitemap",
-        "links": "Internal links"
+        "links": "Internal links",
+        "vanity": "Addresses"
       }
     },
     "visibility": {
@@ -465,6 +466,48 @@
       "orphanPage": "No other published page links here and the sitemap does not list it, so a crawler has no way to discover it at all.",
       "navOnlyTitle": "Only the menu links to this page",
       "navOnlyPage": "It appears in navigation on {{count}} pages, but no page links to it from its content. Crawlers that weight links treat a menu entry as a weaker signal than a link an author chose to make."
+    },
+    "vanity": {
+      "title": "One page, several addresses",
+      "intro": "Jahia owns the vanity URL service, so every address a page answers on is a repository fact rather than something to be discovered by crawling. This is that list, checked against the languages the site serves and against what each page says its canonical is.",
+      "counts": "{{total}} vanity URLs. This site serves: {{languages}}.",
+      "neverTitle": "No scan yet",
+      "never": "The canonical half of this check reads the rendered pages, so it comes from a site scan. Run one from the Site score tab.",
+      "noneTitle": "This site uses no vanity URLs",
+      "none": "Every page answers on its own address only, so nothing here can be split across duplicates.",
+      "agreesTitle": "Every address is accounted for",
+      "agrees": "All {{total}} vanity URLs resolve, none competes with another, and the pages say which address counts.",
+      "kind": {
+        "unresolvable": "Registered under a language this site does not serve",
+        "duplicates": "One page, several live addresses",
+        "canonical": "Nothing says which address counts"
+      },
+      "why": {
+        "unresolvable": "These cannot resolve. The language they are filed under is not one this site publishes, so the address returns a 404 to everybody, including crawlers that were told about it.",
+        "duplicates": "The same content answers on more than one address in the same language. Anything counting links now has two places to put the credit.",
+        "canonical": "The page carries no canonical tag, or one pointing somewhere that is neither its own address nor any of its aliases."
+      },
+      "tag": {
+        "duplicate": "one is default",
+        "noDefault": "none is default",
+        "missing": "no canonical",
+        "elsewhere": "points elsewhere"
+      },
+      "limits": "Inactive vanity URLs are ignored: switching one off is a decision, not a fault. Two pages cannot claim the same address - Jahia renames the second on save, which is where the -1 suffixes on imported sites come from - so there is deliberately no check for it. The canonical part covers only pages the last scan fetched.",
+      "page": {
+        "unresolvableTitle": "This page has an address that cannot work",
+        "unresolvable": "A vanity URL is filed under the language \"{{detail}}\", which this site does not serve, so that address returns a 404 to everybody.",
+        "duplicateTitle": "This page answers on several addresses",
+        "duplicate": "It is reachable at {{detail}}. One is marked default, so engines have a hint, but every link to the other still splits the signal.",
+        "noDefaultTitle": "This page answers on several addresses and none is the default",
+        "noDefault": "It is reachable at {{detail}}, and nothing marks which one is real. Set one as the default vanity URL.",
+        "missingTitle": "This page has aliases but no canonical tag",
+        "missing": "It answers on more than one address and the page does not say which one counts, so engines have to guess.",
+        "elsewhereTitle": "This page's canonical points somewhere unexpected",
+        "elsewhere": "The canonical names {{detail}}, which is neither this page's own address nor any of its vanity URLs. Everything this page earns is being credited elsewhere.",
+        "canonicalTitle": "This page's canonical needs checking",
+        "canonical": "The canonical tag does not name this page's own address or any of its aliases."
+      }
     }
   }
 }

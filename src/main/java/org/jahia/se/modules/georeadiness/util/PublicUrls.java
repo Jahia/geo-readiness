@@ -15,9 +15,12 @@ import javax.servlet.http.HttpServletResponse;
  *
  * We do not guess the url shape. {@link JCRNodeWrapper#getUrl()} gives the
  * canonical render url and the outbound rewriter turns it into exactly what a
- * link to this page looks like in the rendered site: vanity url when one
- * resolves on that host, cms prefix and site key dropped when the server-name
- * rules allow it. That is the address a crawler follows.
+ * link to this page looks like in the rendered site: cms prefix and site key
+ * dropped when the server-name rules allow it. That is the address a crawler
+ * follows.
+ *
+ * A default vanity url takes precedence, read from the repository rather than
+ * left to the rewriter, which does not reliably produce one.
  *
  * Shared by every servlet in this module so the crawler check and the generated
  * llms.txt can never disagree about what a page's address is.
@@ -46,6 +49,19 @@ public final class PublicUrls {
     /** Absolute public url for a node. `configuredBase` is PUBLIC_BASE_URL, blank to derive it. */
     public static String forNode(JCRNodeWrapper node, HttpServletRequest req, HttpServletResponse resp,
             String configuredBase) throws Exception {
+        // A default vanity url IS the page's address: Jahia answers 200 there
+        // and 301s the tree path to it. The outbound rewriter does not always
+        // produce one - it did not here, with the site's own host in the request
+        // - and the consequences of missing it are severe and silent. Every
+        // crawler fetch gets the 301 instead of the page, so the score collapses
+        // and reports "no text in the initial HTML"; the sitemap comparison
+        // reports the page missing because the sitemap lists the vanity; and the
+        // link graph cannot match the links pointing at it. Ask the repository,
+        // which is the authority, before falling back to the rewriter.
+        String vanity = defaultVanity(node);
+        if (vanity != null) {
+            return base(node, req, configuredBase) + vanity;
+        }
         String path = node.getUrl();
         try {
             UrlRewriteService rewriter = (UrlRewriteService) SpringContextSingleton.getBean("UrlRewriteService");
@@ -61,6 +77,45 @@ public final class PublicUrls {
             return path;
         }
         return base(node, req, configuredBase) + path;
+    }
+
+    /**
+     * The node's default vanity url for the session's language, or null.
+     *
+     * Only the default one, and only when active: a non-default alias is a
+     * second address that redirects here, not the address itself.
+     */
+    private static String defaultVanity(JCRNodeWrapper node) {
+        try {
+            if (!node.hasNode("vanityUrlMapping")) {
+                return null;
+            }
+            java.util.Locale locale = node.getSession().getLocale();
+            String language = locale == null ? null : locale.getLanguage();
+            javax.jcr.NodeIterator it = node.getNode("vanityUrlMapping").getNodes();
+            while (it.hasNext()) {
+                javax.jcr.Node v = it.nextNode();
+                if (!v.isNodeType("jnt:vanityUrl")
+                        || !v.hasProperty("j:default") || !v.getProperty("j:default").getBoolean()
+                        || (v.hasProperty("j:active") && !v.getProperty("j:active").getBoolean())) {
+                    continue;
+                }
+                String lang = v.hasProperty("jcr:language") ? v.getProperty("jcr:language").getString() : null;
+                if (language != null && lang != null && !language.equals(lang)) {
+                    continue;
+                }
+                if (v.hasProperty("j:url")) {
+                    String url = v.getProperty("j:url").getString();
+                    if (url != null && url.startsWith("/")) {
+                        String ctx = Jahia.getContextPath() == null ? "" : Jahia.getContextPath();
+                        return ctx + url;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("no vanity url for {}", node, e);
+        }
+        return null;
     }
 
     /**

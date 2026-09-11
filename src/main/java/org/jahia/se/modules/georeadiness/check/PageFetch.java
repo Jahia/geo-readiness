@@ -35,7 +35,9 @@ public final class PageFetch {
 
     private static final Pattern TITLE = Pattern.compile("(?is)<title[^>]*>(.*?)</title>");
     private static final Pattern META_DESC = Pattern.compile("(?is)<meta[^>]+name=[\"']description[\"']");
-    private static final Pattern CANONICAL = Pattern.compile("(?is)<link[^>]+rel=[\"']canonical[\"']");
+    private static final Pattern CANONICAL = Pattern.compile("(?is)<link[^>]+rel=[\"']canonical[\"'][^>]*>");
+    /** Applied to the matched tag, because href may sit either side of rel. */
+    private static final Pattern HREF = Pattern.compile("(?is)href=[\"']([^\"']*)[\"']");
     private static final Pattern META_ROBOTS = Pattern.compile("(?is)<meta[^>]+name=[\"']robots[\"'][^>]*content=[\"']([^\"']*)[\"']");
     private static final Pattern META_REFRESH = Pattern.compile("(?is)<meta[^>]+http-equiv=[\"']refresh[\"'][^>]*content=[\"'][^\"']*?url=([^\"'>\\s]+)");
     private static final Pattern ANCHOR = Pattern.compile("(?is)<a\\s[^>]*href=");
@@ -131,7 +133,17 @@ public final class PageFetch {
         o.put("h1Count", h1Count);
         o.put("h1", firstH1 == null ? JSONObject.NULL : firstH1);
         o.put("metaDescription", META_DESC.matcher(html).find());
-        o.put("canonical", CANONICAL.matcher(html).find());
+        Matcher can = CANONICAL.matcher(html);
+        boolean hasCanonical = can.find();
+        o.put("canonical", hasCanonical);
+        // GEO-25 needs where it points, not only that it exists: a canonical
+        // naming some other page is worse than none at all.
+        if (hasCanonical) {
+            Matcher href = HREF.matcher(can.group());
+            if (href.find()) {
+                o.put("canonicalHref", href.group(1));
+            }
+        }
         Matcher mr = META_ROBOTS.matcher(html);
         o.put("metaRobots", mr.find() ? clip(mr.group(1).trim(), 60) : JSONObject.NULL);
         // A client-side redirect. The page answers 200 with a shell, and only a

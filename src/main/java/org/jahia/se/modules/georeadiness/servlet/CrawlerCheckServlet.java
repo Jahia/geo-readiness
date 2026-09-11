@@ -6,6 +6,7 @@ import org.jahia.se.modules.georeadiness.check.PageFetch;
 import org.jahia.se.modules.georeadiness.check.LinkGraph;
 import org.jahia.se.modules.georeadiness.check.ScanStore;
 import org.jahia.se.modules.georeadiness.check.SitemapCheck;
+import org.jahia.se.modules.georeadiness.check.VanityUrls;
 import org.jahia.se.modules.georeadiness.check.TemplateRollup;
 import org.jahia.se.modules.georeadiness.check.GuestVisibility;
 import org.jahia.se.modules.georeadiness.check.RobotsRules;
@@ -312,6 +313,17 @@ public class CrawlerCheckServlet extends HttpServlet {
         } catch (Exception e) {
             logger.debug("link counts unavailable for {}", path, e);
         }
+
+        // GEO-25, from the last scan: which addresses a page answers on is a
+        // site-wide question, not one the drawer can answer for a single page.
+        try {
+            JSONObject vanity = vanityFor(path, language);
+            if (vanity != null) {
+                out.put("vanity", vanity);
+            }
+        } catch (Exception e) {
+            logger.debug("vanity state unavailable for {}", path, e);
+        }
         writeJson(resp, HttpServletResponse.SC_OK, out);
     }
 
@@ -391,6 +403,15 @@ public class CrawlerCheckServlet extends HttpServlet {
         JSONObject links = ScanStore.read(sitePath, language).optJSONObject("links");
         JSONObject counts = LinkGraph.countsFor(links, path, language);
         return counts == null ? null : counts;
+    }
+
+    /** Any vanity URL conflict the last scan found on this page. */
+    private JSONObject vanityFor(String path, String language) throws Exception {
+        JCRSessionWrapper live = JCRSessionFactory.getInstance()
+                .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
+        String sitePath = live.getNode(path).getResolveSite().getPath();
+        JSONObject vanity = ScanStore.read(sitePath, language).optJSONObject("vanity");
+        return VanityUrls.findingFor(vanity, path, language);
     }
 
     private String publicUrlFor(JCRNodeWrapper node, HttpServletRequest req, HttpServletResponse resp) throws Exception {

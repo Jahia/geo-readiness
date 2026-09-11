@@ -296,7 +296,8 @@
         "visibility": "Contenu invisible",
         "score": "Score du site",
         "sitemap": "Sitemap",
-        "links": "Liens internes"
+        "links": "Liens internes",
+        "vanity": "Adresses"
       }
     },
     "visibility": {
@@ -465,6 +466,48 @@
       "orphanPage": "Aucune autre page publiée n'y fait de lien et le sitemap ne la liste pas : un robot n'a aucun moyen de la découvrir.",
       "navOnlyTitle": "Seul le menu pointe vers cette page",
       "navOnlyPage": "Elle figure dans la navigation de {{count}} pages, mais aucune page n'y fait de lien depuis son contenu. Les robots qui pondèrent les liens considèrent une entrée de menu comme un signal plus faible qu'un lien voulu par un rédacteur."
+    },
+    "vanity": {
+      "title": "Une page, plusieurs adresses",
+      "intro": "Jahia gère lui-même le service d'URL personnalisées : chaque adresse à laquelle une page répond est donc une donnée du référentiel, et non quelque chose à découvrir en explorant le site. Voici cette liste, confrontée aux langues servies par le site et à l'adresse canonique déclarée par chaque page.",
+      "counts": "{{total}} URL personnalisées. Ce site sert : {{languages}}.",
+      "neverTitle": "Aucun scan pour l'instant",
+      "never": "La partie canonique de cette vérification lit les pages rendues : elle provient donc d'un scan du site. Lancez-en un depuis l'onglet Score du site.",
+      "noneTitle": "Ce site n'utilise aucune URL personnalisée",
+      "none": "Chaque page ne répond qu'à sa propre adresse : rien ici ne peut être dispersé entre des doublons.",
+      "agreesTitle": "Toutes les adresses sont cohérentes",
+      "agrees": "Les {{total}} URL personnalisées résolvent, aucune n'en concurrence une autre, et les pages indiquent quelle adresse fait foi.",
+      "kind": {
+        "unresolvable": "Enregistrées sous une langue que ce site ne sert pas",
+        "duplicates": "Une page, plusieurs adresses actives",
+        "canonical": "Rien n'indique quelle adresse fait foi"
+      },
+      "why": {
+        "unresolvable": "Elles ne peuvent pas résoudre. La langue sous laquelle elles sont enregistrées n'est pas publiée par ce site : l'adresse renvoie donc un 404 à tout le monde, y compris aux robots à qui on l'a annoncée.",
+        "duplicates": "Le même contenu répond à plusieurs adresses dans la même langue. Tout ce qui compte les liens a désormais deux endroits où porter le crédit.",
+        "canonical": "La page ne porte pas de balise canonique, ou en porte une qui pointe vers autre chose que sa propre adresse ou l'un de ses alias."
+      },
+      "tag": {
+        "duplicate": "une par défaut",
+        "noDefault": "aucune par défaut",
+        "missing": "pas de canonique",
+        "elsewhere": "pointe ailleurs"
+      },
+      "limits": "Les URL personnalisées inactives sont ignorées : en désactiver une est une décision, pas un défaut. Deux pages ne peuvent pas revendiquer la même adresse - Jahia renomme la seconde à l'enregistrement, d'où les suffixes -1 sur les sites importés - il n'y a donc volontairement aucune vérification à ce sujet. La partie canonique ne couvre que les pages récupérées lors du dernier scan.",
+      "page": {
+        "unresolvableTitle": "Cette page a une adresse qui ne peut pas fonctionner",
+        "unresolvable": "Une URL personnalisée est enregistrée sous la langue « {{detail}} », que ce site ne sert pas : cette adresse renvoie un 404 à tout le monde.",
+        "duplicateTitle": "Cette page répond à plusieurs adresses",
+        "duplicate": "Elle est accessible à {{detail}}. L'une est marquée par défaut, ce qui donne une indication aux moteurs, mais chaque lien vers l'autre disperse encore le signal.",
+        "noDefaultTitle": "Cette page répond à plusieurs adresses et aucune n'est celle par défaut",
+        "noDefault": "Elle est accessible à {{detail}}, et rien n'indique laquelle fait foi. Définissez-en une comme URL personnalisée par défaut.",
+        "missingTitle": "Cette page a des alias mais aucune balise canonique",
+        "missing": "Elle répond à plusieurs adresses et la page n'indique pas laquelle fait foi : les moteurs doivent deviner.",
+        "elsewhereTitle": "La balise canonique de cette page pointe vers un endroit inattendu",
+        "elsewhere": "La canonique désigne {{detail}}, qui n'est ni l'adresse propre de cette page ni l'une de ses URL personnalisées. Tout ce que cette page gagne est crédité ailleurs.",
+        "canonicalTitle": "La balise canonique de cette page est à vérifier",
+        "canonical": "La balise canonique ne désigne ni l'adresse propre de cette page ni l'un de ses alias."
+      }
     }
   }
 }

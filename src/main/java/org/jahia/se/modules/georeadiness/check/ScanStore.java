@@ -63,6 +63,8 @@ public final class ScanStore {
     private static final String SITEMAP_AT = "geoSitemapAt";
     /** GEO-22, stored beside the score for the same reason as the sitemap. */
     private static final String LINKS = "geoLinks";
+    /** GEO-25, likewise: a fact about addresses, not a check a page passes. */
+    private static final String VANITY = "geoVanity";
 
     private ScanStore() {
     }
@@ -97,6 +99,7 @@ public final class ScanStore {
                 out.put("sitemap", json(l, SITEMAP));
                 out.put("sitemapCheckedAt", date(l, SITEMAP_AT));
                 out.put("links", json(l, LINKS));
+                out.put("vanity", json(l, VANITY));
             }
             return out;
         });
@@ -185,6 +188,17 @@ public final class ScanStore {
         inStore(sitePath, (store, session) -> {
             JCRNodeWrapper l = language(store, language);
             l.setProperty(LINKS, links.toString());
+            session.save();
+            return null;
+        });
+    }
+
+    /** Records the vanity URL findings. Produced by a scan, like the link graph. */
+    public static void saveVanity(String sitePath, String language, JSONObject vanity)
+            throws RepositoryException {
+        inStore(sitePath, (store, session) -> {
+            JCRNodeWrapper l = language(store, language);
+            l.setProperty(VANITY, vanity.toString());
             session.save();
             return null;
         });

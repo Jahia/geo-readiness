@@ -151,6 +151,19 @@ Concretely, the servlet must keep:
   cached report is restored into a UI that expects the new field and the new banner silently never
   appears - which reads as "the feature does not work". This has now cost time twice.
 
+- **A default vanity URL is the page's address; the tree path 301s to it.** `PublicUrls` returned
+  the tree path and the outbound rewriter did not substitute the vanity even with the site's own
+  host in the request. Because the fetch does not follow redirects, every crawler got the 301: the
+  page scored 7/18 with "no text in the initial HTML", the sitemap comparison called it missing,
+  and the link graph could not match links to it. Read `vanityUrlMapping` for the `j:default`
+  active alias in the node's language and prefer it. One three-line fix, three features corrected.
+- **Jahia will not store two vanity URLs with the same address.** Saving a second `/blogs.html`
+  silently renamed it `/blogs-1.html`. That is where the `-1` suffixes on imported sites come from,
+  and it is why there is no collision check: it could never fire.
+- **The sitemap module does not use vanity URLs, but `llms.txt` (via `PublicUrls`) now does.** So a
+  site with vanity URLs shows the page under its vanity address in one file and its tree path in
+  the other. Worth knowing before reading a sitemap disagreement as a bug in the comparison.
+
 ## robots.txt traps
 
 - **The path evaluated against robots.txt must include the query string.** Rules like

@@ -9,6 +9,7 @@ import {VisibilityPanel} from '../tabs/VisibilityPanel';
 import {SiteScorePanel} from '../tabs/SiteScorePanel';
 import {SitemapPanel} from '../tabs/SitemapPanel';
 import {LinksPanel} from '../tabs/LinksPanel';
+import {VanityPanel} from '../tabs/VanityPanel';
 import {languageLabel} from '../util/languageFlag';
 import styles from './GeoDashboard.module.css';
 
@@ -81,6 +82,11 @@ export const GeoDashboard = () => {
                                 onClick={() => setTab('links')}
                             />
                             <TabItem
+                                label={t('dashboard.tab.vanity')}
+                                isSelected={tab === 'vanity'}
+                                onClick={() => setTab('vanity')}
+                            />
+                            <TabItem
                                 label={t('dashboard.tab.robots')}
                                 isSelected={tab === 'robots'}
                                 onClick={() => setTab('robots')}
@@ -104,6 +110,7 @@ export const GeoDashboard = () => {
                 {tab === 'score' && <SiteScorePanel path={sitePath} language={language}/>}
                 {tab === 'sitemap' && <SitemapPanel path={sitePath} language={language}/>}
                 {tab === 'links' && <LinksPanel path={sitePath} language={language}/>}
+                {tab === 'vanity' && <VanityPanel path={sitePath} language={language}/>}
                 {tab === 'robots' && <RobotsControlPanel path={sitePath} language={language}/>}
                 {tab === 'llms' && <LlmsGeneratorPanel path={sitePath} language={language}/>}
                 {tab === 'visibility' && <VisibilityPanel path={sitePath} language={language}/>}

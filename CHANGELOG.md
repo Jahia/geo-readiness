@@ -76,6 +76,14 @@ a delta. It needs nothing from any external vendor.
   counted apart, since being in a menu that lists everything is not the same as somebody choosing
   to link to you. The drawer says which of the two this page is.
 
+- **One page, several addresses.** Jahia owns the vanity URL service, so every address a page
+  answers on is a repository fact rather than something to be crawled for. Three findings: a vanity
+  URL filed under a language the site does not serve, which returns a 404 to everybody; one page
+  answering on several live addresses in the same language, loudest when none is marked default;
+  and a page with aliases whose canonical tag is missing or names something else entirely.
+  Deliberately no check for two pages claiming one address - Jahia renames the second on save, so
+  it cannot happen.
+
 **Writing, behind generate → diff → confirm**
 
 - **llms.txt generated from the published page tree.** Deterministic: no model call and no external
@@ -122,6 +130,15 @@ a delta. It needs nothing from any external vendor.
   disallowed page is nonetheless reachable is a finding.
 - **Results are stored on the site**, on a hidden node that never publishes, as an aggregate plus
   the failing pages rather than a row per page. Deleting a site takes its scan with it.
+
+### Fixed
+
+- **A page with a default vanity URL was scored against the wrong address.** The module used the
+  page tree path, which Jahia 301-redirects to the vanity URL, so every crawler fetch received a
+  redirect rather than the page: the score collapsed to 7 of 18 reporting "no text in the initial
+  HTML", the sitemap comparison called the page missing, and the link graph could not match links
+  pointing at it. The default vanity URL is now read from the repository, which is the authority.
+  The same page returned to 16 of 18.
 
 ### Known gaps
 

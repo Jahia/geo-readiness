@@ -10,7 +10,7 @@ import tabStyles from './tabs/Tabs.module.css';
 import styles from './GeoReadinessDrawer.module.css';
 
 const NS = 'geo-readiness';
-const CACHE_SCHEMA = 5;
+const CACHE_SCHEMA = 6;
 
 // Results are cached per page and language so reopening the drawer is instant.
 // Bump CACHE_SCHEMA whenever the report shape changes, or an old cached entry
@@ -187,6 +187,22 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                 {report && report.links && report.links.content === 0 && report.links.nav > 0 && (
                     <Banner variant="info" title={t('links.navOnlyTitle')}>
                         {t('links.navOnlyPage', {count: report.links.nav})}
+                    </Banner>
+                )}
+
+                {/*
+                  * GEO-25. One banner for whichever conflict applies: the three
+                  * kinds are mutually exclusive per page, and the detail names
+                  * the addresses so the fix is obvious.
+                  */}
+                {report && report.vanity && (
+                    <Banner
+                        variant={report.vanity.kind === 'unresolvable' ? 'warning' : 'info'}
+                        title={t(`vanity.page.${report.vanity.why || report.vanity.kind}Title`)}
+                    >
+                        {t(`vanity.page.${report.vanity.why || report.vanity.kind}`, {
+                            detail: report.vanity.detail
+                        })}
                     </Banner>
                 )}
 

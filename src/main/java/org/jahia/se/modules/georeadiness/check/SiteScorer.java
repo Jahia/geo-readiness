@@ -84,6 +84,9 @@ public final class SiteScorer {
                 : RobotsRules.empty();
 
         LinkGraph.Accumulator links = new LinkGraph.Accumulator();
+        // GEO-25. Where each fetched page says its canonical is, keyed by the
+        // path it was fetched at.
+        Map<String, String> canonicals = new LinkedHashMap<>();
         JSONArray failures = new JSONArray();
         Map<String, Integer> failCounts = new TreeMap<>();
         Map<String, int[]> bySection = new LinkedHashMap<>();
@@ -97,7 +100,7 @@ public final class SiteScorer {
         for (int i = 0; i < paths.size(); i++) {
             String path = paths.get(i);
             try {
-                JSONObject one = scorePage(sitePath, path, language, rules, siteFiles, opts, links);
+                JSONObject one = scorePage(sitePath, path, language, rules, siteFiles, opts, links, canonicals);
                 if (one == null) {
                     continue;
                 }
@@ -202,6 +205,14 @@ public final class SiteScorer {
             logger.debug("link graph failed for {}", sitePath, e);
         }
 
+        // GEO-25. Almost entirely a repository question, so it needs nothing
+        // from the walk except the canonical tags it already read.
+        try {
+            ScanStore.saveVanity(sitePath, language, VanityUrls.check(sitePath, canonicals));
+        } catch (Exception e) {
+            logger.debug("vanity url check failed for {}", sitePath, e);
+        }
+
         ScanStore.progress(sitePath, language, paths.size());
         ScanStore.finishRun(sitePath, language, aggregate, failures);
         return aggregate;
@@ -229,8 +240,8 @@ public final class SiteScorer {
     }
 
     private static JSONObject scorePage(String sitePath, String path, String language,
-            RobotsRules rules, JSONObject siteFiles, Options opts, LinkGraph.Accumulator links)
-            throws RepositoryException {
+            RobotsRules rules, JSONObject siteFiles, Options opts, LinkGraph.Accumulator links,
+            Map<String, String> canonicals) throws RepositoryException {
         JSONObject visibility = GuestVisibility.forPage(path, language);
         if (!visibility.optBoolean("published", false)) {
             return null;
@@ -264,6 +275,13 @@ public final class SiteScorer {
             String from = PublishedMap.pathOf(url);
             agent = PageFetch.probe(url, "GPTBot", agentUa(), opts.fetchTimeoutMs, opts.maxBodyBytes,
                     html -> LinkGraph.addPage(links, from, html));
+        }
+
+        if (url != null) {
+            JSONObject html = agent.optJSONObject("html");
+            // Recorded even when absent, so "fetched and had none" can be told
+            // apart from "never fetched".
+            canonicals.put(PublishedMap.pathOf(url), html == null ? "" : html.optString("canonicalHref", ""));
         }
 
         // A report shaped like the drawer's, so one scorer serves both.

@@ -336,6 +336,9 @@ it is, and a date in the drawer would be noise.
 
 ## GEO-25 · One page, several addresses
 
+**BUILT.** Repository query plus the canonical tags the scan already reads, its own dashboard tab,
+one line in the drawer.
+
 **As a** site manager, **I want** content reachable at several URLs without a canonical, **so
 that** engines stop splitting the signal across duplicates.
 
@@ -350,6 +353,23 @@ Jahia owns the vanity URL service, so this is a repository query rather than a c
 **Drawer** shows one line when this page has a conflict.
 
 **Effort** S.
+
+**What was built, against that acceptance.** Three findings, not four. There is deliberately no
+check for two pages claiming the same address: Jahia will not store one, and renames the second on
+save - a second `/blogs.html` became `/blogs-1.html` without comment, which is also where the `-1`
+suffixes on imported sites come from. A check that cannot fire is worse than none, because it
+implies somebody is watching a risk that does not exist.
+
+The language criterion turned out to be the same thing as the non-resolving one: a vanity URL filed
+under a language the site does not serve is exactly the URL that 404s. The test instance had nine
+of those under `de_DE` on a site serving `de`, every one a 404 while its `en` sibling answered 200.
+
+This story also uncovered a defect in the module itself, fixed here. `PublicUrls` returned the page
+tree path rather than the default vanity URL, and Jahia 301s the former to the latter. Every crawler
+fetch therefore got a redirect instead of a page: the page with a vanity URL scored 7 of 18 with
+"no text in the initial HTML", the sitemap comparison called it missing, and the link graph could
+not match the links pointing at it. Reading the default vanity from the repository fixed all three
+at once - the same page went back to 16 of 18.
 
 ---
 
