@@ -74,7 +74,9 @@ hours. Once per page as a single AI crawler is roughly an hour. The cost is the 
 ratio, which needs a second fetch to compare against; a page that only renders through JavaScript
 is still caught by the word-count check, so the ratio stays a drawer diagnostic. The one check
 that genuinely needs several agents is dropped from the site score rather than allowed to pass for
-free, which is why a site score is out of 17 and a page score out of 18.
+free, which is why a site score is out of 17 and a page score out of 18. The panel states that
+difference and names the missing check, because the same page reading 15/17 in one place and 16/18
+in another looks like a defect until somebody explains it.
 
 *One scorer.* A scanned page is scored by building a report shaped exactly like the drawer's and
 running the same `GeoScore` over it. The two can therefore not drift apart.

@@ -167,6 +167,16 @@ export const SiteScorePanel = ({path, language}) => {
                             unreadable: agg.unreadable
                         })}
                     </Typography>
+                    {/*
+                      * The same page reads 15/17 here and 16/18 in the drawer,
+                      * which looks like a bug until somebody explains it. Name
+                      * the missing check rather than leaving it to be noticed.
+                      */}
+                    <Typography variant="caption" className={styles.explain}>
+                        {t('score17.whyFewer', {
+                            check: t('score.check.sameContentForCrawlers.label')
+                        })}
+                    </Typography>
                     {agg.truncated && (
                         <Banner variant="warning" title={t('score17.truncatedTitle')}>
                             {t('score17.truncated', {pages: agg.pages})}

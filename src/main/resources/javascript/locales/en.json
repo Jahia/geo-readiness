@@ -364,7 +364,8 @@
       "scopeLabel": "What to scan",
       "scopeHelp": "Leave empty for the whole site, or choose a branch to scan only that part.",
       "browse": "Browse…",
-      "openPage": "Open this page in jContent"
+      "openPage": "Open this page in jContent",
+      "whyFewer": "17 checks here, 18 in the page drawer. Comparing what a crawler receives against what a browser receives needs a second fetch of the same page, so “{{check}}” is only evaluated one page at a time. Both counts report the same failures."
     },
     "cron": {
       "every": "Every",

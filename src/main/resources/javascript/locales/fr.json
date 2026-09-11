@@ -364,7 +364,8 @@
       "scopeLabel": "Quoi analyser",
       "scopeHelp": "Laissez vide pour tout le site, ou choisissez une branche pour n'analyser que cette partie.",
       "browse": "Parcourir…",
-      "openPage": "Ouvrir cette page dans jContent"
+      "openPage": "Ouvrir cette page dans jContent",
+      "whyFewer": "17 vérifications ici, 18 dans le tiroir de la page. Comparer ce que reçoit un robot à ce que reçoit un navigateur exige une seconde requête sur la même page : « {{check}} » n'est donc évalué que page par page. Les deux comptes signalent les mêmes échecs."
     },
     "cron": {
       "every": "Chaque",

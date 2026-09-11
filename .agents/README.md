@@ -211,6 +211,11 @@ long page goes white at the top and grey further down, which is what shipped onc
 `.yourClass :global(.moonstone-layoutContent)`; the plain class is emitted alongside the hashed
 module one, so a global match is safe.
 
+**Two scores for one page must explain themselves.** The site scan drops `sameContentForCrawlers`
+because it needs a second fetch, so a page reads 15/17 on the dashboard and 16/18 in the drawer.
+Both report the same failures, but nobody can know that by looking. Any future check that is
+evaluated in one surface and not the other has to be named where the smaller number appears.
+
 **A white ground costs you the Header's shadow.** `Header` already carries `box-shadow: 0 1px 8px`,
 but the scrolling content div is its next sibling and paints its own background over it. Against a
 grey ground the contrast hid the loss; on white the header simply has no edge. Add
