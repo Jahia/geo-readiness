@@ -393,6 +393,28 @@
         "saturday": "samedi",
         "sunday": "dimanche"
       }
+    },
+    "sitemap": {
+      "title": "Le sitemap face à la réalité",
+      "absentTitle": "Aucun sitemap n'est servi",
+      "absent": "Les robots ne reçoivent aucune carte de ce site. Le module Sitemap en publie un par site.",
+      "agreesTitle": "Le sitemap correspond au site",
+      "agrees": "Les {{entries}} entrées correspondent toutes à du contenu publié, et rien de publié n'y manque.",
+      "andMore": "et {{count}} de plus",
+      "notListedTitle": "Cette page n'est pas dans le sitemap",
+      "notListed": "Le site publie un sitemap et cette page n'y figure pas : un robot n'a donc aucune raison de la chercher.",
+      "kind": {
+        "missing": "Publiée, mais absente du sitemap",
+        "unknown": "Dans le sitemap, mais rien de publié ne répond",
+        "staleDate": "La date du sitemap est fausse",
+        "noindexListed": "Listée dans le sitemap et marquée noindex"
+      },
+      "why": {
+        "missing": "Un robot n'a aucune raison de les chercher.",
+        "unknown": "Du budget d'exploration dépensé sur des adresses qui ne mènent nulle part.",
+        "staleDate": "Annoncer une page plus ancienne qu'elle n'est dissuade les robots de la réexplorer. Affiché ainsi : annoncé puis réel.",
+        "noindexListed": "La carte dit d'indexer, la page dit de ne pas le faire. L'un des deux est une erreur."
+      }
     }
   }
 }

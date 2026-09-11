@@ -90,6 +90,27 @@ Concretely, the servlet must keep:
 - Rate limiting is per user key with a sliding window, copied from page-audit. Each *check* is
   sixteen outbound requests, so the limit is deliberately lower than page-audit's.
 
+- **`isdescendantnode()` excludes the node itself.** `SiteScorer.publishedPages` scoped to a path
+  an editor typed skipped that page, so scope `/sites/x/home` silently scanned everything except
+  home, and a scope naming a leaf page reported `0 / 0 pages` with status `done`. The query needs
+  `issamenode()` as well. Any scope feature written with `isdescendantnode` alone has this bug.
+- **A `JCRNodeWrapper` is useless once its session closes.** `SitemapCheck` first stored nodes
+  collected inside a guest-session callback and read them afterwards. `isNodeType()` threw, the
+  catch returned `false`, and the check silently reported zero stale dates and zero `noindex`
+  entries - a pass that looked like good news. Do the reads inside the callback and return a record
+  of plain values, never the node.
+- **Prove a check detects disagreement, not just that it reports agreement.** The sitemap
+  comparison reached a clean 378/378 and every drawer page answered `missing: false`, which proves
+  nothing: a check hardcoded to `false` scores identically. Publishing a page the current sitemap
+  cannot know about is what proved it. Note the cleanup order below.
+- **Deleting a published page: order matters, and `markNodeForDeletion` is not the mutation name.**
+  It is `markForDeletion`. Calling `publish` before marking republishes the page instead of
+  publishing its deletion, and `deleteNode` then removes it from `default` only - leaving a node
+  that exists in `live` alone, reachable at its URL, with no default node left for `unpublish` to
+  act on. Recovery is a system live session in the Groovy console. That console needs the
+  `toolAccessToken` hidden field from a freshly fetched page, posted with the script in `script`
+  and `runScript=true`; without the token it silently runs the sample script instead.
+
 ## robots.txt traps
 
 - **The path evaluated against robots.txt must include the query string.** Rules like

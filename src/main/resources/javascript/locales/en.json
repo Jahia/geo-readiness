@@ -393,6 +393,28 @@
         "saturday": "Saturday",
         "sunday": "Sunday"
       }
+    },
+    "sitemap": {
+      "title": "Sitemap against reality",
+      "absentTitle": "No sitemap is served",
+      "absent": "Crawlers are being handed no map of this site at all. The Sitemap module publishes one per site.",
+      "agreesTitle": "The sitemap matches the site",
+      "agrees": "All {{entries}} entries resolve to published content, and nothing published is missing from it.",
+      "andMore": "and {{count}} more",
+      "notListedTitle": "This page is not in the sitemap",
+      "notListed": "The site publishes a sitemap and this page is not in it, so a crawler has no reason to look for it.",
+      "kind": {
+        "missing": "Published, but not in the sitemap",
+        "unknown": "In the sitemap, but nothing published answers",
+        "staleDate": "The date in the sitemap is wrong",
+        "noindexListed": "Listed in the sitemap and marked noindex"
+      },
+      "why": {
+        "missing": "A crawler has no reason to look for these.",
+        "unknown": "Crawl budget spent on addresses that lead nowhere.",
+        "staleDate": "Claiming a page is older than it is tells crawlers not to bother recrawling it. Shown as claimed then actual.",
+        "noindexListed": "The map says index this, the page says do not. One of the two is a mistake."
+      }
     }
   }
 }

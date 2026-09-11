@@ -217,6 +217,8 @@ not. That is directly actionable while editing.
 
 ## GEO-21 · Sitemap against reality
 
+**BUILT.** Resolved during the site scan, section on the dashboard, one-line banner in the drawer.
+
 **As a** site manager, **I want** to know where the sitemap and the site disagree, **so that**
 crawlers are not being handed a stale map.
 
@@ -231,6 +233,13 @@ Both sides are ours, so the comparison costs nothing and it catches real rot.
 **Dashboard** owns it.
 **Drawer** shows one line: whether this page is in the sitemap. Cheap, and occasionally the whole
 explanation for why a page is invisible.
+
+**What was built, against that acceptance.** Entries are resolved against the repository rather
+than fetched: 378 URLs would be 378 requests to learn what the repository already knows. So a
+sitemap entry that resolves to nothing published is reported as `unknown` rather than as a 404, and
+**redirects are not detected at all** - resolution cannot see them. The other three criteria are
+met, including per-language, which needed the published map built across every site language
+before the comparison stopped reporting 189 false positives on the French URLs.
 
 **Effort** S.
 

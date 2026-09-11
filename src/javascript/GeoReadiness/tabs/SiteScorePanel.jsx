@@ -229,6 +229,51 @@ export const SiteScorePanel = ({path, language}) => {
                 </>
             )}
 
+            {agg && agg.sitemap && (
+                <>
+                    <Separator spacing="big" size="full"/>
+                    <Typography variant="subheading" className={styles.panelSub}>
+                        {t('sitemap.title')}
+                    </Typography>
+                    {!agg.sitemap.present ? (
+                        <Banner variant="warning" title={t('sitemap.absentTitle')}>
+                            {t('sitemap.absent')}
+                        </Banner>
+                    ) : agg.sitemap.agrees ? (
+                        <Banner variant="info" title={t('sitemap.agreesTitle')}>
+                            {t('sitemap.agrees', {entries: agg.sitemap.entries})}
+                        </Banner>
+                    ) : (
+                        <ul className={styles.checkList}>
+                            {[
+                                {key: 'missing', rows: agg.sitemap.missing},
+                                {key: 'unknown', rows: agg.sitemap.unknown},
+                                {key: 'staleDate', rows: agg.sitemap.staleDate},
+                                {key: 'noindexListed', rows: agg.sitemap.noindexListed}
+                            ].filter(g => (g.rows || []).length > 0).map(g => (
+                                <li key={g.key} className={styles.checkItem}>
+                                    <span className={styles.checkText}>
+                                        <Typography variant="body" className={styles.checkLabel}>
+                                            {t(`sitemap.kind.${g.key}`)}
+                                        </Typography>
+                                        <Typography variant="caption" className={styles.checkFix}>
+                                            {t(`sitemap.why.${g.key}`)}
+                                        </Typography>
+                                        <Typography variant="caption" className={styles.checkFix}>
+                                            {g.rows.slice(0, 4).map(r => r.title || r.path).join(' · ')}
+                                            {g.rows.length > 4 ? ` … ${t('sitemap.andMore', {count: g.rows.length - 4})}` : ''}
+                                        </Typography>
+                                    </span>
+                                    <span className={styles.checkMeta}>
+                                        <Chip label={String(g.rows.length)} color="warning"/>
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </>
+            )}
+
             {agg && (agg.templates || []).length > 0 && (
                 <>
                     <Separator spacing="big" size="full"/>

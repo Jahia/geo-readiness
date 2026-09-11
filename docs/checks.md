@@ -160,6 +160,41 @@ The same answer for every page on the site.
 *Shown in the interface as:* “No llms.txt. It is the one file that tells an assistant which pages matter and why.”
 
 
+## The sitemap comparison
+
+Not one of the eighteen. It is a site-level comparison that runs once per scan, and it answers a
+different kind of question: not "is this page readable" but "does the map we hand crawlers match
+the site we actually publish".
+
+Both sides belong to us, so the comparison is resolution, not fetching. Every `<loc>` in
+`sitemap.xml` is resolved back to a repository node; the published set is built as **guest**, in
+**every language the site has**, because a sitemap is language-aware and an anonymous crawler is
+what it is written for. Four findings come out of it:
+
+| Finding | Means |
+|---|---|
+| `missing` | Published, guest-readable, and not in the sitemap. Crawlers are not being told it exists. |
+| `unknown` | In the sitemap, resolves to nothing published. A stale entry. |
+| `staleDate` | The entry's `lastmod` disagrees with the node's real modification date. Shown as `sitemap date -> real date`. |
+| `noindexListed` | Listed in the sitemap and carrying `noindex`. The two files contradict each other. |
+
+`agrees` is true only when all four are empty.
+
+**Redirects are not detected.** Resolution cannot see them. A sitemap entry that 301s to another
+page resolves to whatever it names and is reported as clean.
+
+### Why the page count and the entry count do not match
+
+A scan of the luxe site scores **13 pages** and compares **378 sitemap entries**. That is not a
+defect in either. The site walk lists `jnt:page` nodes. The sitemap lists everything with a public
+URL, which on that site is mostly `jmix:mainResource` content - blog posts and property listings
+that have their own address but are not pages.
+
+So the two numbers count different things on purpose, and the sitemap comparison is the only part
+of the scan that sees the whole addressable site. Scoring the content items as well is a separate
+piece of work, not a bug fix.
+
+
 ## Where each one is computed
 
 Everything in **Is what arrives usable** is read from the HTML of a single fetch, so it costs

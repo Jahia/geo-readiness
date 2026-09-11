@@ -4,6 +4,7 @@ import org.jahia.se.modules.georeadiness.check.AiCrawlers;
 import org.jahia.se.modules.georeadiness.check.GeoScore;
 import org.jahia.se.modules.georeadiness.check.PageFetch;
 import org.jahia.se.modules.georeadiness.check.ScanStore;
+import org.jahia.se.modules.georeadiness.check.SitemapCheck;
 import org.jahia.se.modules.georeadiness.check.TemplateRollup;
 import org.jahia.se.modules.georeadiness.check.GuestVisibility;
 import org.jahia.se.modules.georeadiness.check.RobotsRules;
@@ -291,6 +292,14 @@ public class CrawlerCheckServlet extends HttpServlet {
         } catch (Exception e) {
             logger.debug("template rollup unavailable for {}", path, e);
         }
+
+        // GEO-21, one line for this page, read from the last scan rather than by
+        // fetching a sitemap the drawer has no business downloading.
+        try {
+            out.put("sitemap", sitemapFor(path, language));
+        } catch (Exception e) {
+            logger.debug("sitemap state unavailable for {}", path, e);
+        }
         writeJson(resp, HttpServletResponse.SC_OK, out);
     }
 
@@ -329,6 +338,25 @@ public class CrawlerCheckServlet extends HttpServlet {
             }
         }
         return TemplateRollup.forPage(aggregate, template, failed);
+    }
+
+    /** Whether the last scan found this page in the sitemap. Empty when no scan has run. */
+    private JSONObject sitemapFor(String path, String language) throws Exception {
+        JSONObject out = new JSONObject();
+        JCRSessionWrapper live = JCRSessionFactory.getInstance()
+                .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
+        String sitePath = live.getNode(path).getResolveSite().getPath();
+
+        JSONObject run = ScanStore.read(sitePath, language).optJSONObject("run");
+        JSONObject aggregate = run == null ? null : run.optJSONObject("aggregate");
+        JSONObject sitemap = aggregate == null ? null : aggregate.optJSONObject("sitemap");
+        if (sitemap == null) {
+            return out;
+        }
+
+        out.put("present", sitemap.optBoolean("present", false));
+        out.put("missing", SitemapCheck.isMissing(sitemap, path));
+        return out;
     }
 
     private String publicUrlFor(JCRNodeWrapper node, HttpServletRequest req, HttpServletResponse resp) throws Exception {

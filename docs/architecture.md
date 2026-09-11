@@ -45,6 +45,7 @@ JavaScript-only page is still caught, by the word-count check.
 | `GuestVisibility` | Which published pages a visitor with no account cannot read, and why. |
 | `SiteScorer` | The site walk: list, fetch once, score, aggregate. |
 | `TemplateRollup` | Groups findings by template and decides which are the template's fault. |
+| `SitemapCheck` | Resolves every `sitemap.xml` entry back to a node and compares it with what is actually published, as guest, across every site language. |
 | `ScanStore` | Reads and writes the scan on the site node. |
 
 ### `servlet/`

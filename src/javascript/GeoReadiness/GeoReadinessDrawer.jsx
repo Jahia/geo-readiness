@@ -156,6 +156,12 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                     </Banner>
                 )}
 
+                {report && report.sitemap && report.sitemap.missing && (
+                    <Banner variant="warning" title={t('sitemap.notListedTitle')}>
+                        {t('sitemap.notListed')}
+                    </Banner>
+                )}
+
                 {report && report.published && (
                     <Tab className={tabStyles.tabs}>
                         {[

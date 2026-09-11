@@ -173,6 +173,16 @@ public final class SiteScorer {
         // GEO-18. Ranked by pages rendered, so the biggest single fix is first.
         aggregate.put("templates", byTemplate.toJson());
 
+        // GEO-21. Run once per scan, not once per page: it is the same file for
+        // every row, and storing it here is what lets the drawer answer "is this
+        // page in the sitemap" without fetching a sitemap of its own.
+        try {
+            aggregate.put("sitemap", SitemapCheck.check(sitePath, language, siteBase,
+                    opts.fetchTimeoutMs, opts.maxBodyBytes));
+        } catch (Exception e) {
+            logger.debug("sitemap check failed for {}", sitePath, e);
+        }
+
         ScanStore.progress(sitePath, language, paths.size());
         ScanStore.finishRun(sitePath, language, aggregate, failures);
         return aggregate;
@@ -268,8 +278,12 @@ public final class SiteScorer {
     private static List<String> publishedPages(JCRSessionWrapper session, String root, int limit)
             throws RepositoryException {
         List<String> out = new ArrayList<>();
+        // issamenode as well as isdescendantnode: a scope an editor typed
+        // usually names a page, and isdescendantnode alone excludes that page.
+        // Scoping to /sites/x/home would otherwise skip home itself.
+        String escaped = root.replace("'", "''");
         String sql = "select * from [jnt:page] as p where isdescendantnode(p, '"
-                + root.replace("'", "''") + "')";
+                + escaped + "') or issamenode(p, '" + escaped + "')";
         Query q = session.getWorkspace().getQueryManager().createQuery(sql, Query.JCR_SQL2);
         q.setLimit(limit);
         NodeIterator it = q.execute().getNodes();

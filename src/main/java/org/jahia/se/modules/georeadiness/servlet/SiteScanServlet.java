@@ -3,6 +3,7 @@ package org.jahia.se.modules.georeadiness.servlet;
 import org.jahia.se.modules.georeadiness.check.GuestVisibility;
 import org.jahia.se.modules.georeadiness.check.ScanStore;
 import org.jahia.se.modules.georeadiness.check.SiteScorer;
+import org.jahia.se.modules.georeadiness.check.SitemapCheck;
 import org.jahia.se.modules.georeadiness.scheduler.ScanScheduler;
 import org.jahia.se.modules.georeadiness.scheduler.SiteScanJob;
 import org.jahia.se.modules.georeadiness.config.GeoReadinessConfigService;
@@ -96,7 +97,7 @@ public class SiteScanServlet extends HttpServlet {
             // Only the expensive actions are rate limited. Reading the stored
             // state is what the dashboard polls while a scan runs, and limiting
             // that would make a long scan look like a failure after a minute.
-            if (("guestVisibility".equals(action) || "runScan".equals(action))
+            if (("guestVisibility".equals(action) || "runScan".equals(action) || "sitemap".equals(action))
                     && !rateLimitOk(user.getUserKey())) {
                 deny(resp, 429, "rate limit");
                 return;
@@ -107,6 +108,11 @@ public class SiteScanServlet extends HttpServlet {
                 case "guestVisibility":
                     writeJson(resp, HttpServletResponse.SC_OK,
                             GuestVisibility.scanSite(sitePath, language, MAX_PAGES));
+                    return;
+                case "sitemap":
+                    writeJson(resp, HttpServletResponse.SC_OK,
+                            SitemapCheck.check(sitePath, language, baseUrlFor(sitePath, language, req),
+                                    config.getFetchTimeoutMs(), config.getMaxBodyBytes()));
                     return;
                 case "scanStatus":
                     writeJson(resp, HttpServletResponse.SC_OK, status(sitePath, language));

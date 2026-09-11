@@ -52,6 +52,15 @@ a delta. It needs nothing from any external vendor.
   template, how many pages share it, and that one fix there covers all of them. Nothing outside
   Jahia can do this, because nothing else knows which template rendered a page.
 
+- **The sitemap is compared against reality.** Every `sitemap.xml` entry is resolved back to a
+  repository node instead of being fetched, so a 378-URL site costs no requests to check. Four
+  disagreements are reported: published pages the sitemap never mentions, entries that resolve to
+  nothing published, `lastmod` values that contradict the node's real modification date, and pages
+  the sitemap advertises while their own markup says `noindex`. The published set is built as guest
+  and across every site language, because a sitemap is language-aware and written for anonymous
+  crawlers. The drawer adds one line: whether this page is in the sitemap at all, which is
+  occasionally the entire explanation for why it is invisible.
+
 **Writing, behind generate → diff → confirm**
 
 - **llms.txt generated from the published page tree.** Deterministic: no model call and no external
@@ -110,3 +119,9 @@ a delta. It needs nothing from any external vendor.
   or tidy, so a hand-written file comes back recognisable.
 - Vanity URLs are host-dependent by Jahia design: the rewriter emits one only when the request's
   server name resolves to the page's site.
+- The sitemap comparison resolves rather than fetches, so it cannot see redirects. An entry that
+  301s to somewhere else is reported as clean.
+- The site walk lists `jnt:page`, while the sitemap lists everything with a public URL. On a site
+  whose articles are `jmix:mainResource` content rather than pages, the scan scores far fewer items
+  than the sitemap compares. The two counts are measuring different things by design, but only the
+  sitemap comparison currently sees the whole addressable site.
