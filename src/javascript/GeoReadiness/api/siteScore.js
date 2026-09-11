@@ -22,5 +22,12 @@ export const scanStatus = ({path, language}) => call({action: 'scanStatus', path
 /** One fetch per published page. Long by nature on a large site. */
 export const runScan = ({path, language, scope}) => call({action: 'runScan', path, language, scope});
 
+/**
+ * Resolves sitemap entries against the repository, so it costs no outbound
+ * requests and does not need a site scan. Stores what it finds, which is what
+ * the page drawer then reports.
+ */
+export const checkSitemap = ({path, language}) => call({action: 'sitemap', path, language});
+
 export const saveSchedule = ({path, language, cron, enabled, scope}) =>
     call({action: 'saveSchedule', path, language, cron, enabled, scope});

@@ -162,9 +162,16 @@ The same answer for every page on the site.
 
 ## The sitemap comparison
 
-Not one of the eighteen. It is a site-level comparison that runs once per scan, and it answers a
-different kind of question: not "is this page readable" but "does the map we hand crawlers match
-the site we actually publish".
+Not one of the eighteen, and on its own tab rather than inside the score. It answers a different
+kind of question - not "is this page readable" but "does the map we hand crawlers match the site we
+actually publish" - nothing in it is a check a page passes, and none of it moves the percentage.
+It refreshes on its own too: resolution costs no requests, so it never needs to wait for a walk of
+every page. The scheduled scan also refreshes it.
+
+Three things have to be true before any of it means anything, and they are reported apart because
+they call for different responses: nothing answers `/sitemap.xml`, something answers but it is not
+a sitemap (a proxy catch-all or an error page served with a 200 - which would otherwise parse to
+zero entries and make every published page look missing), or it could not be reached at all.
 
 Both sides belong to us, so the comparison is resolution, not fetching. Every `<loc>` in
 `sitemap.xml` is resolved back to a repository node; the published set is built as **guest**, in

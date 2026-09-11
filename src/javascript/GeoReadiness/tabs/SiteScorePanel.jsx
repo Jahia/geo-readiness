@@ -8,8 +8,6 @@ import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
 const POLL_MS = 4000;
-// Enough rows to act on, few enough that one bad group cannot bury the rest.
-const SITEMAP_ROWS = 10;
 
 /**
  * jContent's own address for a node, so a finding is one click from the thing it
@@ -17,8 +15,7 @@ const SITEMAP_ROWS = 10;
  *
  * Content under `/contents` lives in a different jContent section to pages, and
  * sending a content node to the pages section produces a link that resolves to
- * nothing. The sitemap findings are mostly content nodes on a site whose
- * articles are `jmix:mainResource`, so this distinction is not an edge case.
+ * nothing.
  */
 function jcontentUrl(path, language) {
     const m = /^\/sites\/([^/]+)(\/.*)?$/.exec(path || '');
@@ -238,100 +235,6 @@ export const SiteScorePanel = ({path, language}) => {
                             </li>
                         ))}
                     </ul>
-                </>
-            )}
-
-            {agg && agg.sitemap && (
-                <>
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" className={styles.panelSub}>
-                        {t('sitemap.title')}
-                    </Typography>
-                    {!agg.sitemap.present ? (
-                        <Banner variant="warning" title={t('sitemap.absentTitle')}>
-                            {t('sitemap.absent')}
-                        </Banner>
-                    ) : (
-                        <>
-                            {/*
-                              * The two totals are what every finding below is a
-                              * fraction of, so they are shown whether or not the
-                              * comparison agrees. Showing them only on agreement
-                              * left the failure case with no denominator.
-                              */}
-                            <Typography variant="caption" className={styles.panelIntro}>
-                                {t('sitemap.counts', {
-                                    entries: agg.sitemap.entries,
-                                    published: agg.sitemap.published
-                                })}
-                            </Typography>
-                            {agg.sitemap.agrees ? (
-                                <Banner variant="info" title={t('sitemap.agreesTitle')}>
-                                    {t('sitemap.agrees', {entries: agg.sitemap.entries})}
-                                </Banner>
-                            ) : (
-                                [
-                                    {key: 'missing', rows: agg.sitemap.missing},
-                                    {key: 'unknown', rows: agg.sitemap.unknown},
-                                    {key: 'staleDate', rows: agg.sitemap.staleDate},
-                                    {key: 'noindexListed', rows: agg.sitemap.noindexListed}
-                                ].filter(g => (g.rows || []).length > 0).map(g => (
-                                    <div key={g.key} className={styles.sitemapGroup}>
-                                        <div className={styles.sitemapGroupHead}>
-                                            <Typography variant="body" className={styles.checkLabel}>
-                                                {t(`sitemap.kind.${g.key}`)}
-                                            </Typography>
-                                            <Chip label={String(g.rows.length)} color="warning"/>
-                                        </div>
-                                        <Typography variant="caption" className={styles.checkFix}>
-                                            {t(`sitemap.why.${g.key}`)}
-                                        </Typography>
-                                        <ul className={styles.checkList}>
-                                            {g.rows.slice(0, SITEMAP_ROWS).map(r => (
-                                                <li key={`${g.key}:${r.path}`} className={styles.checkItem}>
-                                                    <span className={styles.checkText}>
-                                                        {/*
-                                                          * An unknown entry resolves to
-                                                          * nothing, so there is no node to
-                                                          * open: its URL is the only fact.
-                                                          */}
-                                                        {r.jcrPath && jcontentUrl(r.jcrPath, language) ? (
-                                                            <a
-                                                                className={styles.pageLink}
-                                                                href={jcontentUrl(r.jcrPath, language)}
-                                                                title={t('score17.openPage')}
-                                                            >
-                                                                {r.title || r.path}
-                                                            </a>
-                                                        ) : (
-                                                            <Typography variant="body" className={styles.checkLabel}>
-                                                                {r.title || r.path}
-                                                            </Typography>
-                                                        )}
-                                                        <Typography variant="caption" className={styles.checkFix}>
-                                                            {r.path}
-                                                        </Typography>
-                                                    </span>
-                                                    {r.detail && (
-                                                        <span className={styles.checkMeta}>
-                                                            <Typography variant="caption" className={styles.checkValue}>
-                                                                {r.detail}
-                                                            </Typography>
-                                                        </span>
-                                                    )}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                        {g.rows.length > SITEMAP_ROWS && (
-                                            <Typography variant="caption" className={styles.checkFix}>
-                                                {t('sitemap.andMore', {count: g.rows.length - SITEMAP_ROWS})}
-                                            </Typography>
-                                        )}
-                                    </div>
-                                ))
-                            )}
-                        </>
-                    )}
                 </>
             )}
 

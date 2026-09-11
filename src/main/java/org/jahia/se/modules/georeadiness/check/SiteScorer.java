@@ -174,10 +174,12 @@ public final class SiteScorer {
         aggregate.put("templates", byTemplate.toJson());
 
         // GEO-21. Run once per scan, not once per page: it is the same file for
-        // every row, and storing it here is what lets the drawer answer "is this
-        // page in the sitemap" without fetching a sitemap of its own.
+        // every row, and storing it is what lets the drawer answer "is this page
+        // in the sitemap" without fetching a sitemap of its own. Stored beside
+        // the aggregate rather than in it, because it is a comparison and not a
+        // score, and it can also be refreshed on its own.
         try {
-            aggregate.put("sitemap", SitemapCheck.check(sitePath, language, siteBase,
+            ScanStore.saveSitemap(sitePath, language, SitemapCheck.check(sitePath, language, siteBase,
                     opts.fetchTimeoutMs, opts.maxBodyBytes));
         } catch (Exception e) {
             logger.debug("sitemap check failed for {}", sitePath, e);

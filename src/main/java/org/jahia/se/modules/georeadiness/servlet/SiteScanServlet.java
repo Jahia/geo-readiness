@@ -110,9 +110,14 @@ public class SiteScanServlet extends HttpServlet {
                             GuestVisibility.scanSite(sitePath, language, MAX_PAGES));
                     return;
                 case "sitemap":
-                    writeJson(resp, HttpServletResponse.SC_OK,
-                            SitemapCheck.check(sitePath, language, baseUrlFor(sitePath, language, req),
-                                    config.getFetchTimeoutMs(), config.getMaxBodyBytes()));
+                    // Stored as well as returned, so the drawer reports exactly
+                    // what the dashboard shows and a sitemap refresh does not
+                    // need a walk of every page.
+                    JSONObject sitemap = SitemapCheck.check(sitePath, language,
+                            baseUrlFor(sitePath, language, req),
+                            config.getFetchTimeoutMs(), config.getMaxBodyBytes());
+                    ScanStore.saveSitemap(sitePath, language, sitemap);
+                    writeJson(resp, HttpServletResponse.SC_OK, ScanStore.read(sitePath, language));
                     return;
                 case "scanStatus":
                     writeJson(resp, HttpServletResponse.SC_OK, status(sitePath, language));

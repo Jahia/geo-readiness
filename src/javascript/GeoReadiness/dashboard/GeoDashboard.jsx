@@ -7,6 +7,7 @@ import {RobotsControlPanel} from '../tabs/RobotsControlPanel';
 import {LlmsGeneratorPanel} from '../tabs/LlmsGeneratorPanel';
 import {VisibilityPanel} from '../tabs/VisibilityPanel';
 import {SiteScorePanel} from '../tabs/SiteScorePanel';
+import {SitemapPanel} from '../tabs/SitemapPanel';
 import {languageLabel} from '../util/languageFlag';
 import styles from './GeoDashboard.module.css';
 
@@ -69,6 +70,11 @@ export const GeoDashboard = () => {
                                 onClick={() => setTab('score')}
                             />
                             <TabItem
+                                label={t('dashboard.tab.sitemap')}
+                                isSelected={tab === 'sitemap'}
+                                onClick={() => setTab('sitemap')}
+                            />
+                            <TabItem
                                 label={t('dashboard.tab.robots')}
                                 isSelected={tab === 'robots'}
                                 onClick={() => setTab('robots')}
@@ -90,6 +96,7 @@ export const GeoDashboard = () => {
         >
             <div className={styles.content}>
                 {tab === 'score' && <SiteScorePanel path={sitePath} language={language}/>}
+                {tab === 'sitemap' && <SitemapPanel path={sitePath} language={language}/>}
                 {tab === 'robots' && <RobotsControlPanel path={sitePath} language={language}/>}
                 {tab === 'llms' && <LlmsGeneratorPanel path={sitePath} language={language}/>}
                 {tab === 'visibility' && <VisibilityPanel path={sitePath} language={language}/>}

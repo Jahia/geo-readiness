@@ -121,6 +121,18 @@ Concretely, the servlet must keep:
   the French page's stale date on the English page. Verified with a page stale in French only: it
   must stay silent in English.
 
+- **"200 and it contains a tag" does not mean the file is what you asked for.** `SitemapCheck`
+  accepted any 200 containing `<`, so an HTML page answering `/sitemap.xml` - a proxy catch-all, a
+  vanity URL, an error page served with a success code - would parse to zero entries and report
+  **every published page as missing**, in the dashboard and in every page drawer. Require
+  `<urlset` or `<sitemapindex`. The llms.txt check already had the equivalent guard; this one did
+  not. Verified against the real bytes: Jahia's own HTML error page passes the old predicate and
+  fails the new one, while both real sitemap formats still pass.
+- **Absence has more than one cause, and they need different messages.** Nothing serving the
+  address, something serving it that is not a sitemap, and not being able to reach it at all are
+  three different things to go and fix. One shared "no sitemap" banner sends people to the wrong
+  one.
+
 ## robots.txt traps
 
 - **The path evaluated against robots.txt must include the query string.** Rules like

@@ -294,7 +294,8 @@
         "robots": "robots.txt",
         "llms": "llms.txt",
         "visibility": "Invisible content",
-        "score": "Site score"
+        "score": "Site score",
+        "sitemap": "Sitemap"
       }
     },
     "visibility": {
@@ -396,8 +397,6 @@
     },
     "sitemap": {
       "title": "Sitemap against reality",
-      "absentTitle": "No sitemap is served",
-      "absent": "Crawlers are being handed no map of this site at all. The Sitemap module publishes one per site.",
       "agreesTitle": "The sitemap matches the site",
       "agrees": "All {{entries}} entries resolve to published content, and nothing published is missing from it.",
       "andMore": "and {{count}} more",
@@ -419,7 +418,28 @@
       "noindexListedTitle": "This page is in the sitemap and marked noindex",
       "noindexListedPage": "The sitemap tells crawlers to index this page and the page itself tells them not to. One of the two is a mistake.",
       "staleTitle": "The sitemap's date for this page is wrong",
-      "stalePage": "The sitemap claims {{detail}}. A crawler that trusts the earlier date has no reason to come back for what changed."
+      "stalePage": "The sitemap claims {{detail}}. A crawler that trusts the earlier date has no reason to come back for what changed.",
+      "intro": "What the sitemap says against what the site actually publishes. Entries are resolved against the repository rather than fetched, so this costs no requests and needs no site scan. The scheduled scan refreshes it too.",
+      "checkNow": "CHECK NOW",
+      "checking": "CHECKING…",
+      "lastCheck": "Last check: {{date}}",
+      "neverTitle": "Not checked yet",
+      "never": "Run a check, or wait for the next scheduled site scan, which refreshes this too.",
+      "limits": "Entries are matched to content, not fetched, so a redirect is not detected: an entry that redirects elsewhere counts as resolving. Every language of the site is compared, and each finding names the URL it belongs to.",
+      "error": {
+        "failedTitle": "The check could not run",
+        "failed": "The sitemap could not be read or compared. The server log has the detail.",
+        "rateTitle": "Too many checks",
+        "rate": "Wait a moment before checking again."
+      },
+      "absent": {
+        "noneTitle": "No sitemap is served",
+        "none": "Nothing answers {{url}} (HTTP {{status}}), so crawlers are handed no map of this site at all. The Sitemap module publishes one per site.",
+        "notSitemapTitle": "That address answers, but not with a sitemap",
+        "notSitemap": "{{url}} returns HTTP {{status}}, but the response is not a sitemap - most often a page or an error page served with a success code. Until that address returns a real sitemap, crawlers have no usable map, and nothing here can be compared.",
+        "unreachableTitle": "The sitemap could not be reached",
+        "unreachable": "{{url}} could not be fetched at all, so whether a sitemap exists is unknown. This is a connection problem, not a finding about your content."
+      }
     }
   }
 }

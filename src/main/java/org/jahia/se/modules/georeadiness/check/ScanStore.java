@@ -52,6 +52,15 @@ public final class ScanStore {
     private static final String PREVIOUS = "geoPreviousAggregate";
     private static final String FAILURES = "geoFailures";
     private static final String MESSAGE = "geoMessage";
+    /**
+     * The sitemap comparison is stored beside the score, not inside it. It is
+     * not a score: it answers whether the map matches the site, it can be
+     * refreshed on its own without walking every page, and putting it in the
+     * aggregate meant a sitemap-only refresh would have created a half-built
+     * aggregate the score panel would then render as "undefined%".
+     */
+    private static final String SITEMAP = "geoSitemap";
+    private static final String SITEMAP_AT = "geoSitemapAt";
 
     private ScanStore() {
     }
@@ -81,6 +90,11 @@ public final class ScanStore {
                 run.put("failures", json(l, FAILURES));
             }
             out.put("run", run);
+            if (store.hasNode(language)) {
+                JCRNodeWrapper l = store.getNode(language);
+                out.put("sitemap", json(l, SITEMAP));
+                out.put("sitemapCheckedAt", date(l, SITEMAP_AT));
+            }
             return out;
         });
     }
@@ -138,6 +152,22 @@ public final class ScanStore {
             l.setProperty(FINISHED, Calendar.getInstance());
             l.setProperty(AGGREGATE, aggregate.toString());
             l.setProperty(FAILURES, failures.toString());
+            session.save();
+            return null;
+        });
+    }
+
+    /**
+     * Records a sitemap comparison on its own, so the tab that shows it can be
+     * refreshed without running a site scan and the drawer still reads exactly
+     * what the tab shows.
+     */
+    public static void saveSitemap(String sitePath, String language, JSONObject sitemap)
+            throws RepositoryException {
+        inStore(sitePath, (store, session) -> {
+            JCRNodeWrapper l = language(store, language);
+            l.setProperty(SITEMAP, sitemap.toString());
+            l.setProperty(SITEMAP_AT, Calendar.getInstance());
             session.save();
             return null;
         });

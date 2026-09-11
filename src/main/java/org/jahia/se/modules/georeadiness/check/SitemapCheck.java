@@ -94,15 +94,24 @@ public final class SitemapCheck {
 
         String base = baseUrl.replaceAll("/+$", "");
         SiteFilesChecker.Fetched index = SiteFilesChecker.fetch(base + "/sitemap.xml", timeoutMs, maxBytes);
-        boolean present = index.status != null && index.status == 200
-                && index.body != null && index.body.contains("<");
+        boolean answered = index.status != null && index.status == 200 && index.body != null;
+        // "200 and contains a tag" is not good enough. Anything answering that
+        // address with an HTML page - a proxy's catch-all, a vanity URL, a
+        // custom error page served as 200 - would pass that test, parse to zero
+        // entries, and make every published page look missing from the sitemap.
+        // It has to actually be a sitemap. Same false positive the llms.txt
+        // check already guards against.
+        boolean present = answered && looksLikeSitemap(index.body);
         out.put("present", present);
         out.put("status", index.status == null ? JSONObject.NULL : index.status);
         out.put("url", base + "/sitemap.xml");
 
         if (!present) {
-            // Not a defect in itself, but everything below is unanswerable, and a
-            // site with no sitemap is handing crawlers no map at all.
+            // Not a defect in itself, but everything below is unanswerable, and
+            // the three ways of having no usable sitemap call for three
+            // different responses, so name which one this is.
+            out.put("reason", answered ? "notSitemap"
+                    : (index.status == null ? "unreachable" : "none"));
             return out;
         }
 
@@ -212,6 +221,15 @@ public final class SitemapCheck {
             }
         }
         return null;
+    }
+
+    /**
+     * Whether the body is a sitemap at all, rather than whatever else happened
+     * to answer that address with a 200.
+     */
+    private static boolean looksLikeSitemap(String body) {
+        String head = body.length() > 4096 ? body.substring(0, 4096) : body;
+        return head.contains("<urlset") || head.contains("<sitemapindex");
     }
 
     /**

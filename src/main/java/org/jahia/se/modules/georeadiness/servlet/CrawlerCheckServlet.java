@@ -352,9 +352,7 @@ public class CrawlerCheckServlet extends HttpServlet {
                 .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
         String sitePath = live.getNode(path).getResolveSite().getPath();
 
-        JSONObject run = ScanStore.read(sitePath, language).optJSONObject("run");
-        JSONObject aggregate = run == null ? null : run.optJSONObject("aggregate");
-        JSONObject sitemap = aggregate == null ? null : aggregate.optJSONObject("sitemap");
+        JSONObject sitemap = ScanStore.read(sitePath, language).optJSONObject("sitemap");
         if (sitemap == null) {
             return out;
         }

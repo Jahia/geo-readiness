@@ -58,7 +58,11 @@ a delta. It needs nothing from any external vendor.
   nothing published, `lastmod` values that contradict the node's real modification date, and pages
   the sitemap advertises while their own markup says `noindex`. The published set is built as guest
   and across every site language, because a sitemap is language-aware and written for anonymous
-  crawlers. The dashboard lists each finding with a link to the node, its public URL and, for a
+  crawlers. It has its own dashboard tab with its own refresh, because it is a comparison and not a
+  score, and a presence test that requires the response to actually be a sitemap: "200 with a tag
+  in it" would accept an HTML error page, parse to zero entries and report every published page as
+  missing. No sitemap, not a sitemap, and could not be reached are three different messages. The
+  dashboard lists each finding with a link to the node, its public URL and, for a
   wrong date, the two dates. The drawer carries the three findings that are about one page -
   absent from the map, advertised while saying `noindex`, or listed with a date that no longer
   matches - matched on path and language so a French finding never surfaces on the English page.

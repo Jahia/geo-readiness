@@ -294,7 +294,8 @@
         "robots": "robots.txt",
         "llms": "llms.txt",
         "visibility": "Contenu invisible",
-        "score": "Score du site"
+        "score": "Score du site",
+        "sitemap": "Sitemap"
       }
     },
     "visibility": {
@@ -396,8 +397,6 @@
     },
     "sitemap": {
       "title": "Le sitemap face à la réalité",
-      "absentTitle": "Aucun sitemap n'est servi",
-      "absent": "Les robots ne reçoivent aucune carte de ce site. Le module Sitemap en publie un par site.",
       "agreesTitle": "Le sitemap correspond au site",
       "agrees": "Les {{entries}} entrées correspondent toutes à du contenu publié, et rien de publié n'y manque.",
       "andMore": "et {{count}} de plus",
@@ -419,7 +418,28 @@
       "noindexListedTitle": "Cette page est dans le sitemap et marquée noindex",
       "noindexListedPage": "Le sitemap demande aux robots d'indexer cette page et la page elle-même le leur interdit. L'un des deux est une erreur.",
       "staleTitle": "La date du sitemap pour cette page est fausse",
-      "stalePage": "Le sitemap annonce {{detail}}. Un robot qui se fie à la date la plus ancienne n'a aucune raison de revenir chercher ce qui a changé."
+      "stalePage": "Le sitemap annonce {{detail}}. Un robot qui se fie à la date la plus ancienne n'a aucune raison de revenir chercher ce qui a changé.",
+      "intro": "Ce que dit le sitemap face à ce que le site publie réellement. Les entrées sont résolues dans le référentiel plutôt que téléchargées : cette comparaison ne coûte aucune requête et ne nécessite aucun scan du site. Le scan planifié la rafraîchit également.",
+      "checkNow": "VÉRIFIER",
+      "checking": "VÉRIFICATION…",
+      "lastCheck": "Dernière vérification : {{date}}",
+      "neverTitle": "Pas encore vérifié",
+      "never": "Lancez une vérification, ou attendez le prochain scan planifié du site, qui la rafraîchit aussi.",
+      "limits": "Les entrées sont rapprochées du contenu, non téléchargées : une redirection n'est donc pas détectée, une entrée qui redirige ailleurs est comptée comme résolue. Toutes les langues du site sont comparées et chaque constat indique l'URL concernée.",
+      "error": {
+        "failedTitle": "La vérification n'a pas pu être lancée",
+        "failed": "Le sitemap n'a pas pu être lu ou comparé. Le détail figure dans le journal du serveur.",
+        "rateTitle": "Trop de vérifications",
+        "rate": "Patientez un instant avant de relancer une vérification."
+      },
+      "absent": {
+        "noneTitle": "Aucun sitemap n'est servi",
+        "none": "Rien ne répond à {{url}} (HTTP {{status}}) : les robots ne reçoivent aucune carte de ce site. Le module Sitemap en publie un par site.",
+        "notSitemapTitle": "Cette adresse répond, mais pas avec un sitemap",
+        "notSitemap": "{{url}} renvoie HTTP {{status}}, mais la réponse n'est pas un sitemap - le plus souvent une page ou une page d'erreur servie avec un code de succès. Tant que cette adresse ne renvoie pas un vrai sitemap, les robots n'ont pas de carte exploitable et rien ne peut être comparé ici.",
+        "unreachableTitle": "Le sitemap n'a pas pu être atteint",
+        "unreachable": "{{url}} n'a pas pu être récupéré : l'existence d'un sitemap est donc inconnue. Il s'agit d'un problème de connexion, pas d'un constat sur votre contenu."
+      }
     }
   }
 }
