@@ -54,35 +54,6 @@ public final class SitemapCheck {
     private static final int MAX_ENTRIES = 10_000;
     private static final int MAX_REPORTED = 200;
 
-    /**
-     * Everything we need about a node, read while its session is still open.
-     *
-     * A `JCRNodeWrapper` must never outlive the callback it came from: the
-     * session closes on return and every later call throws, which a defensive
-     * catch then turns into a silent wrong answer. That is exactly what happened
-     * here on the first run, and it read as "nothing to report".
-     */
-    private static final class Entry {
-        final String jcrPath;
-        final String title;
-        final String modifiedOn;
-        final boolean noindex;
-        /**
-         * The language this URL belongs to. The same node appears once per
-         * language, so without this the drawer showing the English page would
-         * report the French entry's stale date as its own.
-         */
-        final String language;
-
-        Entry(String jcrPath, String title, String modifiedOn, boolean noindex, String language) {
-            this.jcrPath = jcrPath;
-            this.title = title;
-            this.modifiedOn = modifiedOn;
-            this.noindex = noindex;
-            this.language = language;
-        }
-    }
-
     private SitemapCheck() {
     }
 
@@ -119,7 +90,7 @@ public final class SitemapCheck {
         collect(index.body, base, entries, timeoutMs, maxBytes, 0);
         out.put("entries", entries.size());
 
-        Map<String, Entry> published = publishedByPath(sitePath, base);
+        Map<String, PublishedMap.Entry> published = PublishedMap.forSite(sitePath, base);
         out.put("published", published.size());
 
         JSONArray missing = new JSONArray();
@@ -127,14 +98,14 @@ public final class SitemapCheck {
         JSONArray staleDate = new JSONArray();
         JSONArray noindexListed = new JSONArray();
 
-        for (Map.Entry<String, Entry> p : published.entrySet()) {
+        for (Map.Entry<String, PublishedMap.Entry> p : published.entrySet()) {
             if (!entries.containsKey(p.getKey()) && missing.length() < MAX_REPORTED) {
                 missing.put(row(p.getValue(), p.getKey(), null));
             }
         }
 
         for (Map.Entry<String, String> e : entries.entrySet()) {
-            Entry node = published.get(e.getKey());
+            PublishedMap.Entry node = published.get(e.getKey());
             if (node == null) {
                 if (unknown.length() < MAX_REPORTED) {
                     JSONObject r = new JSONObject();
@@ -248,7 +219,7 @@ public final class SitemapCheck {
                 continue;
             }
             Matcher mod = LASTMOD.matcher(block);
-            into.put(pathOf(loc.group(1)), mod.find() ? mod.group(1) : null);
+            into.put(PublishedMap.pathOf(loc.group(1)), mod.find() ? mod.group(1) : null);
         }
         if (any || depth >= 1) {
             return;
@@ -283,95 +254,7 @@ public final class SitemapCheck {
      * system session reported the one gated page on the test site as missing,
      * which would have sent somebody to add it.
      */
-    private static Map<String, Entry> publishedByPath(String sitePath, String base)
-            throws RepositoryException {
-        Map<String, Entry> out = new LinkedHashMap<>();
-        for (String lang : languagesOf(sitePath)) {
-            GuestVisibility.inGuestSession(lang, guest -> {
-                Set<String> seen = new LinkedHashSet<>();
-                for (String type : new String[]{"jnt:page", "jmix:mainResource"}) {
-                    String sql = "select * from [" + type + "] as n where isdescendantnode(n, '"
-                            + sitePath.replace("'", "''") + "')";
-                    Query q = guest.getWorkspace().getQueryManager().createQuery(sql, Query.JCR_SQL2);
-                    q.setLimit(MAX_ENTRIES);
-                    NodeIterator it = q.execute().getNodes();
-                    while (it.hasNext()) {
-                        JCRNodeWrapper n = (JCRNodeWrapper) it.nextNode();
-                        if (!seen.add(n.getPath())) {
-                            continue;
-                        }
-                        try {
-                            // Read now, inside the session, never after it closes.
-                            out.put(pathOf(PublicUrls.forNode(n, base)), new Entry(
-                                    n.getPath(), titleOf(n), modifiedOn(n), isNoindex(n), lang));
-                        } catch (Exception e) {
-                            logger.debug("no public url for {}", n.getPath(), e);
-                        }
-                    }
-                }
-                return null;
-            });
-        }
-        return out;
-    }
-
-    /** The site's active languages, so every entry in the index can be resolved. */
-    private static Set<String> languagesOf(String sitePath) throws RepositoryException {
-        return JCRTemplate.getInstance().doExecuteWithSystemSession(null, "live",
-                (JCRCallback<Set<String>>) session -> {
-                    Set<String> langs = new LinkedHashSet<>();
-                    JCRNodeWrapper site = session.getNode(sitePath);
-                    if (site.hasProperty("j:languages")) {
-                        for (javax.jcr.Value v : site.getProperty("j:languages").getValues()) {
-                            langs.add(v.getString());
-                        }
-                    }
-                    if (langs.isEmpty()) {
-                        langs.add("en");
-                    }
-                    return langs;
-                });
-    }
-
-    /** Compared on path, not on the whole url: host and scheme differ legitimately. */
-    private static String pathOf(String url) {
-        try {
-            String p = new java.net.URL(url.trim()).getPath();
-            return p == null || p.isEmpty() ? "/" : p;
-        } catch (Exception e) {
-            return url.trim();
-        }
-    }
-
-    private static String modifiedOn(JCRNodeWrapper n) {
-        try {
-            if (!n.hasProperty("jcr:lastModified")) {
-                return null;
-            }
-            Calendar c = n.getProperty("jcr:lastModified").getDate();
-            return c == null ? null : String.format("%1$tY-%1$tm-%1$td", c);
-        } catch (RepositoryException e) {
-            return null;
-        }
-    }
-
-    private static boolean isNoindex(JCRNodeWrapper n) {
-        try {
-            return n.isNodeType("jmix:noindex") || n.isNodeType("jseomix:noIndex");
-        } catch (RepositoryException e) {
-            return false;
-        }
-    }
-
-    private static String titleOf(JCRNodeWrapper n) {
-        try {
-            return n.hasProperty("jcr:title") ? n.getProperty("jcr:title").getString() : n.getName();
-        } catch (RepositoryException e) {
-            return n.getName();
-        }
-    }
-
-    private static JSONObject row(Entry node, String path, String detail) {
+    private static JSONObject row(PublishedMap.Entry node, String path, String detail) {
         JSONObject o = new JSONObject();
         o.put("path", path);
         o.put("jcrPath", node.jcrPath);

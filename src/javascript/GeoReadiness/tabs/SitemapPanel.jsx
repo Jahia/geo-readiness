@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Banner, Button, Chip, Loader, Separator, Typography} from '@jahia/moonstone';
 import {scanStatus, checkSitemap} from '../api/siteScore';
+import {jcontentUrl} from '../util/jcontentUrl';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -10,28 +11,6 @@ const NS = 'geo-readiness';
 const ROWS = 10;
 const GROUPS = ['missing', 'unknown', 'staleDate', 'noindexListed'];
 
-/**
- * jContent's own address for a node, so a finding is one click from the thing it
- * is about. `/sites/<key>/home/buy` becomes `/jahia/jcontent/<key>/<lang>/pages/home/buy`.
- *
- * Content under `/contents` lives in a different jContent section to pages, and
- * sending a content node to the pages section produces a link that resolves to
- * nothing. These findings are mostly content nodes on a site whose articles are
- * `jmix:mainResource`, so the distinction is not an edge case.
- */
-function jcontentUrl(path, language) {
-    const m = /^\/sites\/([^/]+)(\/.*)?$/.exec(path || '');
-    if (!m) {
-        return null;
-    }
-
-    const relative = (m[2] || '').replace(/^\/+/, '');
-    const section = relative === 'contents' || relative.startsWith('contents/') ?
-        'content-folders' :
-        'pages';
-
-    return `/jahia/jcontent/${m[1]}/${language}/${section}${m[2] || ''}`;
-}
 
 /**
  * The sitemap against what the site actually publishes.

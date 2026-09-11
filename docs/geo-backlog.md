@@ -247,6 +247,9 @@ before the comparison stopped reporting 189 false positives on the French URLs.
 
 ## GEO-22 · Pages nothing links to
 
+**BUILT.** Link graph from the rendered HTML of the scan, its own dashboard tab, one line in the
+drawer.
+
 **As a** content manager, **I want** published pages with no inbound internal link, **so that** I
 find the content crawlers never reach.
 
@@ -264,6 +267,26 @@ A crawler reports what it found. It cannot report what it missed. Jahia can walk
 afternoon.
 
 **Effort** M. The link graph is the work.
+
+**What was built, against that acceptance.** The graph is read from the **rendered HTML** of each
+page the scan already fetches, not from repository references. On the test site the main
+navigation holds no link nodes at all - it is built from the page tree - so a reference-only graph
+would have called every page in the menu an orphan. Reading the output means a menu, a listing, a
+rich text link and a configured button all count the same, and it costs no extra requests.
+Repository references are added on top, but only from nodes on pages the scan did *not* render:
+counting a reference that already appeared in the HTML added a footer menu entry to the content
+total and hid a nav-only page.
+
+Navigation and content are counted apart, by whether the anchor sits inside `<nav>` or `<footer>`.
+The third criterion is honoured by splitting the finding rather than suppressing it: a page nothing
+links to *and* the sitemap does not list is unreachable and reported as such; one that is unlinked
+but advertised in the sitemap, or reachable only through the menus, is reported as the weaker
+finding instead.
+
+Two limits worth knowing. Only the language the scan read is judged - the published map spans every
+language, and judging the rest reported all twelve French pages as weakly linked when they had
+simply not been fetched. And the site home page is never reported: every menu and every logo points
+at it, so it cannot be actioned.
 
 ---
 

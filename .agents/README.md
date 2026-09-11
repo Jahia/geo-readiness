@@ -133,6 +133,24 @@ Concretely, the servlet must keep:
   three different things to go and fix. One shared "no sitemap" banner sends people to the wrong
   one.
 
+- **Navigation is usually not in the repository.** On the test site the main menu is built from
+  the page tree and holds no link nodes, so a link graph from weak references alone called every
+  page in the menu an orphan. The rendered HTML is what a crawler follows and the only honest
+  source; the scan already fetches it, so it costs nothing.
+- **Do not count a reference that the HTML already counted.** The footer menu is stored as link
+  nodes *and* rendered as anchors. Counting both added a menu entry to the content total, so a page
+  linked only from the footer menu stopped being reported as nav-only. The reference pass must skip
+  anything living on a page the scan rendered.
+- **A per-language scan must not judge pages of other languages.** `PublishedMap` spans every
+  language because a sitemap does. The link graph does not: it saw only the scanned language's
+  pages, so every French page came out with `content: 0` and was reported weakly linked. Filter
+  findings to the scanned language.
+- **Exclude the site home page from link findings.** Every menu and every logo points at it, so it
+  is either trivially fine or unfixable, and reporting it is pure noise.
+- **Bump `CACHE_SCHEMA` in the drawer whenever the report grows a field.** It is at 5. A stale
+  cached report is restored into a UI that expects the new field and the new banner silently never
+  appears - which reads as "the feature does not work". This has now cost time twice.
+
 ## robots.txt traps
 
 - **The path evaluated against robots.txt must include the query string.** Rules like

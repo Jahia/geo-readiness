@@ -295,7 +295,8 @@
         "llms": "llms.txt",
         "visibility": "Invisible content",
         "score": "Site score",
-        "sitemap": "Sitemap"
+        "sitemap": "Sitemap",
+        "links": "Internal links"
       }
     },
     "visibility": {
@@ -440,6 +441,30 @@
         "unreachableTitle": "The sitemap could not be reached",
         "unreachable": "{{url}} could not be fetched at all, so whether a sitemap exists is unknown. This is a connection problem, not a finding about your content."
       }
+    },
+    "links": {
+      "title": "Pages nothing links to",
+      "intro": "A crawler can tell you what it found. It cannot tell you what it missed, because it never knew the page existed. This compares everything published against everything the site actually links to, using the rendered HTML of each page the last scan fetched.",
+      "counts": "{{pages}} published pages judged, from {{read}} pages read in this language.",
+      "neverTitle": "No scan yet",
+      "never": "The link graph is built from the rendered HTML of every page, so it comes from a site scan. Run one from the Site score tab.",
+      "allLinkedTitle": "Every page is linked from somewhere",
+      "allLinked": "No published page in this language is unreachable, and none depends on the menus alone.",
+      "kind": {
+        "orphans": "Nothing links here, and the sitemap does not list it",
+        "weak": "Reachable, but nobody chose to link it"
+      },
+      "why": {
+        "orphans": "No page links to these and no sitemap entry names them. Nothing will ever find them.",
+        "weak": "A crawler can reach these, but only through a menu that lists everything or through the sitemap. No author linked to them, and link-weighted crawlers treat that as a weak signal.",
+        "navOnly": "menu only",
+        "sitemapOnly": "sitemap only"
+      },
+      "limits": "Links are read from rendered HTML, so a menu built from the page tree, a listing, a rich text link and a configured button all count the same. One link per source page: linking twice from the same page is one decision. Only the language of this scan is judged, since only its pages were fetched. Your home page is never reported.",
+      "orphanTitle": "Nothing links to this page",
+      "orphanPage": "No other published page links here and the sitemap does not list it, so a crawler has no way to discover it at all.",
+      "navOnlyTitle": "Only the menu links to this page",
+      "navOnlyPage": "It appears in navigation on {{count}} pages, but no page links to it from its content. Crawlers that weight links treat a menu entry as a weaker signal than a link an author chose to make."
     }
   }
 }

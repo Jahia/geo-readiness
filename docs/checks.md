@@ -207,6 +207,35 @@ of the scan that sees the whole addressable site. Scoring the content items as w
 piece of work, not a bug fix.
 
 
+## Pages nothing links to
+
+Also not one of the eighteen, and also its own tab. A crawler can report what it found; it cannot
+report what it missed, because it never knew the page existed. The repository knows what is
+published, so the gap between that and what the site links to is knowable.
+
+Links are read from the **rendered HTML** of every page the scan fetches, which is the only thing
+that decides whether a crawler can follow them. That makes a menu built from the page tree, a
+listing that queries content, a rich text link and a configured button all count identically, and
+it costs no request the scan was not making anyway. Repository references are added for sources the
+scan never rendered - an article linking to a landing page - but never for nodes on pages it did,
+since the HTML already said whether that link came out in a menu or in the body.
+
+| Finding | Means |
+|---|---|
+| Unreachable | No page links here and the sitemap does not list it. Nothing will ever find it. |
+| Weak | Reachable, but only through a menu that lists everything, or only through the sitemap. |
+
+Navigation and content links are counted apart: a page in a menu that lists every page was not
+chosen by anyone, and a crawler weighting links treats it accordingly. The split is by whether the
+anchor sits inside `<nav>` or `<footer>`; `<header>` is deliberately excluded, because it is also
+used for the heading of a card.
+
+Counted once per source page: linking to the same target twice from one page is one editorial
+decision. Only the language the scan read is judged - the other languages' pages were never
+fetched, so they have no links *observed*, which is not the same as having none. The site home page
+is never reported.
+
+
 ## Where each one is computed
 
 Everything in **Is what arrives usable** is read from the HTML of a single fetch, so it costs

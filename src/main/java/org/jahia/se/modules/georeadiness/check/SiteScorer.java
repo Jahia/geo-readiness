@@ -83,6 +83,7 @@ public final class SiteScorer {
                 ? RobotsRules.parse(robotsJson.optString("rawBody", ""))
                 : RobotsRules.empty();
 
+        LinkGraph.Accumulator links = new LinkGraph.Accumulator();
         JSONArray failures = new JSONArray();
         Map<String, Integer> failCounts = new TreeMap<>();
         Map<String, int[]> bySection = new LinkedHashMap<>();
@@ -96,7 +97,7 @@ public final class SiteScorer {
         for (int i = 0; i < paths.size(); i++) {
             String path = paths.get(i);
             try {
-                JSONObject one = scorePage(sitePath, path, language, rules, siteFiles, opts);
+                JSONObject one = scorePage(sitePath, path, language, rules, siteFiles, opts, links);
                 if (one == null) {
                     continue;
                 }
@@ -178,11 +179,27 @@ public final class SiteScorer {
         // in the sitemap" without fetching a sitemap of its own. Stored beside
         // the aggregate rather than in it, because it is a comparison and not a
         // score, and it can also be refreshed on its own.
+        JSONObject sitemap = null;
         try {
-            ScanStore.saveSitemap(sitePath, language, SitemapCheck.check(sitePath, language, siteBase,
-                    opts.fetchTimeoutMs, opts.maxBodyBytes));
+            sitemap = SitemapCheck.check(sitePath, language, siteBase,
+                    opts.fetchTimeoutMs, opts.maxBodyBytes);
+            ScanStore.saveSitemap(sitePath, language, sitemap);
         } catch (Exception e) {
             logger.debug("sitemap check failed for {}", sitePath, e);
+        }
+
+        // GEO-22. Stored beside the score for the same reason the sitemap is:
+        // "nothing links here" is a fact about the site, not a check this page
+        // passed or failed, and it does not move the percentage.
+        try {
+            Map<String, PublishedMap.Entry> published = PublishedMap.forSite(sitePath, siteBase);
+            LinkGraph.addReferences(links, published, language, new java.util.LinkedHashSet<>(paths));
+            ScanStore.saveLinks(sitePath, language,
+                    LinkGraph.report(links, published, language, PublishedMap.homePath(sitePath),
+                            sitemap != null && sitemap.optBoolean("present", false),
+                            notListed(sitemap)));
+        } catch (Exception e) {
+            logger.debug("link graph failed for {}", sitePath, e);
         }
 
         ScanStore.progress(sitePath, language, paths.size());
@@ -191,8 +208,29 @@ public final class SiteScorer {
     }
 
     /** One page: is it readable, what does its HTML contain, what does that score. */
+    /**
+     * The published paths the sitemap does *not* list.
+     *
+     * The comparison stores its findings, not the sitemap's entries - a large
+     * site's entry list would dwarf everything else in the record - so "is this
+     * page listed" cannot be asked directly. It does not need to be: `missing`
+     * is exactly the published paths absent from the sitemap, so everything
+     * else published is listed. Capped with the rest of the findings, so on a
+     * site with more than two hundred missing pages some will read as listed;
+     * a sitemap missing two hundred pages has a louder problem than this.
+     */
+    private static java.util.Set<String> notListed(JSONObject sitemap) {
+        java.util.Set<String> out = new java.util.LinkedHashSet<>();
+        JSONArray missing = sitemap == null ? null : sitemap.optJSONArray("missing");
+        for (int i = 0; missing != null && i < missing.length(); i++) {
+            out.add(missing.getJSONObject(i).optString("path", ""));
+        }
+        return out;
+    }
+
     private static JSONObject scorePage(String sitePath, String path, String language,
-            RobotsRules rules, JSONObject siteFiles, Options opts) throws RepositoryException {
+            RobotsRules rules, JSONObject siteFiles, Options opts, LinkGraph.Accumulator links)
+            throws RepositoryException {
         JSONObject visibility = GuestVisibility.forPage(path, language);
         if (!visibility.optBoolean("published", false)) {
             return null;
@@ -221,7 +259,11 @@ public final class SiteScorer {
             agent.put("name", "GPTBot");
             agent.put("status", JSONObject.NULL);
         } else {
-            agent = PageFetch.probe(url, "GPTBot", agentUa(), opts.fetchTimeoutMs, opts.maxBodyBytes);
+            // GEO-22. The link graph is built from the page we are already
+            // fetching, so it costs nothing beyond this request.
+            String from = PublishedMap.pathOf(url);
+            agent = PageFetch.probe(url, "GPTBot", agentUa(), opts.fetchTimeoutMs, opts.maxBodyBytes,
+                    html -> LinkGraph.addPage(links, from, html));
         }
 
         // A report shaped like the drawer's, so one scorer serves both.

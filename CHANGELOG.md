@@ -67,6 +67,15 @@ a delta. It needs nothing from any external vendor.
   absent from the map, advertised while saying `noindex`, or listed with a date that no longer
   matches - matched on path and language so a French finding never surfaces on the English page.
 
+- **Pages nothing links to.** A link graph built from the rendered HTML of every page the scan
+  already fetches, so it costs no extra requests and every way of producing a link counts the same:
+  a menu built from the page tree, a listing, a rich text link, a configured button. Repository
+  references cover sources the scan never rendered. Two findings, because they are two problems: a
+  page nothing links to *and* the sitemap does not list is unreachable; one reachable only through
+  the menus or only through the sitemap is found but uncommitted. Navigation and content links are
+  counted apart, since being in a menu that lists everything is not the same as somebody choosing
+  to link to you. The drawer says which of the two this page is.
+
 **Writing, behind generate → diff → confirm**
 
 - **llms.txt generated from the published page tree.** Deterministic: no model call and no external
@@ -125,6 +134,11 @@ a delta. It needs nothing from any external vendor.
   or tidy, so a hand-written file comes back recognisable.
 - Vanity URLs are host-dependent by Jahia design: the rewriter emits one only when the request's
   server name resolves to the page's site.
+- The link graph judges only the language the scan read, since only that language's pages were
+  fetched. A multilingual site needs one scan per language to see all of it.
+- The link graph sees links on pages, not on content items with their own URL, unless they are
+  modelled as repository references. An article linking to a page through rich text alone is not
+  counted.
 - The sitemap comparison resolves rather than fetches, so it cannot see redirects. An entry that
   301s to somewhere else is reported as clean.
 - The site walk lists `jnt:page`, while the sitemap lists everything with a public URL. On a site

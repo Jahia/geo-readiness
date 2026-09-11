@@ -58,6 +58,19 @@ public final class PageFetch {
     }
 
     public static JSONObject probe(String url, String name, String ua, int timeoutMs, int maxBytes) {
+        return probe(url, name, ua, timeoutMs, maxBytes, null);
+    }
+
+    /**
+     * As above, but hands the raw body to `bodySink` before discarding it.
+     *
+     * The site scan builds its link graph from the rendered HTML of pages it is
+     * already fetching. Returning the body in the report instead would put a
+     * copy of every page into the drawer's response, sixteen times over, to
+     * serve one caller.
+     */
+    public static JSONObject probe(String url, String name, String ua, int timeoutMs, int maxBytes,
+            java.util.function.Consumer<String> bodySink) {
         JSONObject r = new JSONObject();
         r.put("name", name);
         long t0 = System.currentTimeMillis();
@@ -83,6 +96,9 @@ public final class PageFetch {
             r.put("ms", System.currentTimeMillis() - t0);
             if (!html.isEmpty()) {
                 r.put("html", analyse(html));
+                if (bodySink != null) {
+                    bodySink.accept(html);
+                }
             }
         } catch (Exception e) {
             r.put("status", JSONObject.NULL);

@@ -10,7 +10,7 @@ import tabStyles from './tabs/Tabs.module.css';
 import styles from './GeoReadinessDrawer.module.css';
 
 const NS = 'geo-readiness';
-const CACHE_SCHEMA = 4;
+const CACHE_SCHEMA = 5;
 
 // Results are cached per page and language so reopening the drawer is instant.
 // Bump CACHE_SCHEMA whenever the report shape changes, or an old cached entry
@@ -169,6 +169,24 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                 {report && report.sitemap && report.sitemap.noindexListed && (
                     <Banner variant="warning" title={t('sitemap.noindexListedTitle')}>
                         {t('sitemap.noindexListedPage')}
+                    </Banner>
+                )}
+
+                {/*
+                  * GEO-22. Nothing pointing here is the loudest version of this;
+                  * only the menu pointing here is the quieter one. Both are read
+                  * from the last site scan, which is the only thing that sees
+                  * the whole graph.
+                  */}
+                {report && report.links && report.links.content === 0 && report.links.nav === 0 && (
+                    <Banner variant="warning" title={t('links.orphanTitle')}>
+                        {t('links.orphanPage')}
+                    </Banner>
+                )}
+
+                {report && report.links && report.links.content === 0 && report.links.nav > 0 && (
+                    <Banner variant="info" title={t('links.navOnlyTitle')}>
+                        {t('links.navOnlyPage', {count: report.links.nav})}
                     </Banner>
                 )}
 

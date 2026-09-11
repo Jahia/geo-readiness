@@ -3,6 +3,7 @@ package org.jahia.se.modules.georeadiness.servlet;
 import org.jahia.se.modules.georeadiness.check.AiCrawlers;
 import org.jahia.se.modules.georeadiness.check.GeoScore;
 import org.jahia.se.modules.georeadiness.check.PageFetch;
+import org.jahia.se.modules.georeadiness.check.LinkGraph;
 import org.jahia.se.modules.georeadiness.check.ScanStore;
 import org.jahia.se.modules.georeadiness.check.SitemapCheck;
 import org.jahia.se.modules.georeadiness.check.TemplateRollup;
@@ -300,6 +301,17 @@ public class CrawlerCheckServlet extends HttpServlet {
         } catch (Exception e) {
             logger.debug("sitemap state unavailable for {}", path, e);
         }
+
+        // GEO-22, likewise from the last scan: the graph needs every page on the
+        // site, which is not something a drawer can work out for one page.
+        try {
+            JSONObject links = linksFor(path, language);
+            if (links != null) {
+                out.put("links", links);
+            }
+        } catch (Exception e) {
+            logger.debug("link counts unavailable for {}", path, e);
+        }
         writeJson(resp, HttpServletResponse.SC_OK, out);
     }
 
@@ -365,6 +377,20 @@ public class CrawlerCheckServlet extends HttpServlet {
             out.put("staleDetail", stale);
         }
         return out;
+    }
+
+    /**
+     * How many pages link to this one, from the last scan. Nav and content
+     * counted apart, because being in a menu that lists everything is not the
+     * same as somebody choosing to link here.
+     */
+    private JSONObject linksFor(String path, String language) throws Exception {
+        JCRSessionWrapper live = JCRSessionFactory.getInstance()
+                .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
+        String sitePath = live.getNode(path).getResolveSite().getPath();
+        JSONObject links = ScanStore.read(sitePath, language).optJSONObject("links");
+        JSONObject counts = LinkGraph.countsFor(links, path, language);
+        return counts == null ? null : counts;
     }
 
     private String publicUrlFor(JCRNodeWrapper node, HttpServletRequest req, HttpServletResponse resp) throws Exception {

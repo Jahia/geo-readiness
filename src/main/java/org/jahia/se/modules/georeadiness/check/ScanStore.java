@@ -61,6 +61,8 @@ public final class ScanStore {
      */
     private static final String SITEMAP = "geoSitemap";
     private static final String SITEMAP_AT = "geoSitemapAt";
+    /** GEO-22, stored beside the score for the same reason as the sitemap. */
+    private static final String LINKS = "geoLinks";
 
     private ScanStore() {
     }
@@ -94,6 +96,7 @@ public final class ScanStore {
                 JCRNodeWrapper l = store.getNode(language);
                 out.put("sitemap", json(l, SITEMAP));
                 out.put("sitemapCheckedAt", date(l, SITEMAP_AT));
+                out.put("links", json(l, LINKS));
             }
             return out;
         });
@@ -168,6 +171,20 @@ public final class ScanStore {
             JCRNodeWrapper l = language(store, language);
             l.setProperty(SITEMAP, sitemap.toString());
             l.setProperty(SITEMAP_AT, Calendar.getInstance());
+            session.save();
+            return null;
+        });
+    }
+
+    /**
+     * Records the inbound-link graph. Produced by a scan rather than on its own,
+     * because it is built from the HTML of every page the scan fetches.
+     */
+    public static void saveLinks(String sitePath, String language, JSONObject links)
+            throws RepositoryException {
+        inStore(sitePath, (store, session) -> {
+            JCRNodeWrapper l = language(store, language);
+            l.setProperty(LINKS, links.toString());
             session.save();
             return null;
         });

@@ -295,7 +295,8 @@
         "llms": "llms.txt",
         "visibility": "Contenu invisible",
         "score": "Score du site",
-        "sitemap": "Sitemap"
+        "sitemap": "Sitemap",
+        "links": "Liens internes"
       }
     },
     "visibility": {
@@ -440,6 +441,30 @@
         "unreachableTitle": "Le sitemap n'a pas pu être atteint",
         "unreachable": "{{url}} n'a pas pu être récupéré : l'existence d'un sitemap est donc inconnue. Il s'agit d'un problème de connexion, pas d'un constat sur votre contenu."
       }
+    },
+    "links": {
+      "title": "Pages vers lesquelles rien ne pointe",
+      "intro": "Un robot peut dire ce qu'il a trouvé. Il ne peut pas dire ce qu'il a manqué, car il n'a jamais su que la page existait. Cette comparaison confronte tout ce qui est publié à tout ce que le site relie réellement, à partir du HTML rendu de chaque page lue lors du dernier scan.",
+      "counts": "{{pages}} pages publiées évaluées, sur {{read}} pages lues dans cette langue.",
+      "neverTitle": "Aucun scan pour l'instant",
+      "never": "Le graphe de liens est construit à partir du HTML rendu de chaque page : il provient donc d'un scan du site. Lancez-en un depuis l'onglet Score du site.",
+      "allLinkedTitle": "Chaque page est reliée depuis quelque part",
+      "allLinked": "Aucune page publiée dans cette langue n'est inatteignable, et aucune ne dépend uniquement des menus.",
+      "kind": {
+        "orphans": "Rien ne pointe ici, et le sitemap ne les liste pas",
+        "weak": "Atteignables, mais personne n'a choisi d'y faire un lien"
+      },
+      "why": {
+        "orphans": "Aucune page ne pointe vers elles et aucune entrée de sitemap ne les nomme. Rien ne les trouvera jamais.",
+        "weak": "Un robot peut les atteindre, mais seulement via un menu qui liste tout ou via le sitemap. Aucun rédacteur n'y a fait de lien, et les robots qui pondèrent les liens y voient un signal faible.",
+        "navOnly": "menu uniquement",
+        "sitemapOnly": "sitemap uniquement"
+      },
+      "limits": "Les liens sont lus dans le HTML rendu : un menu construit sur l'arborescence, une liste, un lien en texte riche et un bouton configuré comptent donc de la même façon. Un lien par page source : faire deux fois le lien depuis la même page reste une seule décision. Seule la langue de ce scan est évaluée, puisque seules ses pages ont été récupérées. Votre page d'accueil n'est jamais signalée.",
+      "orphanTitle": "Rien ne pointe vers cette page",
+      "orphanPage": "Aucune autre page publiée n'y fait de lien et le sitemap ne la liste pas : un robot n'a aucun moyen de la découvrir.",
+      "navOnlyTitle": "Seul le menu pointe vers cette page",
+      "navOnlyPage": "Elle figure dans la navigation de {{count}} pages, mais aucune page n'y fait de lien depuis son contenu. Les robots qui pondèrent les liens considèrent une entrée de menu comme un signal plus faible qu'un lien voulu par un rédacteur."
     }
   }
 }
