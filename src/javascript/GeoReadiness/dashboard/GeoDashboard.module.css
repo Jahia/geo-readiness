@@ -1,15 +1,19 @@
 /*
- * One white ground for the whole panel, like the settings panels beside it.
- * LayoutContent paints grey by default, which looks unfinished next to
- * Robots.txt and Sitemap.
+ * LayoutContent renders two nested divs: an outer wrapper that takes the
+ * className you pass, and an INNER scrolling div that actually paints the
+ * ground, grey by default. Styling the wrapper therefore does nothing visible,
+ * and putting a background on our own content with min-height:100% paints
+ * exactly one viewport of it, which is why the white stopped halfway down a
+ * long page. The inner element is the one to target.
+ *
+ * The plain `moonstone-layoutContent` class is emitted alongside the hashed
+ * module class, so it is safe to match globally.
  */
-.content {
-    background: var(--moon-color-light, #fff);
-    max-width: 64rem;
-    padding: 1.5rem 0.5rem 4rem;
-    min-height: 100%;
+.layout :global(.moonstone-layoutContent) {
+    background-color: var(--moon-color-light, #fff);
 }
 
-.layout {
-    background: var(--moon-color-light, #fff);
+.content {
+    max-width: 64rem;
+    padding: 0.5rem 0 4rem;
 }

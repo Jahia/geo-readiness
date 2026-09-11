@@ -151,6 +151,7 @@ export const SiteScorePanel = ({path, language}) => {
 
             {agg && (
                 <>
+                    <Separator spacing="medium" size="full"/>
                     <div className={styles.scoreHeadline}>
                         {t('score17.headline', {percent: agg.percent})}
                         {movement !== null && movement !== 0 && (

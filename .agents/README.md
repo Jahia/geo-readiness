@@ -203,7 +203,15 @@ gets a dropdown builder, copied in shape from `jcustomer-sfdc-connector`'s `Cron
 nobody should have to know Quartz syntax to say "every night at three". A repository path gets
 `window.CE_API.openPicker({type:'editorial', ...})`, as `importContentFromJson` does, rather than a
 text box someone has to type a path into correctly. Every input sits in a Moonstone `Field` with a
-label and a helper. Panels sit on one white ground, not on cards: Jahia's settings panels are a
+label and a helper. **`LayoutContent` paints its ground on an INNER div, not the one your `className` reaches.** It
+renders a wrapper (which takes your class) around a scrolling div carrying `moonstone-layoutContent`,
+and that inner one is grey. Styling the wrapper does nothing visible. Worse, putting a background
+on your own content with `min-height: 100%` paints exactly one viewport of a scrolling area, so a
+long page goes white at the top and grey further down, which is what shipped once. Target it as
+`.yourClass :global(.moonstone-layoutContent)`; the plain class is emitted alongside the hashed
+module one, so a global match is safe.
+
+Panels sit on one white ground, not on cards: Jahia's settings panels are a
 single white surface, and boxing each section made the page feel cramped. `Separator` with
 `spacing="big"` carries the structure instead, which is what it is for. The only fills left are
 semantic, the amber and red of a verdict; neutral information uses a left rule on white.
