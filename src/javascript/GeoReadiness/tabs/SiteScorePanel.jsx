@@ -1,7 +1,7 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Button, Chip, Field, Input, Loader, Paper, Switch, Typography} from '@jahia/moonstone';
+import {Banner, Button, Chip, Field, Input, Loader, Separator, Switch, Typography} from '@jahia/moonstone';
 import {CronBuilder} from './CronBuilder';
 import {scanStatus, runScan, saveSchedule} from '../api/siteScore';
 import styles from './Tabs.module.css';
@@ -134,7 +134,7 @@ export const SiteScorePanel = ({path, language}) => {
     const movement = agg && prev && typeof prev.percent === 'number' ? agg.percent - prev.percent : null;
 
     return (
-        <Paper className={styles.panel}>
+        <div className={styles.panel}>
             <Typography variant="heading" className={styles.panelTitle}>{t('score17.title')}</Typography>
             <Typography variant="body" className={styles.panelIntro}>{t('score17.intro')}</Typography>
 
@@ -196,6 +196,7 @@ export const SiteScorePanel = ({path, language}) => {
 
             {agg && (agg.sections || []).length > 0 && (
                 <>
+                    <Separator spacing="big" size="full"/>
                     <Typography variant="subheading" className={styles.panelSub}>
                         {t('score17.bySection')}
                     </Typography>
@@ -219,6 +220,7 @@ export const SiteScorePanel = ({path, language}) => {
 
             {(run.failures || []).length > 0 && (
                 <>
+                    <Separator spacing="big" size="full"/>
                     <Typography variant="subheading" className={styles.panelSub}>
                         {t('score17.worstPages')}
                     </Typography>
@@ -254,6 +256,8 @@ export const SiteScorePanel = ({path, language}) => {
                 </>
             )}
 
+            <Separator spacing="big" size="full"/>
+
             <Typography variant="subheading" className={styles.panelSub}>{t('score17.schedule')}</Typography>
             <Typography variant="caption" className={styles.panelIntro}>{t('score17.scheduleHelp')}</Typography>
 
@@ -286,7 +290,7 @@ export const SiteScorePanel = ({path, language}) => {
             <div className={styles.actions}>
                 <Button size="big" variant="outlined" label={t('score17.save')} onClick={save}/>
             </div>
-        </Paper>
+        </div>
     );
 };
 

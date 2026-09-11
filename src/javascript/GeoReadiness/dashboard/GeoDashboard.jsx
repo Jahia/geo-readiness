@@ -57,6 +57,7 @@ export const GeoDashboard = () => {
     return (
         <LayoutContent
             hasPadding
+            className={styles.layout}
             header={
                 <Header
                     title={t('dashboard.title', {site: siteInfo.displayName, language: label})}

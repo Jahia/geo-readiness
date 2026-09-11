@@ -203,8 +203,10 @@ gets a dropdown builder, copied in shape from `jcustomer-sfdc-connector`'s `Cron
 nobody should have to know Quartz syntax to say "every night at three". A repository path gets
 `window.CE_API.openPicker({type:'editorial', ...})`, as `importContentFromJson` does, rather than a
 text box someone has to type a path into correctly. Every input sits in a Moonstone `Field` with a
-label and a helper. Panels sit on a `Paper`, because Jahia's settings panels are white and a grey
-card reads as unfinished next to Robots.txt and Sitemap.
+label and a helper. Panels sit on one white ground, not on cards: Jahia's settings panels are a
+single white surface, and boxing each section made the page feel cramped. `Separator` with
+`spacing="big"` carries the structure instead, which is what it is for. The only fills left are
+semantic, the amber and red of a verdict; neutral information uses a left rule on white.
 
 **Use Moonstone, not raw markup.** The settings page is `LayoutContent` + `Header`, the same shape
 as the other Additional panels, with `Tab` / `TabItem` in the header's `toolbarLeft` slot to keep

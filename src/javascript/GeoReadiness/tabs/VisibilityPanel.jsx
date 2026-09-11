@@ -1,7 +1,7 @@
 import React, {useCallback, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Button, Chip, Paper, Typography} from '@jahia/moonstone';
+import {Banner, Button, Chip, Separator, Typography} from '@jahia/moonstone';
 import {guestVisibility} from '../api/siteScan';
 import styles from './Tabs.module.css';
 
@@ -54,7 +54,7 @@ export const VisibilityPanel = ({path, language}) => {
     );
 
     return (
-        <Paper className={styles.panel}>
+        <div className={styles.panel}>
             <Typography variant="heading" className={styles.panelTitle}>{t('visibility.title')}</Typography>
             <Typography variant="body" className={styles.panelIntro}>{t('visibility.intro')}</Typography>
 
@@ -100,6 +100,7 @@ export const VisibilityPanel = ({path, language}) => {
 
             {result && (result.deliberate || []).length > 0 && (
                 <>
+                    <Separator spacing="big" size="full"/>
                     <Typography variant="subheading" className={styles.panelSub}>
                         {t('visibility.deliberateTitle')}
                     </Typography>
@@ -109,7 +110,7 @@ export const VisibilityPanel = ({path, language}) => {
                     {rows(result.deliberate, true)}
                 </>
             )}
-        </Paper>
+        </div>
     );
 };
 

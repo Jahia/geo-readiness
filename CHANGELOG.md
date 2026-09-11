@@ -108,6 +108,10 @@ rather than a delta. It needs nothing from any external vendor.
 
 ### Changed
 
+- The dashboard is one white surface with separators between sections, rather
+  than a stack of grey cards, and everything has more room. Neutral information
+  blocks use a left rule instead of a grey fill, so the only remaining fills
+  are the amber and red that actually mean something.
 - The site score panel got the treatment the rest of jContent already had: each
   page with a finding links straight to itself in jContent, the schedule is
   built from dropdowns instead of a cron expression typed by hand, the scope has
