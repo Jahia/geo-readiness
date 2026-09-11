@@ -309,12 +309,18 @@
         "llms": "llms.txt",
         "visibility": "Invisible content",
         "score": "Site score",
-        "sitemap": "Sitemap",
+        "sitemap": "Sitemap vs reality",
         "links": "Internal links",
         "vanity": "Addresses",
         "freshness": "Freshness",
         "languages": "Languages",
         "schema": "Structured data"
+      },
+      "group": {
+        "overview": "Overview",
+        "reach": "Can a crawler reach it",
+        "usable": "Is what arrives usable",
+        "files": "Site-level files"
       }
     },
     "visibility": {

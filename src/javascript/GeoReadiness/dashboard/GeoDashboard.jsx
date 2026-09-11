@@ -19,6 +19,21 @@ import styles from './GeoDashboard.module.css';
 const NS = 'geo-readiness';
 
 /**
+ * Ten panels is a list, not a structure. These are the same three groups the
+ * drawer already sorts its checks into - can a crawler reach it, is what
+ * arrives usable, site-level files - so an editor learns one vocabulary and
+ * meets it again here rather than a second taxonomy invented for the dashboard.
+ *
+ * The site score sits outside them because it is the summary of all three.
+ */
+const GROUPS = [
+    {id: 'overview', tabs: ['score']},
+    {id: 'reach', tabs: ['visibility', 'links', 'vanity']},
+    {id: 'usable', tabs: ['schema', 'languages', 'freshness']},
+    {id: 'files', tabs: ['sitemap', 'robots', 'llms']}
+];
+
+/**
  * Site-level GEO settings, under Additional > SEO.
  *
  * The drawer answers a question about one page. robots.txt and llms.txt are
@@ -34,7 +49,8 @@ export const GeoDashboard = () => {
     const siteKey = useSelector(state => state.site);
     const language = useSelector(state => state.language);
     const uilang = useSelector(state => state.uilang);
-    const [tab, setTab] = useState('score');
+    const [group, setGroup] = useState(GROUPS[0].id);
+    const [tab, setTab] = useState(GROUPS[0].tabs[0]);
 
     const {siteInfo} = useSiteInfo({
         siteKey,
@@ -59,6 +75,7 @@ export const GeoDashboard = () => {
     // Any path inside the site resolves to the site node server-side, and the
     // site node itself is the most honest thing to send from a site-level page.
     const sitePath = `/sites/${siteKey}`;
+    const activeGroup = GROUPS.find(g => g.id === group) || GROUPS[0];
 
     return (
         <LayoutContent
@@ -69,62 +86,43 @@ export const GeoDashboard = () => {
                     title={t('dashboard.title', {site: siteInfo.displayName, language: label})}
                     toolbarLeft={
                         <Tab>
-                            <TabItem
-                                label={t('dashboard.tab.score')}
-                                isSelected={tab === 'score'}
-                                onClick={() => setTab('score')}
-                            />
-                            <TabItem
-                                label={t('dashboard.tab.languages')}
-                                isSelected={tab === 'languages'}
-                                onClick={() => setTab('languages')}
-                            />
-                            <TabItem
-                                label={t('dashboard.tab.sitemap')}
-                                isSelected={tab === 'sitemap'}
-                                onClick={() => setTab('sitemap')}
-                            />
-                            <TabItem
-                                label={t('dashboard.tab.links')}
-                                isSelected={tab === 'links'}
-                                onClick={() => setTab('links')}
-                            />
-                            <TabItem
-                                label={t('dashboard.tab.vanity')}
-                                isSelected={tab === 'vanity'}
-                                onClick={() => setTab('vanity')}
-                            />
-                            <TabItem
-                                label={t('dashboard.tab.freshness')}
-                                isSelected={tab === 'freshness'}
-                                onClick={() => setTab('freshness')}
-                            />
-                            <TabItem
-                                label={t('dashboard.tab.schema')}
-                                isSelected={tab === 'schema'}
-                                onClick={() => setTab('schema')}
-                            />
-                            <TabItem
-                                label={t('dashboard.tab.robots')}
-                                isSelected={tab === 'robots'}
-                                onClick={() => setTab('robots')}
-                            />
-                            <TabItem
-                                label={t('dashboard.tab.llms')}
-                                isSelected={tab === 'llms'}
-                                onClick={() => setTab('llms')}
-                            />
-                            <TabItem
-                                label={t('dashboard.tab.visibility')}
-                                isSelected={tab === 'visibility'}
-                                onClick={() => setTab('visibility')}
-                            />
+                            {GROUPS.map(g => (
+                                <TabItem
+                                    key={g.id}
+                                    label={t(`dashboard.group.${g.id}`)}
+                                    isSelected={group === g.id}
+                                    onClick={() => {
+                                        setGroup(g.id);
+                                        setTab(g.tabs[0]);
+                                    }}
+                                />
+                            ))}
                         </Tab>
                     }
                 />
             }
         >
             <div className={styles.content}>
+                {/*
+                  * Second level, quieter than the first. Skipped entirely for a
+                  * group with one panel, where a row of one tab would just be
+                  * furniture.
+                  */}
+                {activeGroup.tabs.length > 1 && (
+                    <div className={styles.subTabs}>
+                        <Tab>
+                            {activeGroup.tabs.map(id => (
+                                <TabItem
+                                    key={id}
+                                    label={t(`dashboard.tab.${id}`)}
+                                    isSelected={tab === id}
+                                    onClick={() => setTab(id)}
+                                />
+                            ))}
+                        </Tab>
+                    </div>
+                )}
+
                 {tab === 'score' && <SiteScorePanel path={sitePath} language={language}/>}
                 {tab === 'languages' && <LanguagesPanel path={sitePath} language={language}/>}
                 {tab === 'sitemap' && <SitemapPanel path={sitePath} language={language}/>}

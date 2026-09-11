@@ -123,6 +123,13 @@ a delta. It needs nothing from any external vendor.
   information, so the drawer carries the site average and the page's own section average beside it,
   how many pages link here from navigation and from content, and whether the page is in llms.txt.
 
+**Finding your way around it**
+
+- **Ten panels grouped into four.** The dashboard reuses the same three groups the page drawer
+  already sorts its checks into - can a crawler reach it, is what arrives usable, site-level files -
+  so there is one vocabulary to learn rather than two, with the site score standing outside them as
+  the summary of all three.
+
 **Writing, behind generate → diff → confirm**
 
 - **llms.txt generated from the published page tree.** Deterministic: no model call and no external

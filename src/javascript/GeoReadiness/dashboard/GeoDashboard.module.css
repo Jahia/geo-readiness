@@ -28,3 +28,13 @@
     position: relative;
     z-index: 1;
 }
+
+/*
+ * The second tab row. Separated from the panel below it and set apart from the
+ * header above, so the two levels read as a hierarchy rather than as two rows
+ * of equal weight.
+ */
+.subTabs {
+    margin: 0 0 1.75rem;
+    border-bottom: 1px solid var(--moon-color-gray_light, #e7e9ec);
+}

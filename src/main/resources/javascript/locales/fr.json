@@ -309,12 +309,18 @@
         "llms": "llms.txt",
         "visibility": "Contenu invisible",
         "score": "Score du site",
-        "sitemap": "Sitemap",
+        "sitemap": "Sitemap face à la réalité",
         "links": "Liens internes",
         "vanity": "Adresses",
         "freshness": "Fraîcheur",
         "languages": "Langues",
         "schema": "Données structurées"
+      },
+      "group": {
+        "overview": "Vue d'ensemble",
+        "reach": "Un robot peut-il y accéder",
+        "usable": "Ce qui arrive est-il exploitable",
+        "files": "Fichiers du site"
       }
     },
     "visibility": {
