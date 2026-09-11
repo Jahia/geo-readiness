@@ -1,11 +1,9 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {
-    Banner, Button, Chip, Loader, Switch, Table, TableBody, TableBodyCell,
-    TableHead, TableHeadCell, TableRow, Typography
-} from '@jahia/moonstone';
+import {Banner, Button, Chip, Loader, Switch, Typography} from '@jahia/moonstone';
 import {previewRobots, applyRobots} from '../api/siteFiles';
+import {runCrawlerCheck} from '../api/crawlerCheck';
 import {DiffView} from './DiffView';
 import styles from './Tabs.module.css';
 
@@ -26,6 +24,8 @@ export const RobotsControlPanel = ({path, language}) => {
     const [phase, setPhase] = useState('idle');
     const [confirming, setConfirming] = useState(false);
     const [error, setError] = useState(null);
+    const [access, setAccess] = useState(null);
+    const [accessPhase, setAccessPhase] = useState('idle');
 
     const load = useCallback(async (wanted, first) => {
         setPhase('loading');
@@ -53,6 +53,14 @@ export const RobotsControlPanel = ({path, language}) => {
         load({}, true);
     }, [load]);
 
+    // Run once when the panel opens. The headline answer is "can crawlers read
+    // this site", and making someone press a button for it buries the point.
+    useEffect(() => {
+        if (preview && preview.homePath && accessPhase === 'idle') {
+            checkAccess();
+        }
+    }, [preview, accessPhase, checkAccess]);
+
     const choose = useCallback((token, value) => {
         const next = {...decisions, [token]: value};
         setDecisions(next);
@@ -67,6 +75,30 @@ export const RobotsControlPanel = ({path, language}) => {
         });
         load(changed, false);
     }, [decisions, baseline, load]);
+
+    /**
+     * What the server actually does, as opposed to what robots.txt says it
+     * should. Run against the site's home page as a representative sample,
+     * through the same endpoint the drawer uses so there is one implementation.
+     */
+    const checkAccess = useCallback(async () => {
+        if (!preview || !preview.homePath) {
+            return;
+        }
+
+        setAccessPhase('running');
+        try {
+            const r = await runCrawlerCheck({path: preview.homePath, language});
+            const byName = {};
+            (r.agents || []).forEach(a => {
+                byName[a.name] = a;
+            });
+            setAccess({url: r.url, byName});
+            setAccessPhase('done');
+        } catch (e) {
+            setAccessPhase('failed');
+        }
+    }, [preview, language]);
 
     const apply = useCallback(async () => {
         if (!confirming) {
@@ -113,46 +145,94 @@ export const RobotsControlPanel = ({path, language}) => {
                 </Banner>
             )}
 
-            <Table className={styles.mTable}>
-                <TableHead>
-                    <TableRow>
-                        <TableHeadCell>{t('crawler.agent')}</TableHeadCell>
-                        <TableHeadCell width="140px">{t('files.robots.declared')}</TableHeadCell>
-                        <TableHeadCell width="160px">{t('files.robots.control.stance')}</TableHeadCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {(preview.agents || []).map(a => {
-                        const value = decisions[a.token] || a.current;
-                        const moved = value !== baseline[a.token];
-                        return (
-                            <TableRow key={a.token} isHighlighted={moved}>
-                                <TableBodyCell>{a.name}</TableBodyCell>
-                                <TableBodyCell>
+            {/*
+              * A list, not a Table. A Moonstone Switch is a 38x20 box whose two
+              * children are absolutely positioned, so it collapses to nothing
+              * inside the Typography that TableCell wraps its children in: the
+              * stance column rendered empty. Interactive controls do not belong
+              * in those cells.
+              */}
+            <div className={styles.actions}>
+                <Button
+                    size="default"
+                    variant="outlined"
+                    isDisabled={accessPhase === 'running' || !preview.homePath}
+                    label={accessPhase === 'running' ?
+                        t('files.robots.control.checkingAccess') :
+                        (access ? t('files.robots.control.recheckAccess') : t('files.robots.control.checkAccess'))}
+                    onClick={checkAccess}
+                />
+                <Typography variant="caption">
+                    {access ?
+                        t('files.robots.control.accessTested', {url: access.url}) :
+                        t('files.robots.control.accessExplain')}
+                </Typography>
+            </div>
+
+            {access && (() => {
+                const bots = (preview.agents || []).map(a => access.byName[a.name]).filter(Boolean);
+                const refused = bots.filter(b => b.status !== 200).length;
+                const mismatched = bots.filter(b => b.mismatch).length;
+                const tone = refused > 0 ? 'danger' : (mismatched > 0 ? 'warning' : 'info');
+                const title = refused > 0 ?
+                    t('files.robots.control.verdictRefused', {count: refused}) :
+                    t('files.robots.control.verdictServed', {count: bots.length});
+                return (
+                    <Banner variant={tone} title={title}>
+                        {mismatched > 0 ?
+                            t('files.robots.control.verdictMismatch', {count: mismatched}) :
+                            t('files.robots.control.verdictAgree')}
+                    </Banner>
+                );
+            })()}
+
+            <ul className={styles.checkList}>
+                {(preview.agents || []).map(a => {
+                    const value = decisions[a.token] || a.current;
+                    const moved = value !== baseline[a.token];
+                    const live = access && access.byName[a.name];
+                    return (
+                        <li key={a.token} className={styles.checkItem}>
+                            <span className={styles.checkText}>
+                                <Typography variant="body" className={styles.checkLabel}>{a.name}</Typography>
+                                <span className={styles.agentChips}>
                                     <Chip
-                                        label={a.named ? t('files.robots.byName') : t('files.robots.byWildcard')}
+                                        label={a.named ?
+                                            t('files.robots.byName') :
+                                            t('files.robots.byWildcard')}
                                         color={a.named ? 'accent' : 'default'}
                                     />
-                                </TableBodyCell>
-                                <TableBodyCell>
-                                    <span className={styles.switchCell}>
-                                        <Switch
-                                            checked={value === 'allow'}
-                                            isDisabled={phase === 'applying'}
-                                            onChange={(e, v, checked) => choose(a.token, checked ? 'allow' : 'block')}
+                                    {live && (
+                                        <Chip
+                                            label={live.status === 200 ?
+                                                t('files.robots.control.served', {ms: live.ms}) :
+                                                t('files.robots.control.refused', {status: live.status === null ? '—' : live.status})}
+                                            color={live.status === 200 ? 'success' : 'danger'}
                                         />
-                                        <Typography variant="caption">
-                                            {value === 'allow' ?
-                                                t('files.robots.control.allow') :
-                                                t('files.robots.control.block')}
-                                        </Typography>
-                                    </span>
-                                </TableBodyCell>
-                            </TableRow>
-                        );
-                    })}
-                </TableBody>
-            </Table>
+                                    )}
+                                    {live && live.mismatch && (
+                                        <Chip label={t(`crawler.mismatch.${live.mismatch}`)} color="warning"/>
+                                    )}
+                                </span>
+                            </span>
+                            <span className={styles.checkMeta}>
+                                <Typography variant="caption">
+                                    {value === 'allow' ?
+                                        t('files.robots.control.allow') :
+                                        t('files.robots.control.block')}
+                                </Typography>
+                                <span className={moved ? styles.switchMoved : undefined}>
+                                    <Switch
+                                        checked={value === 'allow'}
+                                        isDisabled={phase === 'applying'}
+                                        onChange={(e, v, checked) => choose(a.token, checked ? 'allow' : 'block')}
+                                    />
+                                </span>
+                            </span>
+                        </li>
+                    );
+                })}
+            </ul>
 
             {phase === 'applied' ? (
                 <Banner variant="info" title={t('files.robots.control.appliedTitle')}>

@@ -51,7 +51,11 @@
       "wordCount": "{{count}} word",
       "wordCount_plural": "{{count}} words",
       "thinMark": "far less text",
-      "noResponse": "no response"
+      "noResponse": "no response",
+      "mismatch": {
+        "blockedButAllowed": "allowed but refused",
+        "reachableButDisallowed": "disallowed but served"
+      }
     },
     "error": {
       "generic": "The check could not be completed.",
@@ -97,7 +101,20 @@
           "errorTitle": "robots.txt",
           "noMixinTitle": "No robots.txt yet",
           "placeholderTitle": "Placeholder only",
-          "appliedTitle": "Saved"
+          "appliedTitle": "Saved",
+          "checkAccess": "Check what the server does",
+          "recheckAccess": "Check again",
+          "checkingAccess": "Fetching as each crawler…",
+          "accessExplain": "robots.txt states a policy. Only a fetch shows whether the server honours it.",
+          "accessTested": "Tested against {{url}}",
+          "served": "served in {{ms}}ms",
+          "refused": "refused, HTTP {{status}}",
+          "verdictServed": "All {{count}} AI crawlers are served by this site",
+          "verdictRefused": "{{count}} AI crawler is refused by the server",
+          "verdictRefused_plural": "{{count}} AI crawlers are refused by the server",
+          "verdictAgree": "robots.txt and the server agree on every crawler.",
+          "verdictMismatch": "{{count}} crawler is treated differently from what robots.txt says. One of the two is wrong.",
+          "verdictMismatch_plural": "{{count}} crawlers are treated differently from what robots.txt says. One of the two is wrong."
         }
       },
       "llms": {

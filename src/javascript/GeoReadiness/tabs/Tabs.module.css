@@ -291,3 +291,18 @@
 .agentItem .marks {
     margin-top: 0.35rem;
 }
+
+/* Robots stance rows */
+.agentChips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.3rem;
+}
+
+.switchMoved {
+    display: inline-flex;
+    outline: 2px solid rgba(230, 160, 30, 0.9);
+    outline-offset: 3px;
+    border-radius: 12px;
+}

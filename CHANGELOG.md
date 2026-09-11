@@ -63,6 +63,15 @@ rather than a delta. It needs nothing from any external vendor.
 
 ### Changed
 
+- The robots.txt panel now shows what the server actually does, not only what
+  the file says. It runs the crawler check against the site's home page when it
+  opens and leads with one line: every crawler served, or how many are refused,
+  and whether the policy and the server agree. A stated policy nobody has
+  verified is the thing this module exists to replace.
+- That panel is a list rather than a table. A Moonstone `Switch` collapses to
+  nothing inside a table cell, so the stance column was rendering empty and the
+  toggles were invisible.
+
 - All fifteen AI crawlers are now fetched, not eight. The robots.txt checker
   always evaluated fifteen tokens while the fetch covered eight, so seven
   crawlers had a stated policy that nobody had verified against the server.

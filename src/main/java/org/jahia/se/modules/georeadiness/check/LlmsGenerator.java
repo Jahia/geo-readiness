@@ -198,7 +198,8 @@ public final class LlmsGenerator {
         return out;
     }
 
-    private static JCRNodeWrapper homeOf(JCRNodeWrapper site) {
+    /** The site's home page, or null. Public so the settings panel can test a representative page. */
+    public static JCRNodeWrapper homeOf(JCRNodeWrapper site) {
         for (JCRNodeWrapper c : pageChildren(site)) {
             try {
                 if (c.isNodeType("jnt:page") && c.hasProperty("j:isHomePage")

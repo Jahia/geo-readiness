@@ -157,6 +157,13 @@ language-to-country default map, and returns null when it cannot answer. A flag 
 locale is a language, so this is a convention: no flag beats the wrong flag, which is why the
 unknown case renders the name alone.
 
+**Never put an interactive Moonstone control in a Moonstone table cell.** A `Switch` is a 38x20
+box whose two children are both `position:absolute`, so it has no in-flow content and collapses to
+nothing inside the `Typography` that `TableCell` wraps its children in. The robots stance column
+rendered completely empty and the switches were simply invisible. That is the third failure from
+the same cause, after the clipped score explanations and the overlapping crawler marks. Treat
+`Table` as a display grid for short text and nothing else.
+
 **Moonstone `Table` rows are a fixed height.** 48px, or 64px with
 `hasMultipleLines`, and `TableBodyCell` sets `overflow-y: auto`, so anything taller is
 scroll-clipped rather than wrapped. That makes `Table` right for short tabular values and wrong

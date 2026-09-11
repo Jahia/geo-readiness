@@ -51,7 +51,11 @@
       "wordCount": "{{count}} mot",
       "wordCount_plural": "{{count}} mots",
       "thinMark": "beaucoup moins de texte",
-      "noResponse": "pas de réponse"
+      "noResponse": "pas de réponse",
+      "mismatch": {
+        "blockedButAllowed": "autorisé mais refusé",
+        "reachableButDisallowed": "interdit mais servi"
+      }
     },
     "error": {
       "generic": "Le test n'a pas pu aboutir.",
@@ -97,7 +101,20 @@
           "errorTitle": "robots.txt",
           "noMixinTitle": "Pas encore de robots.txt",
           "placeholderTitle": "Texte par défaut",
-          "appliedTitle": "Enregistré"
+          "appliedTitle": "Enregistré",
+          "checkAccess": "Vérifier ce que fait le serveur",
+          "recheckAccess": "Vérifier à nouveau",
+          "checkingAccess": "Requête pour chaque robot…",
+          "accessExplain": "robots.txt énonce une politique. Seule une requête montre si le serveur la respecte.",
+          "accessTested": "Testé sur {{url}}",
+          "served": "servi en {{ms}}ms",
+          "refused": "refusé, HTTP {{status}}",
+          "verdictServed": "Les {{count}} robots IA sont servis par ce site",
+          "verdictRefused": "{{count}} robot IA est refusé par le serveur",
+          "verdictRefused_plural": "{{count}} robots IA sont refusés par le serveur",
+          "verdictAgree": "robots.txt et le serveur sont d'accord pour chaque robot.",
+          "verdictMismatch": "{{count}} robot est traité différemment de ce qu'indique robots.txt. L'un des deux a tort.",
+          "verdictMismatch_plural": "{{count}} robots sont traités différemment de ce qu'indique robots.txt. L'un des deux a tort."
         }
       },
       "llms": {

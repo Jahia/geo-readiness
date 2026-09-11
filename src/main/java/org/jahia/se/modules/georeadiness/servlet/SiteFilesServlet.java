@@ -199,8 +199,13 @@ public class SiteFilesServlet extends HttpServlet {
             agents.put(a);
         }
 
+        // The panel runs the crawler check against one representative page to show
+        // what the server actually does, beside what robots.txt says it should.
+        JCRNodeWrapper home = LlmsGenerator.homeOf(site);
+
         JSONObject out = new JSONObject();
         out.put("siteKey", site.getName());
+        out.put("homePath", home == null ? JSONObject.NULL : home.getPath());
         out.put("current", current);
         out.put("proposed", proposed);
         out.put("changed", !proposed.equals(current));
