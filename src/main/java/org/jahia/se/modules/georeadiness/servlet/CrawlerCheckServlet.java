@@ -340,7 +340,12 @@ public class CrawlerCheckServlet extends HttpServlet {
         return TemplateRollup.forPage(aggregate, template, failed);
     }
 
-    /** Whether the last scan found this page in the sitemap. Empty when no scan has run. */
+    /**
+     * What the last scan found about this page in the sitemap. Empty when no
+     * scan has run. Three separate facts, because they call for different
+     * actions: absent from the map, advertised while saying `noindex`, or
+     * listed with a date that no longer matches the page.
+     */
     private JSONObject sitemapFor(String path, String language) throws Exception {
         JSONObject out = new JSONObject();
         JCRSessionWrapper live = JCRSessionFactory.getInstance()
@@ -355,7 +360,12 @@ public class CrawlerCheckServlet extends HttpServlet {
         }
 
         out.put("present", sitemap.optBoolean("present", false));
-        out.put("missing", SitemapCheck.isMissing(sitemap, path));
+        out.put("missing", SitemapCheck.isMissing(sitemap, path, language));
+        out.put("noindexListed", SitemapCheck.isNoindexListed(sitemap, path, language));
+        String stale = SitemapCheck.staleDetail(sitemap, path, language);
+        if (stale != null && !stale.isEmpty()) {
+            out.put("staleDetail", stale);
+        }
         return out;
     }
 

@@ -180,6 +180,11 @@ what it is written for. Four findings come out of it:
 
 `agrees` is true only when all four are empty.
 
+The drawer carries three of these per page, because each calls for a different
+action: the page is absent from the map, the map advertises it while the page says `noindex`, or
+the map's date for it is wrong (shown as the two dates). Matching is on path **and** language, so a
+finding that belongs to the French URL does not appear on the English page.
+
 **Redirects are not detected.** Resolution cannot see them. A sitemap entry that 301s to another
 page resolves to whatever it names and is reported as clean.
 

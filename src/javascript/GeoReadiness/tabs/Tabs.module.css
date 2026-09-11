@@ -357,3 +357,23 @@
     line-height: 1.55;
     opacity: 0.9;
 }
+
+/*
+ * Sitemap findings. Each kind is its own block with a heading, a reason and its
+ * own rows, because the four kinds call for four different actions and a single
+ * flat list made them read as one undifferentiated pile.
+ */
+.sitemapGroup {
+    margin-bottom: 1.75rem;
+}
+
+.sitemapGroup:last-child {
+    margin-bottom: 0;
+}
+
+.sitemapGroupHead {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.15rem;
+}

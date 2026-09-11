@@ -58,8 +58,10 @@ a delta. It needs nothing from any external vendor.
   nothing published, `lastmod` values that contradict the node's real modification date, and pages
   the sitemap advertises while their own markup says `noindex`. The published set is built as guest
   and across every site language, because a sitemap is language-aware and written for anonymous
-  crawlers. The drawer adds one line: whether this page is in the sitemap at all, which is
-  occasionally the entire explanation for why it is invisible.
+  crawlers. The dashboard lists each finding with a link to the node, its public URL and, for a
+  wrong date, the two dates. The drawer carries the three findings that are about one page -
+  absent from the map, advertised while saying `noindex`, or listed with a date that no longer
+  matches - matched on path and language so a French finding never surfaces on the English page.
 
 **Writing, behind generate → diff → confirm**
 

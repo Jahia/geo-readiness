@@ -414,7 +414,12 @@
         "unknown": "Crawl budget spent on addresses that lead nowhere.",
         "staleDate": "Claiming a page is older than it is tells crawlers not to bother recrawling it. Shown as claimed then actual.",
         "noindexListed": "The map says index this, the page says do not. One of the two is a mistake."
-      }
+      },
+      "counts": "{{entries}} entries in the sitemap · {{published}} published pages and content items a visitor can read.",
+      "noindexListedTitle": "This page is in the sitemap and marked noindex",
+      "noindexListedPage": "The sitemap tells crawlers to index this page and the page itself tells them not to. One of the two is a mistake.",
+      "staleTitle": "The sitemap's date for this page is wrong",
+      "stalePage": "The sitemap claims {{detail}}. A crawler that trusts the earlier date has no reason to come back for what changed."
     }
   }
 }

@@ -162,6 +162,22 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                     </Banner>
                 )}
 
+                {/*
+                  * Listed and noindex is two of our own files contradicting each
+                  * other, and the contradiction is only visible per page.
+                  */}
+                {report && report.sitemap && report.sitemap.noindexListed && (
+                    <Banner variant="warning" title={t('sitemap.noindexListedTitle')}>
+                        {t('sitemap.noindexListedPage')}
+                    </Banner>
+                )}
+
+                {report && report.sitemap && report.sitemap.staleDetail && (
+                    <Banner variant="info" title={t('sitemap.staleTitle')}>
+                        {t('sitemap.stalePage', {detail: report.sitemap.staleDetail})}
+                    </Banner>
+                )}
+
                 {report && report.published && (
                     <Tab className={tabStyles.tabs}>
                         {[

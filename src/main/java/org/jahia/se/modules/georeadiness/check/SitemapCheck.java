@@ -67,12 +67,19 @@ public final class SitemapCheck {
         final String title;
         final String modifiedOn;
         final boolean noindex;
+        /**
+         * The language this URL belongs to. The same node appears once per
+         * language, so without this the drawer showing the English page would
+         * report the French entry's stale date as its own.
+         */
+        final String language;
 
-        Entry(String jcrPath, String title, String modifiedOn, boolean noindex) {
+        Entry(String jcrPath, String title, String modifiedOn, boolean noindex, String language) {
             this.jcrPath = jcrPath;
             this.title = title;
             this.modifiedOn = modifiedOn;
             this.noindex = noindex;
+            this.language = language;
         }
     }
 
@@ -157,17 +164,54 @@ public final class SitemapCheck {
      * warning: a gated page is correctly absent from the sitemap and absent from
      * the missing list too, and warning about it would be wrong twice.
      */
-    public static boolean isMissing(JSONObject report, String jcrPath) {
-        if (report == null || !report.optBoolean("present", false)) {
-            return false;
+    public static boolean isMissing(JSONObject report, String jcrPath, String language) {
+        return find(report, "missing", jcrPath, language) != null;
+    }
+
+    /**
+     * The sitemap's `lastmod` for this page against its real modification date,
+     * as "claimed → actual", or null when they agree. A crawler that trusts a
+     * stale date has no reason to come back for content that did change.
+     */
+    public static String staleDetail(JSONObject report, String jcrPath, String language) {
+        JSONObject row = find(report, "staleDate", jcrPath, language);
+        return row == null ? null : row.optString("detail", null);
+    }
+
+    /**
+     * Whether the sitemap advertises this page while the page itself says
+     * `noindex`. Two of our own files contradicting each other, which is worth
+     * saying on the page it happens to.
+     */
+    public static boolean isNoindexListed(JSONObject report, String jcrPath, String language) {
+        return find(report, "noindexListed", jcrPath, language) != null;
+    }
+
+    /**
+     * The row for this node in one of the finding lists, or null.
+     *
+     * Matching is on path **and** language: the stored scan covers every
+     * language of the site, so the same node appears once per language and
+     * matching on path alone would show the French finding on the English page.
+     * A row with no language predates that field and matches on path alone, so
+     * a stored scan from an older run still answers rather than going silent.
+     */
+    private static JSONObject find(JSONObject report, String kind, String jcrPath, String language) {
+        if (report == null || !report.optBoolean("present", false) || jcrPath == null) {
+            return null;
         }
-        JSONArray missing = report.optJSONArray("missing");
-        for (int i = 0; missing != null && i < missing.length(); i++) {
-            if (jcrPath.equals(missing.getJSONObject(i).optString("jcrPath", null))) {
-                return true;
+        JSONArray rows = report.optJSONArray(kind);
+        for (int i = 0; rows != null && i < rows.length(); i++) {
+            JSONObject row = rows.getJSONObject(i);
+            if (!jcrPath.equals(row.optString("jcrPath", null))) {
+                continue;
+            }
+            String rowLang = row.optString("language", null);
+            if (rowLang == null || rowLang.isEmpty() || rowLang.equals(language)) {
+                return row;
             }
         }
-        return false;
+        return null;
     }
 
     /**
@@ -241,7 +285,7 @@ public final class SitemapCheck {
                         try {
                             // Read now, inside the session, never after it closes.
                             out.put(pathOf(PublicUrls.forNode(n, base)), new Entry(
-                                    n.getPath(), titleOf(n), modifiedOn(n), isNoindex(n)));
+                                    n.getPath(), titleOf(n), modifiedOn(n), isNoindex(n), lang));
                         } catch (Exception e) {
                             logger.debug("no public url for {}", n.getPath(), e);
                         }
@@ -314,6 +358,7 @@ public final class SitemapCheck {
         o.put("path", path);
         o.put("jcrPath", node.jcrPath);
         o.put("title", node.title);
+        o.put("language", node.language);
         o.put("detail", detail == null ? JSONObject.NULL : detail);
         return o;
     }

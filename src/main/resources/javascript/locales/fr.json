@@ -414,7 +414,12 @@
         "unknown": "Du budget d'exploration dépensé sur des adresses qui ne mènent nulle part.",
         "staleDate": "Annoncer une page plus ancienne qu'elle n'est dissuade les robots de la réexplorer. Affiché ainsi : annoncé puis réel.",
         "noindexListed": "La carte dit d'indexer, la page dit de ne pas le faire. L'un des deux est une erreur."
-      }
+      },
+      "counts": "{{entries}} entrées dans le sitemap · {{published}} pages et contenus publiés lisibles par un visiteur.",
+      "noindexListedTitle": "Cette page est dans le sitemap et marquée noindex",
+      "noindexListedPage": "Le sitemap demande aux robots d'indexer cette page et la page elle-même le leur interdit. L'un des deux est une erreur.",
+      "staleTitle": "La date du sitemap pour cette page est fausse",
+      "stalePage": "Le sitemap annonce {{detail}}. Un robot qui se fie à la date la plus ancienne n'a aucune raison de revenir chercher ce qui a changé."
     }
   }
 }

@@ -111,6 +111,16 @@ Concretely, the servlet must keep:
   `toolAccessToken` hidden field from a freshly fetched page, posted with the script in `script`
   and `runScript=true`; without the token it silently runs the sample script instead.
 
+- **jContent has two sections, and a content node sent to the pages section lands nowhere.**
+  `/sites/<key>/contents/...` belongs under `content-folders`, everything else under `pages`. The
+  sitemap findings are mostly `jmix:mainResource` content on a site whose articles are not pages,
+  so a link builder that only knows `pages` produces mostly broken links. `search-and-replace`'s
+  `buildParentLink` is the reference implementation.
+- **A per-page finding taken from a site-wide scan must match on language too.** The stored scan
+  covers every language, so the same node appears once per URL. Matching on `jcrPath` alone showed
+  the French page's stale date on the English page. Verified with a page stale in French only: it
+  must stay silent in English.
+
 ## robots.txt traps
 
 - **The path evaluated against robots.txt must include the query string.** Rules like
