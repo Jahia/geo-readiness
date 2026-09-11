@@ -347,3 +347,13 @@
 .pageLink:hover {
     text-decoration: underline;
 }
+
+/* A finding the author cannot fix here. */
+.fromTemplate {
+    display: block;
+    margin-top: 0.35rem;
+    padding-left: 0.7rem;
+    border-left: 2px solid var(--moon-color-warning, #e6a01e);
+    line-height: 1.55;
+    opacity: 0.9;
+}

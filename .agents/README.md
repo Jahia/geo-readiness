@@ -211,6 +211,12 @@ long page goes white at the top and grey further down, which is what shipped onc
 `.yourClass :global(.moonstone-layoutContent)`; the plain class is emitted alongside the hashed
 module one, so a global match is safe.
 
+**Attributing a finding to a template is a statistical claim, so it is made cautiously.**
+`TemplateRollup` blames a check on the template only at 90% of pages or more, over at least three
+pages. The asymmetry is deliberate: a missed roll-up costs one person some time, a wrong one sends
+them to edit a shared template over somebody else's typo and costs the report its credibility.
+Both thresholds are named constants; do not loosen them to make a demo show more.
+
 **Two scores for one page must explain themselves.** The site scan drops `sameContentForCrawlers`
 because it needs a second fetch, so a page reads 15/17 on the dashboard and 16/18 in the drawer.
 Both report the same failures, but nobody can know that by looking. Any future check that is

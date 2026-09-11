@@ -99,6 +99,8 @@ language.
 
 ## GEO-18 · Roll findings up to the template
 
+**BUILT.** Ranked template list on the dashboard, per-finding attribution in the drawer.
+
 **As a** site manager, **I want** findings grouped by the template that produced them, **so that**
 I fix one template instead of editing four hundred pages.
 
@@ -118,6 +120,26 @@ pages share it". That stops an author trying to fix something they cannot fix, w
 space.
 
 **Effort** M, once GEO-17 exists.
+
+**How it shipped.** The scan already recorded a template per page, so this is a grouping plus two
+pieces of UI.
+
+The whole difficulty is the fourth acceptance criterion, and it is solved statistically rather than
+by guessing. A check is blamed on the template only when it fails on nearly every page that
+template renders, over at least three pages. Three pages failing out of four hundred is three
+authors; four hundred out of four hundred is the template. Anything between is left as a page
+finding, because a wrong accusation costs more than a missed roll-up: it sends somebody to edit a
+template over a colleague's typo.
+
+Proven on the test site, where one page carries both kinds at once. Its missing meta description
+fails on 6 of 10 pages using that template and stays the author's; its missing structured data
+fails on 10 of 10 and is named as the template's, with the count of pages a single fix would
+cover.
+
+The dashboard ranks templates by pages rendered, so the biggest single fix is first, and separates
+what the template is answerable for from what merely happens on some of its pages. The drawer adds
+one line under the affected check: which template it comes from, how many pages share it, and that
+fixing it there fixes all of them. Silent when no scan has run.
 
 ---
 

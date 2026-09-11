@@ -3,6 +3,8 @@ package org.jahia.se.modules.georeadiness.servlet;
 import org.jahia.se.modules.georeadiness.check.AiCrawlers;
 import org.jahia.se.modules.georeadiness.check.GeoScore;
 import org.jahia.se.modules.georeadiness.check.PageFetch;
+import org.jahia.se.modules.georeadiness.check.ScanStore;
+import org.jahia.se.modules.georeadiness.check.TemplateRollup;
 import org.jahia.se.modules.georeadiness.check.GuestVisibility;
 import org.jahia.se.modules.georeadiness.check.RobotsRules;
 import org.jahia.se.modules.georeadiness.check.SiteFilesChecker;
@@ -278,7 +280,17 @@ public class CrawlerCheckServlet extends HttpServlet {
         }
 
         // The score reads only what is already in the report. It adds no requests.
-        out.put("score", GeoScore.compute(out));
+        JSONObject score = GeoScore.compute(out);
+        out.put("score", score);
+
+        // GEO-18. If the last site scan says this page's template fails the same
+        // checks everywhere, say so: it stops an author trying to fix something
+        // that is not theirs to fix. Silent when no scan has run.
+        try {
+            out.put("templateRollup", rollupFor(path, language, score));
+        } catch (Exception e) {
+            logger.debug("template rollup unavailable for {}", path, e);
+        }
         writeJson(resp, HttpServletResponse.SC_OK, out);
     }
 
@@ -287,6 +299,37 @@ public class CrawlerCheckServlet extends HttpServlet {
 
 
 
+
+    /** What the stored scan knows about this page's template, or an empty object. */
+    private JSONObject rollupFor(String path, String language, JSONObject score) throws Exception {
+        JSONObject empty = new JSONObject();
+        JCRSessionWrapper live = JCRSessionFactory.getInstance()
+                .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
+        JCRNodeWrapper node = live.getNode(path);
+        String sitePath = node.getResolveSite().getPath();
+        String template = node.hasProperty("j:templateName")
+                ? node.getProperty("j:templateName").getString() : null;
+        if (template == null || template.isEmpty()) {
+            return empty;
+        }
+
+        JSONObject state = ScanStore.read(sitePath, language);
+        JSONObject run = state.optJSONObject("run");
+        JSONObject aggregate = run == null ? null : run.optJSONObject("aggregate");
+        if (aggregate == null) {
+            return empty;
+        }
+
+        JSONArray failed = new JSONArray();
+        JSONArray checks = score.optJSONArray("checks");
+        for (int i = 0; checks != null && i < checks.length(); i++) {
+            JSONObject c = checks.getJSONObject(i);
+            if (!c.optBoolean("passed", true)) {
+                failed.put(c.getString("id"));
+            }
+        }
+        return TemplateRollup.forPage(aggregate, template, failed);
+    }
 
     private String publicUrlFor(JCRNodeWrapper node, HttpServletRequest req, HttpServletResponse resp) throws Exception {
         return PublicUrls.forNode(node, req, resp, config.getPublicBaseUrl());

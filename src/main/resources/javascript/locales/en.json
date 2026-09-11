@@ -278,7 +278,8 @@
         }
       },
       "checkColumn": "Check",
-      "severityLabel": "Severity"
+      "severityLabel": "Severity",
+      "fromTemplate": "Comes from the template “{{template}}”, which renders {{count}} pages. Fixing it there fixes all of them."
     },
     "diff": {
       "identical": "No change. The file would be written exactly as it is now.",
@@ -365,7 +366,12 @@
       "scopeHelp": "Leave empty for the whole site, or choose a branch to scan only that part.",
       "browse": "Browse…",
       "openPage": "Open this page in jContent",
-      "whyFewer": "17 checks here, 18 in the page drawer. Comparing what a crawler receives against what a browser receives needs a second fetch of the same page, so “{{check}}” is only evaluated one page at a time. Both counts report the same failures."
+      "whyFewer": "17 checks here, 18 in the page drawer. Comparing what a crawler receives against what a browser receives needs a second fetch of the same page, so “{{check}}” is only evaluated one page at a time. Both counts report the same failures.",
+      "byTemplate": "By template",
+      "byTemplateHelp": "A check is blamed on the template only when it fails on nearly every page that template renders. Three pages failing out of four hundred is three authors; four hundred out of four hundred is the template.",
+      "oneFix": "{{count}} fix here covers every page",
+      "oneFix_plural": "{{count}} fixes here cover every page",
+      "templateClean": "Nothing here is the template's fault."
     },
     "cron": {
       "every": "Every",

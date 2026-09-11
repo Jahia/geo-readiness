@@ -106,6 +106,14 @@ rather than a delta. It needs nothing from any external vendor.
   publishes, so no content type ships and deleting a site takes its scan with
   it.
 
+- **Findings rolled up to the template (GEO-18).** The dashboard ranks
+  templates by the pages they render and separates what the template is
+  answerable for from what merely happens on some of its pages. The drawer says
+  so on the affected check: which template, how many pages share it, and that
+  one fix there covers all of them. A check is only blamed on a template when it
+  fails on nearly every page that template renders, because sending somebody to
+  edit a template over a colleague's typo costs more than a missed roll-up.
+
 ### Changed
 
 - The dashboard is one white surface with separators between sections, rather

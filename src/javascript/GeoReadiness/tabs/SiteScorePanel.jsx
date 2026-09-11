@@ -229,6 +229,54 @@ export const SiteScorePanel = ({path, language}) => {
                 </>
             )}
 
+            {agg && (agg.templates || []).length > 0 && (
+                <>
+                    <Separator spacing="big" size="full"/>
+                    <Typography variant="subheading" className={styles.panelSub}>
+                        {t('score17.byTemplate')}
+                    </Typography>
+                    <Typography variant="caption" className={styles.panelIntro}>
+                        {t('score17.byTemplateHelp')}
+                    </Typography>
+                    <ul className={styles.checkList}>
+                        {agg.templates.filter(tpl => tpl.template).map(tpl => (
+                            <li key={tpl.template} className={styles.checkItem}>
+                                <span className={styles.checkText}>
+                                    <Typography variant="body" className={styles.checkLabel}>
+                                        {tpl.template}
+                                    </Typography>
+                                    <Typography variant="caption" className={styles.checkFix}>
+                                        {t('score17.pages', {count: tpl.pages})}
+                                    </Typography>
+                                    {(tpl.fromTemplate || []).length > 0 && (
+                                        <span className={styles.agentChips}>
+                                            {tpl.fromTemplate.map(f => (
+                                                <Chip
+                                                    key={f.check}
+                                                    color="warning"
+                                                    label={t(`score.check.${f.check}.label`)}
+                                                />
+                                            ))}
+                                        </span>
+                                    )}
+                                    {(tpl.fromTemplate || []).length === 0 && (
+                                        <Typography variant="caption" className={styles.checkFix}>
+                                            {t('score17.templateClean')}
+                                        </Typography>
+                                    )}
+                                </span>
+                                <span className={styles.checkMeta}>
+                                    <Chip
+                                        label={t('score17.oneFix', {count: (tpl.fromTemplate || []).length})}
+                                        color={(tpl.fromTemplate || []).length > 0 ? 'warning' : 'success'}
+                                    />
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </>
+            )}
+
             {(run.failures || []).length > 0 && (
                 <>
                     <Separator spacing="big" size="full"/>

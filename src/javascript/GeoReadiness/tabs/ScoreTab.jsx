@@ -21,6 +21,10 @@ export const ScoreTab = ({report}) => {
     }
 
     const {passed, total, criticalFailed, importantFailed, checks = []} = score;
+    // GEO-18. Checks the last site scan blames on this page's template, so an
+    // author is not sent to fix something that is not theirs to fix.
+    const rollup = report.templateRollup || {};
+    const shared = new Set(rollup.sharedChecks || []);
     const tone = criticalFailed > 0 ? 'bad' : (importantFailed > 0 ? 'warn' : 'good');
 
     return (
@@ -65,6 +69,14 @@ export const ScoreTab = ({report}) => {
                                         {!c.passed && (
                                             <Typography variant="caption" className={styles.checkFix}>
                                                 {t(`score.check.${c.id}.fix`)}
+                                            </Typography>
+                                        )}
+                                        {!c.passed && shared.has(c.id) && (
+                                            <Typography variant="caption" className={styles.fromTemplate}>
+                                                {t('score.fromTemplate', {
+                                                    template: rollup.template,
+                                                    count: rollup.pages
+                                                })}
                                             </Typography>
                                         )}
                                     </span>

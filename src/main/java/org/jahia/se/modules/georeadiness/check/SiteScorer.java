@@ -86,6 +86,7 @@ public final class SiteScorer {
         JSONArray failures = new JSONArray();
         Map<String, Integer> failCounts = new TreeMap<>();
         Map<String, int[]> bySection = new LinkedHashMap<>();
+        TemplateRollup.Accumulator byTemplate = new TemplateRollup.Accumulator();
         int scored = 0;
         int totalPassed = 0;
         int totalChecks = 0;
@@ -121,6 +122,7 @@ public final class SiteScorer {
                 agg[2] += score.optInt("total", 0);
 
                 JSONArray failed = one.getJSONArray("failed");
+                byTemplate.add(one.optString("template", ""), failed);
                 for (int f = 0; f < failed.length(); f++) {
                     String id = failed.getString(f);
                     failCounts.merge(id, 1, Integer::sum);
@@ -168,6 +170,8 @@ public final class SiteScorer {
             sections.put(s);
         });
         aggregate.put("sections", sections);
+        // GEO-18. Ranked by pages rendered, so the biggest single fix is first.
+        aggregate.put("templates", byTemplate.toJson());
 
         ScanStore.progress(sitePath, language, paths.size());
         ScanStore.finishRun(sitePath, language, aggregate, failures);
