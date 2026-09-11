@@ -3,6 +3,7 @@ package org.jahia.se.modules.georeadiness.servlet;
 import org.jahia.se.modules.georeadiness.check.AiCrawlers;
 import org.jahia.se.modules.georeadiness.check.GeoScore;
 import org.jahia.se.modules.georeadiness.check.PageFetch;
+import org.jahia.se.modules.georeadiness.check.Languages;
 import org.jahia.se.modules.georeadiness.check.LinkGraph;
 import org.jahia.se.modules.georeadiness.check.ScanStore;
 import org.jahia.se.modules.georeadiness.check.SitemapCheck;
@@ -324,6 +325,14 @@ public class CrawlerCheckServlet extends HttpServlet {
         } catch (Exception e) {
             logger.debug("vanity state unavailable for {}", path, e);
         }
+
+        // GEO-20, one line while editing: the languages this page is missing
+        // are something the author in front of it can act on today.
+        try {
+            out.put("languages", languagesFor(path, language));
+        } catch (Exception e) {
+            logger.debug("language coverage unavailable for {}", path, e);
+        }
         writeJson(resp, HttpServletResponse.SC_OK, out);
     }
 
@@ -412,6 +421,14 @@ public class CrawlerCheckServlet extends HttpServlet {
         String sitePath = live.getNode(path).getResolveSite().getPath();
         JSONObject vanity = ScanStore.read(sitePath, language).optJSONObject("vanity");
         return VanityUrls.findingFor(vanity, path, language);
+    }
+
+    /** Which of the site's languages this page exists in, and which it does not. */
+    private JSONObject languagesFor(String path, String language) throws Exception {
+        JCRSessionWrapper live = JCRSessionFactory.getInstance()
+                .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
+        String sitePath = live.getNode(path).getResolveSite().getPath();
+        return Languages.forNode(sitePath, path);
     }
 
     private String publicUrlFor(JCRNodeWrapper node, HttpServletRequest req, HttpServletResponse resp) throws Exception {

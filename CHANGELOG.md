@@ -103,6 +103,14 @@ a delta. It needs nothing from any external vendor.
   its *newest* item is past a configurable threshold. A repository query, so it answers without
   waiting for a scan, and changing the threshold recomputes rather than filtering.
 
+- **Readiness one language at a time.** Coverage and score for every language the site declares,
+  side by side, so a strong language cannot average out a weak one. A language that has never been
+  scanned reports as *not measured* rather than as zero - a zero reads as "this market is broken"
+  when it means "nobody has looked", and the two need opposite responses. Coverage is a repository
+  read separating translated from published, over pages and content items alike. The drawer names
+  the languages this page has no translation in, and any translation that exists but has not been
+  published.
+
 **Writing, behind generate → diff → confirm**
 
 - **llms.txt generated from the published page tree.** Deterministic: no model call and no external

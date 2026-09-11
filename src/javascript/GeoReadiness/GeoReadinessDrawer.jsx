@@ -10,7 +10,7 @@ import tabStyles from './tabs/Tabs.module.css';
 import styles from './GeoReadinessDrawer.module.css';
 
 const NS = 'geo-readiness';
-const CACHE_SCHEMA = 6;
+const CACHE_SCHEMA = 7;
 
 // Results are cached per page and language so reopening the drawer is instant.
 // Bump CACHE_SCHEMA whenever the report shape changes, or an old cached entry
@@ -195,6 +195,27 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                   * kinds are mutually exclusive per page, and the detail names
                   * the addresses so the fix is obvious.
                   */}
+                {/*
+                  * GEO-20. Directly actionable while editing: the author in
+                  * front of this page is the person who would write the missing
+                  * translation.
+                  */}
+                {report && report.languages && (report.languages.missing || []).length > 0 && (
+                    <Banner variant="info" title={t('languages.pageMissingTitle')}>
+                        {t('languages.pageMissing', {
+                            languages: report.languages.missing.join(', ')
+                        })}
+                    </Banner>
+                )}
+
+                {report && report.languages && (report.languages.notPublished || []).length > 0 && (
+                    <Banner variant="warning" title={t('languages.pageUnpublishedTitle')}>
+                        {t('languages.pageUnpublished', {
+                            languages: report.languages.notPublished.join(', ')
+                        })}
+                    </Banner>
+                )}
+
                 {report && report.vanity && (
                     <Banner
                         variant={report.vanity.kind === 'unresolvable' ? 'warning' : 'info'}

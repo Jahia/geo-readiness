@@ -195,6 +195,9 @@ implicit rather than explicit: the drawer shows both facts on the same tab, but 
 
 ## GEO-20 · AI readiness per language
 
+**BUILT.** Repository-read coverage plus the stored per-language scores, its own dashboard tab, one
+line in the drawer.
+
 **As the** owner of one market, **I want** readiness for my language, **so that** a global average
 stops hiding my market.
 
@@ -212,6 +215,19 @@ equivalent. This computes the Jahia-side half of that from the repository, with 
 not. That is directly actionable while editing.
 
 **Effort** M.
+
+**What was built, against that acceptance.** The second criterion is the one that shaped the code:
+a language nobody has scanned reports as **unmeasured**, never as zero, and is rendered as text
+rather than as a chip that could be mistaken for a low score. A zero in a comparison table reads as
+"this market is broken" when it means "nobody has looked", and the two call for opposite responses.
+The spread between best and worst is only emitted when at least two languages have actually been
+measured - one measured language has a spread of zero arithmetically, and printing that would claim
+the languages agree about a site where only one was ever examined.
+
+Coverage is a repository read and needs no scan: a node exists in a language when it carries that
+language's `j:translation_<lang>`, and the two workspaces separate *translated* from *published*.
+Counted over pages and content items alike, since on a site whose articles are content rather than
+pages the articles are most of what a market actually needs.
 
 ---
 

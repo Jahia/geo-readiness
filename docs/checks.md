@@ -291,6 +291,26 @@ editor chose. Measured per language: a translation carries its own dates.
 No drawer line, deliberately. An author editing a page already knows how old it is.
 
 
+## Readiness per language
+
+A site-wide average hides the market that is failing. This is coverage and score for each language
+the site declares, side by side.
+
+The rule that shaped it: **a language nobody has scanned is unmeasured, never zero.** A zero in a
+comparison table reads as "this market is broken" when it means "nobody has looked", and those need
+opposite responses - one is a content problem, the other is a scan that was never scheduled. It is
+rendered as plain text rather than as a chip, so it cannot be misread as a low score. The spread
+between best and worst appears only when at least two languages have been measured.
+
+Coverage comes from the repository and needs no scan: a node exists in a language when it carries
+that language's translation, and the two workspaces separate *translated* from *published*. Scores
+come from whatever scan last ran in each language, so two languages scanned weeks apart are not
+measured against the same site - which the interface says.
+
+The drawer names the languages a page has no translation in, and any translation that exists but is
+not published. Both are things the author in front of the page can act on.
+
+
 ## Where each one is computed
 
 Everything in **Is what arrives usable** is read from the HTML of a single fetch, so it costs

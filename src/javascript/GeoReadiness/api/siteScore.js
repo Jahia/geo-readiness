@@ -36,5 +36,8 @@ export const checkSitemap = ({path, language}) => call({action: 'sitemap', path,
 export const checkFreshness = ({path, language, staleDays}) =>
     call({action: 'freshness', path, language, staleDays});
 
+/** Coverage and score per language. Needs no scan: coverage is a repository read. */
+export const checkLanguages = ({path, language}) => call({action: 'languages', path, language});
+
 export const saveSchedule = ({path, language, cron, enabled, scope}) =>
     call({action: 'saveSchedule', path, language, cron, enabled, scope});

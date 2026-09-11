@@ -312,7 +312,8 @@
         "sitemap": "Sitemap",
         "links": "Liens internes",
         "vanity": "Adresses",
-        "freshness": "Fraîcheur"
+        "freshness": "Fraîcheur",
+        "languages": "Langues"
       }
     },
     "visibility": {
@@ -556,6 +557,26 @@
       "days": "{{count}} jours",
       "months": "{{count}} mois",
       "limits": "Un groupe est signalé sur son contenu le plus récent, pas le plus ancien ni la moyenne : « rien n'a été touché ici » est actionnable, alors que « le plus ancien est ancien » est vrai de tous les sites. Les dates sont celles du référentiel : une page régénérée sans modification de contenu ne compte donc pas comme fraîche. Seule la langue affichée est mesurée, car une traduction porte ses propres dates."
+    },
+    "languages": {
+      "title": "La préparation, langue par langue",
+      "intro": "Un chiffre unique pour tout le site masque le marché en difficulté. Voici la couverture et le score de chaque langue déclarée par le site, côte à côte, pour qu'une langue solide ne compense pas une langue faible.",
+      "counts": "{{total}} contenus publiés, {{count}} langues déclarées par ce site.",
+      "coverage": "{{published}} sur {{total}} publiés · {{percent}}% de couverture",
+      "missing": "{{count}} jamais traduits",
+      "pagesScored": "{{count}} pages évaluées",
+      "notMeasured": "non mesuré",
+      "unmeasuredTitle": "Certaines langues n'ont jamais été scannées",
+      "unmeasured": "{{count}} de ces langues n'a pas encore de score, ce qui n'est pas la même chose qu'un mauvais score. Un scan traite une langue à la fois : chacune a donc besoin de sa propre planification dans l'onglet Score du site.",
+      "spreadTitle": "Un marché est mesurablement en retard sur un autre",
+      "spread": "Il y a {{points}} points d'écart entre la meilleure et la moins bonne langue. Une moyenne sur le site l'aurait masqué : c'est exactement ainsi qu'un marché devient invisible pour les assistants alors que la marque paraît en bonne santé.",
+      "errorTitle": "La couverture linguistique n'a pas pu être lue",
+      "error": "Le référentiel n'a pas pu être interrogé sur les traductions. Le détail figure dans le journal du serveur.",
+      "limits": "La couverture compte les pages et contenus qui portent une traduction, que quelqu'un y ait écrit ou non : une traduction vide compte comme présente. Les scores proviennent du dernier scan effectué dans chaque langue : deux langues scannées à des semaines d'intervalle ne sont donc pas mesurées sur le même site.",
+      "pageMissingTitle": "Cette page n'existe pas dans toutes les langues",
+      "pageMissing": "Elle n'a pas de traduction en : {{languages}}. Les assistants qui répondent dans ces langues n'ont rien de cette page à citer.",
+      "pageUnpublishedTitle": "Une traduction de cette page n'est pas publiée",
+      "pageUnpublished": "Elle est traduite en {{languages}}, mais cette traduction n'a pas été publiée : aucun visiteur ni robot ne peut la voir."
     }
   }
 }

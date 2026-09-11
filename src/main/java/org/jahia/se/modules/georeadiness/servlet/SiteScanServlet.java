@@ -2,6 +2,7 @@ package org.jahia.se.modules.georeadiness.servlet;
 
 import org.jahia.se.modules.georeadiness.check.GuestVisibility;
 import org.jahia.se.modules.georeadiness.check.Freshness;
+import org.jahia.se.modules.georeadiness.check.Languages;
 import org.jahia.se.modules.georeadiness.check.ScanStore;
 import org.jahia.se.modules.georeadiness.check.SiteScorer;
 import org.jahia.se.modules.georeadiness.check.SitemapCheck;
@@ -136,6 +137,12 @@ public class SiteScanServlet extends HttpServlet {
                             baseUrlFor(sitePath, language, req), staleDays);
                     ScanStore.saveFreshness(sitePath, language, freshness, staleDays);
                     writeJson(resp, HttpServletResponse.SC_OK, ScanStore.read(sitePath, language));
+                    return;
+                case "languages":
+                    // Coverage is a repository question and the scores are read
+                    // from whatever scans have run, so this needs no scan of
+                    // its own and is not rate limited.
+                    writeJson(resp, HttpServletResponse.SC_OK, Languages.check(sitePath));
                     return;
                 case "scanStatus":
                     writeJson(resp, HttpServletResponse.SC_OK, status(sitePath, language));
