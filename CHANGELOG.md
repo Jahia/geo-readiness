@@ -108,6 +108,12 @@ rather than a delta. It needs nothing from any external vendor.
 
 ### Changed
 
+- The site score panel got the treatment the rest of jContent already had: each
+  page with a finding links straight to itself in jContent, the schedule is
+  built from dropdowns instead of a cron expression typed by hand, the scope has
+  a content picker, every input carries a label and a helper, and the panels sit
+  on white like the settings panels beside them.
+
 - The robots.txt panel now shows what the server actually does, not only what
   the file says. It runs the crawler check against the site's home page when it
   opens and leads with one line: every crawler served, or how many are refused,

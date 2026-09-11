@@ -306,3 +306,33 @@
     outline-offset: 3px;
     border-radius: 12px;
 }
+
+/* White cards, like the other Jahia settings panels */
+.panel {
+    background: var(--moon-color-light, #fff);
+    padding: 1.25rem 1.5rem 1.75rem;
+    margin-bottom: 1rem;
+}
+
+.cronRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.cronNote {
+    opacity: 0.6;
+    margin-left: 0.35rem;
+}
+
+.pageLink {
+    color: var(--moon-color-accent_dark, #1c6ea4);
+    text-decoration: none;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.pageLink:hover {
+    text-decoration: underline;
+}

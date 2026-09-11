@@ -1,7 +1,7 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Button, Chip, Loader, Switch, Typography} from '@jahia/moonstone';
+import {Banner, Button, Chip, Loader, Paper, Switch, Typography} from '@jahia/moonstone';
 import {previewRobots, applyRobots} from '../api/siteFiles';
 import {runCrawlerCheck} from '../api/crawlerCheck';
 import {DiffView} from './DiffView';
@@ -126,7 +126,7 @@ export const RobotsControlPanel = ({path, language}) => {
     }
 
     return (
-        <div className={styles.panel}>
+        <Paper className={styles.panel}>
             <Typography variant="heading" className={styles.panelTitle}>
                 {t('files.robots.control.title')}
             </Typography>
@@ -300,7 +300,7 @@ export const RobotsControlPanel = ({path, language}) => {
             <Typography variant="caption" className={styles.panelRule}>
                 {t('files.robots.control.rule')}
             </Typography>
-        </div>
+        </Paper>
     );
 };
 

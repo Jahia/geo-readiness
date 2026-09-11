@@ -356,7 +356,36 @@
       "error": "The scan state could not be read.",
       "errorTitle": "Site score",
       "truncatedTitle": "Not every page was scanned",
-      "truncated": "The scan stopped at {{pages}} pages. Narrow the scope, or raise the limit."
+      "truncated": "The scan stopped at {{pages}} pages. Narrow the scope, or raise the limit.",
+      "enabledLabel": "Scheduled scan",
+      "enabledHelp": "When off, the site is only scanned when you press Scan now.",
+      "cronLabel": "When to scan",
+      "cronHelp": "Runs in the server's timezone, not your browser's.",
+      "scopeLabel": "What to scan",
+      "scopeHelp": "Leave empty for the whole site, or choose a branch to scan only that part.",
+      "browse": "Browse…",
+      "openPage": "Open this page in jContent"
+    },
+    "cron": {
+      "every": "Every",
+      "at": "at",
+      "on": "on",
+      "onDay": "on day",
+      "serverTime": "server time · {{cron}}",
+      "freq": {
+        "daily": "day",
+        "weekly": "week",
+        "monthly": "month"
+      },
+      "day": {
+        "monday": "Monday",
+        "tuesday": "Tuesday",
+        "wednesday": "Wednesday",
+        "thursday": "Thursday",
+        "friday": "Friday",
+        "saturday": "Saturday",
+        "sunday": "Sunday"
+      }
     }
   }
 }

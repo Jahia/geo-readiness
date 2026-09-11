@@ -2,3 +2,12 @@
     max-width: 62rem;
     padding-bottom: 3rem;
 }
+
+/*
+ * Jahia's settings panels sit on white. LayoutContent paints a grey ground,
+ * which reads as unfinished next to Robots.txt and Sitemap.
+ */
+.content :global(.moonstone-paper),
+.content > * {
+    background: var(--moon-color-light, #fff);
+}

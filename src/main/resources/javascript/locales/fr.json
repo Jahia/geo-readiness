@@ -356,7 +356,36 @@
       "error": "Impossible de lire l'état de l'analyse.",
       "errorTitle": "Score du site",
       "truncatedTitle": "Toutes les pages n'ont pas été analysées",
-      "truncated": "L'analyse s'est arrêtée à {{pages}} pages. Réduisez la portée ou augmentez la limite."
+      "truncated": "L'analyse s'est arrêtée à {{pages}} pages. Réduisez la portée ou augmentez la limite.",
+      "enabledLabel": "Analyse planifiée",
+      "enabledHelp": "Désactivée, le site n'est analysé que si vous cliquez sur Analyser maintenant.",
+      "cronLabel": "Quand analyser",
+      "cronHelp": "S'exécute dans le fuseau horaire du serveur, pas celui de votre navigateur.",
+      "scopeLabel": "Quoi analyser",
+      "scopeHelp": "Laissez vide pour tout le site, ou choisissez une branche pour n'analyser que cette partie.",
+      "browse": "Parcourir…",
+      "openPage": "Ouvrir cette page dans jContent"
+    },
+    "cron": {
+      "every": "Chaque",
+      "at": "à",
+      "on": "le",
+      "onDay": "le jour",
+      "serverTime": "heure du serveur · {{cron}}",
+      "freq": {
+        "daily": "jour",
+        "weekly": "semaine",
+        "monthly": "mois"
+      },
+      "day": {
+        "monday": "lundi",
+        "tuesday": "mardi",
+        "wednesday": "mercredi",
+        "thursday": "jeudi",
+        "friday": "vendredi",
+        "saturday": "samedi",
+        "sunday": "dimanche"
+      }
     }
   }
 }

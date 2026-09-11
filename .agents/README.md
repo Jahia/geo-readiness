@@ -198,6 +198,14 @@ only where every value is short and fits one line: the robots stance grid and th
 report. Check any new column against the 48px budget, and against that Typography wrapper, before
 reaching for `Table`.
 
+**Borrow the interaction patterns from the modules that already shipped them.** A cron expression
+gets a dropdown builder, copied in shape from `jcustomer-sfdc-connector`'s `CronBuilder`, because
+nobody should have to know Quartz syntax to say "every night at three". A repository path gets
+`window.CE_API.openPicker({type:'editorial', ...})`, as `importContentFromJson` does, rather than a
+text box someone has to type a path into correctly. Every input sits in a Moonstone `Field` with a
+label and a helper. Panels sit on a `Paper`, because Jahia's settings panels are white and a grey
+card reads as unfinished next to Robots.txt and Sitemap.
+
 **Use Moonstone, not raw markup.** The settings page is `LayoutContent` + `Header`, the same shape
 as the other Additional panels, with `Tab` / `TabItem` in the header's `toolbarLeft` slot to keep
 robots.txt and llms.txt apart. Inside, tables are `Table` / `TableHead` / `TableBody` /

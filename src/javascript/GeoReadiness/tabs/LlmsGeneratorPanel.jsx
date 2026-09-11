@@ -1,7 +1,7 @@
 import React, {useCallback, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Button, Textarea, Typography} from '@jahia/moonstone';
+import {Banner, Button, Paper, Textarea, Typography} from '@jahia/moonstone';
 import {previewLlms, applyLlms} from '../api/siteFiles';
 import {DiffView} from './DiffView';
 import styles from './Tabs.module.css';
@@ -58,7 +58,7 @@ export const LlmsGeneratorPanel = ({path, language}) => {
     const dirty = preview && text !== (preview.current || '');
 
     return (
-        <div className={styles.panel}>
+        <Paper className={styles.panel}>
             <Typography variant="heading" className={styles.panelTitle}>
                 {t('files.llms.generate.title')}
             </Typography>
@@ -147,7 +147,7 @@ export const LlmsGeneratorPanel = ({path, language}) => {
                     </Typography>
                 </>
             )}
-        </div>
+        </Paper>
     );
 };
 
