@@ -311,6 +311,46 @@ The drawer names the languages a page has no translation in, and any translation
 not published. Both are things the author in front of the page can act on.
 
 
+## Structured data from the content model
+
+Every other tool infers schema.org output from rendered text, which means guessing what a page is
+about from the words on it. The definition already says what the content *is*: a type carrying
+`price`, `images` and `address` is a product listing whatever the prose reads like.
+
+**Defaults only where the answer is not a matter of opinion.** Jahia's own types have one - a page
+is a `WebPage`. A custom type is somebody's model, and deciding `luxe:estate` is a `Product` from
+the word "estate" is reading intent out of a string. Custom types start unmapped, say so, and are
+mapped by the person who defined them.
+
+**Property sources are conventions, and those do hold.** `title`, `description`, `image`, `date`,
+`price`, `address`, `phone`, `email` mean the same thing across almost every content model, so a
+candidate list per schema property finds them with nothing configured.
+
+**Gaps are output, not failure.** A required property with no source is named. Filling it from
+somewhere plausible - the page title, a sibling property, a default - is exactly how structured data
+ends up disagreeing with the page it describes.
+
+**Contradiction is checked.** The generated name is compared with the title the page actually
+rendered, allowing for the suffix a template adds, so "Fees" and "Fees | Demo Site Luxe" agree while
+"Fees" and "Our pricing" do not.
+
+Nothing is injected. The drawer shows the snippet for the page in front of you and a person places
+it, ideally in the template for that type rather than on one page.
+
+
+## What the drawer says about where a page stands
+
+Three facts that live on the dashboard but are about one page, because a score with no reference
+point is not information:
+
+- the site average and the page's own **section** average, so "16 of 18" can be read
+- how many pages link here, from navigation and from content separately
+- whether the page is in **llms.txt** - and if not, whether regenerating would add it or the
+  generator deliberately does not include it
+
+Freshness is deliberately absent: an author editing a page already knows how old it is.
+
+
 ## Where each one is computed
 
 Everything in **Is what arrives usable** is read from the HTML of a single fetch, so it costs

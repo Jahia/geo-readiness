@@ -47,6 +47,8 @@ JavaScript-only page is still caught, by the word-count check.
 | `TemplateRollup` | Groups findings by template and decides which are the template's fault. |
 | `PublishedMap` | Everything a guest can reach, keyed by public path, across every site language. Shared, because getting it wrong is not visible in the results. |
 | `LinkGraph` | Inbound links per page, read from rendered HTML and topped up with repository references. Navigation counted apart from content. |
+| `SchemaMap` | Node type to schema.org type, the properties each type needs, and where each can be sourced from. |
+| `StructuredData` | Generates JSON-LD per node and coverage per site; reports gaps and contradictions rather than filling them. |
 | `Languages` | Translation coverage per language, joined to the per-language scores; unmeasured kept distinct from zero. |
 | `Freshness` | Ages everything published, bucketed and grouped by type and section, against a configurable threshold. |
 | `LlmsFreshness` | Whether the served llms.txt still matches what generating would produce. |

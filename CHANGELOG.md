@@ -111,6 +111,18 @@ a delta. It needs nothing from any external vendor.
   the languages this page has no translation in, and any translation that exists but has not been
   published.
 
+- **Structured data derived from the content model.** Every other tool infers schema.org output
+  from the words on a page; the content type already says what the content *is*, so it is derived
+  instead. Map each type once - defaults only for Jahia's own types, since a custom type is
+  somebody's model and its name is not evidence - and every item of it produces JSON-LD, with
+  property sources found by convention rather than configuration. Required properties with no
+  source are named rather than invented, and a generated name that disagrees with the title the
+  page renders is reported as a conflict, because structured data that contradicts its page is
+  worse than none. The drawer shows the snippet with a copy button; nothing is written into a page.
+- **The page drawer now says where a page stands.** A score with no reference point is not
+  information, so the drawer carries the site average and the page's own section average beside it,
+  how many pages link here from navigation and from content, and whether the page is in llms.txt.
+
 **Writing, behind generate → diff → confirm**
 
 - **llms.txt generated from the published page tree.** Deterministic: no model call and no external

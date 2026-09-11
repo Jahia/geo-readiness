@@ -103,9 +103,50 @@ public final class LlmsFreshness {
             }
         }
 
+        // The listed paths themselves, so the drawer can answer "is this page
+        // in llms.txt" definitively rather than inferring it from the findings.
+        // Capped by the generator's own link budget, so this stays small.
+        out.put("listedPaths", new JSONArray(listed.keySet()));
         out.put("stale", stale);
         out.put("missing", missing);
         out.put("outdated", stale.length() > 0 || missing.length() > 0);
+        return out;
+    }
+
+    /**
+     * What the drawer should say about one page's place in llms.txt.
+     *
+     * Three answers, not two. Listed is the good case. Not listed *while the
+     * generator would include it* means the file is behind and regenerating
+     * fixes it. Not listed *because the generator never includes it* is the
+     * design working - llms.txt is a short map of the important pages, not an
+     * index - and telling an author to act on that would be wrong.
+     */
+    public static JSONObject listingFor(JSONObject report, String path) {
+        if (report == null || !report.optBoolean("present", false) || path == null) {
+            return null;
+        }
+        JSONArray listed = report.optJSONArray("listedPaths");
+        for (int i = 0; listed != null && i < listed.length(); i++) {
+            if (path.equals(listed.optString(i))) {
+                JSONObject out = new JSONObject();
+                out.put("listed", true);
+                return out;
+            }
+        }
+        JSONArray wouldAdd = report.optJSONArray("missing");
+        for (int i = 0; wouldAdd != null && i < wouldAdd.length(); i++) {
+            JSONObject r = wouldAdd.optJSONObject(i);
+            if (r != null && path.equals(r.optString("path", null))) {
+                JSONObject out = new JSONObject();
+                out.put("listed", false);
+                out.put("wouldAdd", true);
+                return out;
+            }
+        }
+        JSONObject out = new JSONObject();
+        out.put("listed", false);
+        out.put("wouldAdd", false);
         return out;
     }
 

@@ -6,11 +6,12 @@ import {runCrawlerCheck} from './api/crawlerCheck';
 import {ScoreTab} from './tabs/ScoreTab';
 import {CrawlerTab} from './tabs/CrawlerTab';
 import {SiteFilesTab} from './tabs/SiteFilesTab';
+import {SchemaTab} from './tabs/SchemaTab';
 import tabStyles from './tabs/Tabs.module.css';
 import styles from './GeoReadinessDrawer.module.css';
 
 const NS = 'geo-readiness';
-const CACHE_SCHEMA = 7;
+const CACHE_SCHEMA = 8;
 
 // Results are cached per page and language so reopening the drawer is instant.
 // Bump CACHE_SCHEMA whenever the report shape changes, or an old cached entry
@@ -238,7 +239,12 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                         {[
                             {id: 'score', label: t('score.tab'), count: report.score ? report.score.criticalFailed : 0},
                             {id: 'crawler', label: t('crawler.tab'), count: report.blockedCount},
-                            {id: 'files', label: t('files.tab'), count: filesIssueCount(report)}
+                            {id: 'files', label: t('files.tab'), count: filesIssueCount(report)},
+                            {
+                                id: 'schema',
+                                label: t('schema.tab'),
+                                count: report.schema && report.schema.mapped && !report.schema.valid ? 1 : 0
+                            }
                         ].map(item => (
                             <TabItem
                                 key={item.id}
@@ -254,6 +260,7 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                 {report && report.published && tab === 'score' && <ScoreTab report={report}/>}
                 {report && tab === 'crawler' && <CrawlerTab report={report}/>}
                 {report && report.published && tab === 'files' && <SiteFilesTab report={report}/>}
+                {report && report.published && tab === 'schema' && <SchemaTab report={report}/>}
             </div>
         </aside>
     );

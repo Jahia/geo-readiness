@@ -5,8 +5,11 @@ import org.jahia.se.modules.georeadiness.check.GeoScore;
 import org.jahia.se.modules.georeadiness.check.PageFetch;
 import org.jahia.se.modules.georeadiness.check.Languages;
 import org.jahia.se.modules.georeadiness.check.LinkGraph;
+import org.jahia.se.modules.georeadiness.check.LlmsFreshness;
+import org.jahia.se.modules.georeadiness.check.PublishedMap;
 import org.jahia.se.modules.georeadiness.check.ScanStore;
 import org.jahia.se.modules.georeadiness.check.SitemapCheck;
+import org.jahia.se.modules.georeadiness.check.StructuredData;
 import org.jahia.se.modules.georeadiness.check.VanityUrls;
 import org.jahia.se.modules.georeadiness.check.TemplateRollup;
 import org.jahia.se.modules.georeadiness.check.GuestVisibility;
@@ -333,6 +336,26 @@ public class CrawlerCheckServlet extends HttpServlet {
         } catch (Exception e) {
             logger.debug("language coverage unavailable for {}", path, e);
         }
+
+        // Where this page stands against the site and its section, and whether
+        // it is in llms.txt. Both read from the last scan.
+        try {
+            out.put("context", contextFor(path, language));
+        } catch (Exception e) {
+            logger.debug("page context unavailable for {}", path, e);
+        }
+
+        // GEO-23. Generated, shown, and copied by a human - never written into
+        // the page from here.
+        try {
+            JSONObject firstAgent = out.optJSONArray("agents") == null
+                    ? null : out.getJSONArray("agents").optJSONObject(0);
+            JSONObject html = firstAgent == null ? null : firstAgent.optJSONObject("html");
+            String pageTitle = html == null ? null : html.optString("title", null);
+            out.put("schema", schemaFor(path, language, req, resp, pageTitle));
+        } catch (Exception e) {
+            logger.debug("structured data unavailable for {}", path, e);
+        }
         writeJson(resp, HttpServletResponse.SC_OK, out);
     }
 
@@ -429,6 +452,77 @@ public class CrawlerCheckServlet extends HttpServlet {
                 .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
         String sitePath = live.getNode(path).getResolveSite().getPath();
         return Languages.forNode(sitePath, path);
+    }
+
+    /**
+     * This page's JSON-LD, derived from its content type.
+     *
+     * The page's own title is passed in so the generator can say when what it
+     * produced disagrees with what the page displays - the one criterion that
+     * makes structured data worse than none when it is broken.
+     */
+    private JSONObject schemaFor(String path, String language, HttpServletRequest req,
+            HttpServletResponse resp, String pageTitle) throws Exception {
+        JCRSessionWrapper live = JCRSessionFactory.getInstance()
+                .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
+        JCRNodeWrapper node = live.getNode(path);
+        String sitePath = node.getResolveSite().getPath();
+        JSONObject overrides = ScanStore.read(sitePath, language).optJSONObject("schemaMap");
+        String base = org.jahia.se.modules.georeadiness.util.PublicUrls
+                .base(node, req, config.getPublicBaseUrl());
+        return StructuredData.forNode(path, language, base, overrides, pageTitle);
+    }
+
+    /**
+     * Where this page stands relative to the rest of the site.
+     *
+     * A page score with no reference point is not information: nobody knows
+     * whether sixteen of eighteen is good here. The site average and the score
+     * of this page's own section are both already stored by the last scan, and
+     * together they say whether this page is the problem or the site is.
+     *
+     * Also carries whether the page is in llms.txt, which the drawer had no way
+     * of saying even though it already reported the sitemap.
+     */
+    private JSONObject contextFor(String path, String language) throws Exception {
+        JCRSessionWrapper live = JCRSessionFactory.getInstance()
+                .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
+        String sitePath = live.getNode(path).getResolveSite().getPath();
+        JSONObject state = ScanStore.read(sitePath, language);
+
+        JSONObject out = new JSONObject();
+        JSONObject run = state.optJSONObject("run");
+        JSONObject aggregate = run == null ? null : run.optJSONObject("aggregate");
+        if (aggregate != null && aggregate.has("percent")) {
+            out.put("sitePercent", aggregate.optInt("percent"));
+            out.put("scannedAt", run.opt("finishedAt"));
+            String section = PublishedMap.sectionOf(sitePath, path);
+            JSONArray sections = aggregate.optJSONArray("sections");
+            for (int i = 0; sections != null && i < sections.length(); i++) {
+                JSONObject s = sections.getJSONObject(i);
+                if (section.equals(s.optString("section", null))) {
+                    out.put("section", section);
+                    out.put("sectionPercent", s.optInt("percent"));
+                    break;
+                }
+            }
+        }
+
+        JSONObject listing = LlmsFreshness.listingFor(state.optJSONObject("llms"), pathOfNode(live, path));
+        if (listing != null) {
+            out.put("llms", listing);
+        }
+        return out;
+    }
+
+    /** The public path this node answers on, which is how llms.txt names it. */
+    private String pathOfNode(JCRSessionWrapper live, String path) {
+        try {
+            return PublishedMap.pathOf(org.jahia.se.modules.georeadiness.util.PublicUrls
+                    .forNode(live.getNode(path), config.getPublicBaseUrl()));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String publicUrlFor(JCRNodeWrapper node, HttpServletRequest req, HttpServletResponse resp) throws Exception {

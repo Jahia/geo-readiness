@@ -70,6 +70,8 @@ public final class ScanStore {
     /** GEO-24, and the threshold it was computed against. */
     private static final String FRESHNESS = "geoFreshness";
     private static final String STALE_DAYS = "geoStaleDays";
+    /** GEO-23: node type to schema.org type, chosen by whoever defined the types. */
+    private static final String SCHEMA_MAP = "geoSchemaMap";
 
     private ScanStore() {
     }
@@ -83,6 +85,7 @@ public final class ScanStore {
             out.put("scope", str(store, SCOPE, ""));
             out.put("baseUrl", str(store, BASE_URL, ""));
             out.put("staleDays", (int) num(store, STALE_DAYS));
+            out.put("schemaMap", json(store, SCHEMA_MAP));
             out.put("language", language);
 
             JSONObject run = new JSONObject();
@@ -234,6 +237,18 @@ public final class ScanStore {
             store.setProperty(STALE_DAYS, staleDays);
             JCRNodeWrapper l = language(store, language);
             l.setProperty(FRESHNESS, freshness.toString());
+            session.save();
+            return null;
+        });
+    }
+
+    /**
+     * The site's node-type to schema.org-type mapping. Site level, not language
+     * level: a type is the same thing in every language.
+     */
+    public static void saveSchemaMap(String sitePath, JSONObject map) throws RepositoryException {
+        inStore(sitePath, (store, session) -> {
+            store.setProperty(SCHEMA_MAP, map.toString());
             session.save();
             return null;
         });

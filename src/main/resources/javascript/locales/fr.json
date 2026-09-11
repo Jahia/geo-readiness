@@ -313,7 +313,8 @@
         "links": "Liens internes",
         "vanity": "Adresses",
         "freshness": "Fraîcheur",
-        "languages": "Langues"
+        "languages": "Langues",
+        "schema": "Données structurées"
       }
     },
     "visibility": {
@@ -577,6 +578,55 @@
       "pageMissing": "Elle n'a pas de traduction en : {{languages}}. Les assistants qui répondent dans ces langues n'ont rien de cette page à citer.",
       "pageUnpublishedTitle": "Une traduction de cette page n'est pas publiée",
       "pageUnpublished": "Elle est traduite en {{languages}}, mais cette traduction n'a pas été publiée : aucun visiteur ni robot ne peut la voir."
+    },
+    "schema": {
+      "tab": "Données structurées",
+      "none": "Aucune donnée structurée n'a été générée pour cette page.",
+      "headline": "schema.org {{type}}",
+      "complete": "tout ce qui est requis a une source dans le modèle de contenu",
+      "incomplete": "{{count}} propriétés requises n'ont aucune source",
+      "unmappedTitle": "Ce type de contenu n'est pas encore associé",
+      "unmapped": "Rien n'indique ce qu'est un {{nodeType}} au sens de schema.org : aucune donnée structurée ne peut en être dérivée.",
+      "unmappedHelp": "Associez-le dans l'onglet Données structurées du tableau de bord GEO. Rien n'est deviné ici : un type est ce que la personne qui l'a défini dit qu'il est.",
+      "conflictTitle": "Ceci contredirait la page",
+      "conflict": "Le {{property}} généré est « {{generated}} » alors que la page affiche « {{page}} ». Des données structurées en désaccord avec le contenu visible sont pires que pas de données du tout : corrigez l'un des deux avant de l'utiliser.",
+      "missingTitle": "Des propriétés requises n'ont aucune source",
+      "missing": "Le modèle de contenu n'a rien pour remplir : {{properties}}. Elles sont omises plutôt qu'inventées, car une valeur absente du contenu est une valeur que la page ne soutient pas.",
+      "copy": "COPIER LE SNIPPET",
+      "copied": "COPIÉ",
+      "sources": "D'où vient chaque valeur",
+      "limits": "Généré depuis le type de contenu, non écrit dans la page. Collez-le dans le template de ce type pour que chaque élément en bénéficie, plutôt que dans une seule page. Les valeurs sont lues dans le contenu publié de cette langue.",
+      "panel": {
+        "title": "Données structurées issues du modèle de contenu",
+        "intro": "Tous les autres outils déduisent le schema.org des mots présents sur la page. Le type de contenu dit déjà ce qu'est le contenu : on peut donc le dériver, ce qui est à la fois moins coûteux et plus exact. Associez chaque type une fois et tous ses éléments peuvent émettre un JSON-LD correct.",
+        "counts": "{{mapped}} des {{total}} contenus publiés ont un type associé, dont {{complete}} peuvent remplir tout ce que leur type schema.org exige.",
+        "items": "{{count}} contenus publiés",
+        "ready": "prêt",
+        "gaps": "{{count}} sans source",
+        "readyType": "chaque propriété requise a une source",
+        "noSource": "aucune source pour : {{properties}}",
+        "thin": "Recommandées mais indisponibles : {{properties}}. Valide sans elles, plus riche avec.",
+        "save": "ENREGISTRER",
+        "saving": "ENREGISTREMENT…",
+        "saved": "Association enregistrée.",
+        "errorTitle": "Le modèle de contenu n'a pas pu être lu",
+        "error": "Les types de nœuds n'ont pas pu être listés pour ce site. Le détail figure dans le journal du serveur.",
+        "limits": "Enregistrer une association la stocke. Cela n'écrit jamais dans une page ni dans un template : le tiroir affiche le snippet d'une page et une personne le place. « Volontairement aucun » marque un type qui ne doit pas émettre de données structurées, afin qu'il cesse d'être signalé comme non associé."
+      },
+      "mapping": {
+        "unmapped": "Non associé",
+        "none": "Volontairement aucun"
+      }
+    },
+    "context": {
+      "site": "Ce site est en moyenne à {{percent}}%",
+      "section": "la section {{section}} est en moyenne à {{percent}}%",
+      "links": "{{nav}} pages pointent ici depuis la navigation, {{content}} depuis le contenu",
+      "llms": {
+        "listed": "Présente dans llms.txt",
+        "wouldAdd": "Absente de llms.txt, mais une régénération l'ajouterait",
+        "notGenerated": "Absente de llms.txt, qui ne liste que les pages principales du site"
+      }
     }
   }
 }

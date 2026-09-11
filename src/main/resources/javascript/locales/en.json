@@ -313,7 +313,8 @@
         "links": "Internal links",
         "vanity": "Addresses",
         "freshness": "Freshness",
-        "languages": "Languages"
+        "languages": "Languages",
+        "schema": "Structured data"
       }
     },
     "visibility": {
@@ -577,6 +578,55 @@
       "pageMissing": "It has no translation in: {{languages}}. Assistants answering in those languages have nothing of this page to cite.",
       "pageUnpublishedTitle": "A translation of this page is not published",
       "pageUnpublished": "It is translated into {{languages}} but that translation has not been published, so no visitor or crawler can see it."
+    },
+    "schema": {
+      "tab": "Structured data",
+      "none": "No structured data was generated for this page.",
+      "headline": "schema.org {{type}}",
+      "complete": "everything it needs has a source in the content model",
+      "incomplete": "{{count}} required properties have no source",
+      "unmappedTitle": "This content type is not mapped yet",
+      "unmapped": "Nothing says what a {{nodeType}} is in schema.org terms, so no structured data can be derived from it.",
+      "unmappedHelp": "Map it on the Structured data tab of the GEO readiness dashboard. Nothing guesses here: a type is whatever the person who defined it says it is.",
+      "conflictTitle": "This would contradict the page",
+      "conflict": "The generated {{property}} is \"{{generated}}\" while the page displays \"{{page}}\". Structured data that disagrees with the visible content is worse than none, so fix one of the two before using this.",
+      "missingTitle": "Required properties have no source",
+      "missing": "The content model has nothing to fill: {{properties}}. They are left out rather than invented, because a value that is not in the content is a value the page does not support.",
+      "copy": "COPY SNIPPET",
+      "copied": "COPIED",
+      "sources": "Where each value came from",
+      "limits": "Generated from the content type, not written into the page. Paste it into the template for this type so every item gets it, rather than into one page. Values are read from the published content in this language.",
+      "panel": {
+        "title": "Structured data from the content model",
+        "intro": "Every other tool infers schema.org output from the words on a page. The content type already says what the content is, so it can be derived instead - which is both cheaper and more accurate. Map each type once and every item of it can emit correct JSON-LD.",
+        "counts": "{{mapped}} of {{total}} published items have a mapped type, {{complete}} of them can fill everything their schema type requires.",
+        "items": "{{count}} published items",
+        "ready": "ready",
+        "gaps": "{{count}} without a source",
+        "readyType": "every required property has a source",
+        "noSource": "no source for: {{properties}}",
+        "thin": "Recommended but unavailable: {{properties}}. Valid without them, richer with them.",
+        "save": "SAVE MAPPING",
+        "saving": "SAVING…",
+        "saved": "Mapping saved.",
+        "errorTitle": "The content model could not be read",
+        "error": "Node types could not be listed for this site. The server log has the detail.",
+        "limits": "Saving a mapping stores it. It never writes into a page or a template: the drawer shows the snippet for a page and a person places it. \"Deliberately none\" marks a type that should not emit structured data, so it stops being reported as unmapped."
+      },
+      "mapping": {
+        "unmapped": "Not mapped",
+        "none": "Deliberately none"
+      }
+    },
+    "context": {
+      "site": "This site averages {{percent}}%",
+      "section": "the {{section}} section averages {{percent}}%",
+      "links": "{{nav}} pages link here from navigation, {{content}} from page content",
+      "llms": {
+        "listed": "Listed in llms.txt",
+        "wouldAdd": "Not in llms.txt, but regenerating it would add this page",
+        "notGenerated": "Not in llms.txt, which lists only the site's main pages"
+      }
     }
   }
 }

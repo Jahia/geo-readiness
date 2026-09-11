@@ -42,6 +42,44 @@ export const ScoreTab = ({report}) => {
                 )}
             </div>
 
+            {/*
+              * A page score with no reference point is not information: nobody
+              * knows whether sixteen of eighteen is good on this site. The site
+              * average and this page's own section say whether the page is the
+              * problem or the site is. Facts, not findings, so lines rather than
+              * banners.
+              */}
+            {(report.context || report.links) && (
+                <ul className={styles.contextList}>
+                    {report.context && report.context.sitePercent !== undefined && (
+                        <li>
+                            {t('context.site', {percent: report.context.sitePercent})}
+                            {report.context.section ? ` · ${t('context.section', {
+                                section: report.context.section,
+                                percent: report.context.sectionPercent
+                            })}` : ''}
+                        </li>
+                    )}
+                    {report.links && (
+                        <li>
+                            {t('context.links', {
+                                nav: report.links.nav,
+                                content: report.links.content
+                            })}
+                        </li>
+                    )}
+                    {report.context && report.context.llms && (
+                        <li>
+                            {report.context.llms.listed ?
+                                t('context.llms.listed') :
+                                t(report.context.llms.wouldAdd ?
+                                    'context.llms.wouldAdd' :
+                                    'context.llms.notGenerated')}
+                        </li>
+                    )}
+                </ul>
+            )}
+
             {GROUPS.map(group => {
                 const rows = checks.filter(c => c.group === group);
                 if (rows.length === 0) {

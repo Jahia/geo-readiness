@@ -3,6 +3,8 @@ package org.jahia.se.modules.georeadiness.servlet;
 import org.jahia.se.modules.georeadiness.check.GuestVisibility;
 import org.jahia.se.modules.georeadiness.check.Freshness;
 import org.jahia.se.modules.georeadiness.check.Languages;
+import org.jahia.se.modules.georeadiness.check.SchemaMap;
+import org.jahia.se.modules.georeadiness.check.StructuredData;
 import org.jahia.se.modules.georeadiness.check.ScanStore;
 import org.jahia.se.modules.georeadiness.check.SiteScorer;
 import org.jahia.se.modules.georeadiness.check.SitemapCheck;
@@ -143,6 +145,24 @@ public class SiteScanServlet extends HttpServlet {
                     // from whatever scans have run, so this needs no scan of
                     // its own and is not rate limited.
                     writeJson(resp, HttpServletResponse.SC_OK, Languages.check(sitePath));
+                    return;
+                case "schema":
+                    // Coverage plus the vocabulary the mapping interface needs,
+                    // in one read. No scan: the content model is the source.
+                    JSONObject state = ScanStore.read(sitePath, language);
+                    JSONObject schema = StructuredData.coverage(sitePath, language,
+                            baseUrlFor(sitePath, language, req), state.optJSONObject("schemaMap"));
+                    schema.put("vocabulary", SchemaMap.vocabulary());
+                    schema.put("schemaMap", state.opt("schemaMap"));
+                    writeJson(resp, HttpServletResponse.SC_OK, schema);
+                    return;
+                case "saveSchemaMap":
+                    // A mapping is a statement about content types, so it is
+                    // stored and never applied to a page by itself. Generating
+                    // and writing stay separate here as everywhere else.
+                    JSONObject map = body.optJSONObject("map");
+                    ScanStore.saveSchemaMap(sitePath, map == null ? new JSONObject() : map);
+                    writeJson(resp, HttpServletResponse.SC_OK, ScanStore.read(sitePath, language));
                     return;
                 case "scanStatus":
                     writeJson(resp, HttpServletResponse.SC_OK, status(sitePath, language));

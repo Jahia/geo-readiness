@@ -39,5 +39,12 @@ export const checkFreshness = ({path, language, staleDays}) =>
 /** Coverage and score per language. Needs no scan: coverage is a repository read. */
 export const checkLanguages = ({path, language}) => call({action: 'languages', path, language});
 
+/** Which content types map to which schema.org type, and the resulting coverage. */
+export const checkSchema = ({path, language}) => call({action: 'schema', path, language});
+
+/** Stores the mapping. It is never applied to a page from here. */
+export const saveSchemaMap = ({path, language, map}) =>
+    call({action: 'saveSchemaMap', path, language, map});
+
 export const saveSchedule = ({path, language, cron, enabled, scope}) =>
     call({action: 'saveSchedule', path, language, cron, enabled, scope});

@@ -173,6 +173,16 @@ Concretely, the servlet must keep:
   check that read it silently saw an absent file and reported "not outdated" - a pass that looked
   like good news. Same class as the `JCRNodeWrapper` trap: a missing input became a clean result.
 
+- **A `put` that silently drops a value is invisible in a valid result.** `StructuredData.put`
+  returned early on `offers`, so every Product came out without its price - and still reported
+  `valid: true`, because the name and image it did emit were all the type required. Nothing looked
+  wrong. Check generated output against a node you know has the property, not just against the
+  validity flag.
+- **`jmix:seoHtmlHead` carries no title property.** It is `seoKeywords` and `openGraphImage` only,
+  so on a stock Jahia site the rendered `<title>` always derives from `jcr:title` and the
+  schema-versus-page contradiction check cannot be made to fire end to end. Verify that comparison
+  at the logic level and say so.
+
 ## robots.txt traps
 
 - **The path evaluated against robots.txt must include the query string.** Rules like

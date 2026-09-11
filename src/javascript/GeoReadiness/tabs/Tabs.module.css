@@ -391,3 +391,34 @@
     border-radius: 2px;
     background-color: var(--moon-color-accent_light, #c2d9ee);
 }
+
+/*
+ * Context under the page verdict: where this page stands rather than what is
+ * wrong with it. Quieter than the check list on purpose - these are facts an
+ * author reads once, not findings to work through.
+ */
+.contextList {
+    list-style: none;
+    margin: 0 0 1.25rem;
+    padding: 0.75rem 0 0;
+    border-top: 1px solid var(--moon-color-gray_light, #e7e9ec);
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    opacity: 0.85;
+}
+
+/* The generated JSON-LD, which must stay readable and selectable. */
+.snippet {
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 0.9rem 1rem;
+    margin: 0 0 1.5rem;
+    border: 1px solid var(--moon-color-gray_light, #e7e9ec);
+    border-radius: 3px;
+    background-color: var(--moon-color-gray_light40, #f5f6f7);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem;
+    line-height: 1.55;
+    white-space: pre;
+    user-select: text;
+}

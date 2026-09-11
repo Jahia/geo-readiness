@@ -308,6 +308,9 @@ at it, so it cannot be actioned.
 
 ## GEO-23 · Structured data from the content model
 
+**BUILT.** Mapping and coverage on their own dashboard tab, generated JSON-LD with a copy button in
+the drawer. Generates and shows; never writes into a page.
+
 **As a** content editor, **I want** correct schema.org output derived from the content type,
 **so that** I am not asking a language model to guess what my page is about.
 
@@ -326,6 +329,30 @@ both cheaper and more accurate, and it is a genuinely different approach.
 **Drawer** shows this page's generated JSON-LD with a copy button, and what is missing.
 
 **Effort** L. Genuinely useful, and the most product-shaped item here.
+
+**What was built, against that acceptance.** Defaults exist only for Jahia's own types, where the
+answer is not a matter of opinion. A custom type is somebody's model, and reading intent out of its
+name - deciding `luxe:estate` is a Product because of the word "estate" - is the same mistake as
+classifying evergreen content by type name, refused in GEO-24 for the same reason. Custom types
+start unmapped, are reported as unmapped, and are mapped by the person who defined them.
+
+Property sources are the other half, and there conventions *are* reliable: `title`, `description`,
+`image`, `date`, `price`, `address`, `phone`, `email` mean the same thing across almost every
+content model, so a candidate list per schema property finds them with nothing configured. On the
+test site that mapped all five types with no property configuration at all, including `price` into
+an `Offer` and a weak reference into a resolved image URL.
+
+The third criterion is the interesting one and it is met by *reporting*: a required property with no
+source is named, never filled from somewhere plausible. `luxe:blogPost` has no author and
+`luxe:estate` no currency, and both are said out loud rather than invented.
+
+The fourth - never contradict the page - is checked by comparing the generated name against the
+title the page actually rendered, allowing for the suffix a template adds, so "Fees" and
+"Fees | Demo Site Luxe" agree while "Fees" and "Our pricing" do not.
+
+**Nothing is injected.** The drawer shows the snippet and a person places it, which is the same
+report-versus-write line the rest of the module draws, and it matters most here: structured data
+that disagrees with its page is worse than none, so a human confirms every snippet.
 
 ---
 
