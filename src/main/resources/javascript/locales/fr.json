@@ -290,8 +290,11 @@
         "isolatedRestriction": "Fermée, dans une section ouverte",
         "expiredCondition": "Une condition de visibilité s'est terminée le {{date}}",
         "hiddenByCondition": "Masquée actuellement par une condition de visibilité",
-        "gatedBranch": "Dans une branche fermée"
-      }
+        "gatedBranch": "Dans une branche fermée",
+        "noindex": "Marquée noindex, elle ne sera pas citée"
+      },
+      "noindexTitle": "Cette page est marquée noindex",
+      "noindex": "Les moteurs et les robots IA sont priés de ne pas indexer cette page, elle ne sera donc pas citée. C'est souvent volontaire pour une page légale ou utilitaire. Si ce n'est pas le cas, le réglage se trouve sur la page elle-même."
     }
   }
 }

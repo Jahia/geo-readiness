@@ -62,6 +62,12 @@ export const CrawlerTab = ({report}) => {
                 </Banner>
             )}
 
+            {report.visibility && report.visibility.noindex && (
+                <Banner variant="info" title={t('visibility.noindexTitle')}>
+                    {t('visibility.noindex')}
+                </Banner>
+            )}
+
             <Typography variant="caption" className={styles.url}>
                 {t('drawer.url')}: <a href={report.url} target="_blank" rel="noopener noreferrer">{report.url}</a>
             </Typography>

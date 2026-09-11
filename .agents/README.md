@@ -157,6 +157,11 @@ language-to-country default map, and returns null when it cannot answer. A flag 
 locale is a language, so this is a convention: no flag beats the wrong flag, which is why the
 unknown case renders the name alone.
 
+**A `useEffect` cannot reference a `useCallback` declared below it.** The dependency array is
+evaluated during render, before the `const`, so it throws `Cannot access 'x' before initialization`
+and the panel never renders. Shipped once, in the robots panel's auto-run effect. Declare
+callbacks before the effects that use them.
+
 **Never put an interactive Moonstone control in a Moonstone table cell.** A `Switch` is a 38x20
 box whose two children are both `position:absolute`, so it has no in-flow content and collapses to
 nothing inside the `Typography` that `TableCell` wraps its children in. The robots stance column

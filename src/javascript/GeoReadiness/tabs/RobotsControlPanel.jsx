@@ -53,13 +53,6 @@ export const RobotsControlPanel = ({path, language}) => {
         load({}, true);
     }, [load]);
 
-    // Run once when the panel opens. The headline answer is "can crawlers read
-    // this site", and making someone press a button for it buries the point.
-    useEffect(() => {
-        if (preview && preview.homePath && accessPhase === 'idle') {
-            checkAccess();
-        }
-    }, [preview, accessPhase, checkAccess]);
 
     const choose = useCallback((token, value) => {
         const next = {...decisions, [token]: value};
@@ -99,6 +92,14 @@ export const RobotsControlPanel = ({path, language}) => {
             setAccessPhase('failed');
         }
     }, [preview, language]);
+
+    // Run once when the panel opens. The headline answer is "can crawlers read
+    // this site", and making someone press a button for it buries the point.
+    useEffect(() => {
+        if (preview && preview.homePath && accessPhase === 'idle') {
+            checkAccess();
+        }
+    }, [preview, accessPhase, checkAccess]);
 
     const apply = useCallback(async () => {
         if (!confirming) {

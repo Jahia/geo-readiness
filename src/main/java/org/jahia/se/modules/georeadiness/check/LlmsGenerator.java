@@ -27,6 +27,8 @@ import java.util.List;
  *  - the home page leads the first section
  *  - a level-1 page with published children becomes its own section
  *  - pages hidden from the navigation are skipped, being usually utility pages
+ *  - pages marked noindex are skipped: listing a page in the map you hand an
+ *    assistant while telling it not to index that page contradicts itself
  *  - descriptions come from jcr:description, never invented
  *  - the whole file is capped, because a 4000-line llms.txt helps nobody
  */
@@ -219,6 +221,15 @@ public final class LlmsGenerator {
     }
 
     private static boolean isHidden(JCRNodeWrapper n) {
+        try {
+            // jmix:noindex is set by the community robots-noindex module. A page
+            // the site asks engines not to index has no business in llms.txt.
+            if (n.isNodeType("jmix:noindex")) {
+                return true;
+            }
+        } catch (RepositoryException e) {
+            // fall through: an unreadable mixin is not a reason to drop the page
+        }
         try {
             return n.hasProperty("j:hideFromNavigationMenu")
                     && n.getProperty("j:hideFromNavigationMenu").getBoolean();

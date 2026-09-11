@@ -47,8 +47,12 @@ public final class GuestVisibility {
     public static final String ISOLATED = "isolatedRestriction";
     public static final String EXPIRED = "expiredCondition";
     public static final String HIDDEN = "hiddenByCondition";
-    /** Not a finding. A closed branch inside a closed branch is a members area. */
+    /** Not findings. Someone chose these deliberately. */
     public static final String GATED_BRANCH = "gatedBranch";
+    public static final String NOINDEX = "noindex";
+
+    /** Set by the community robots-noindex module when an editor ticks the box. */
+    private static final String NOINDEX_MIXIN = "jmix:noindex";
 
     private static final String VISIBILITY_NODE = "j:conditionalVisibility";
     private static final int DEFAULT_MAX = 2000;
@@ -130,7 +134,7 @@ public final class GuestVisibility {
                             }
                             JSONObject row = row(page, kind);
                             describeConditions(page, row);
-                            if (GATED_BRANCH.equals(kind)) {
+                            if (GATED_BRANCH.equals(kind) || NOINDEX.equals(kind)) {
                                 deliberate.put(row);
                             } else {
                                 findings.put(row);
@@ -156,18 +160,23 @@ public final class GuestVisibility {
             // open section is the one somebody forgot.
             return parentReadable ? ISOLATED : GATED_BRANCH;
         }
-        if (!hasConditions(node)) {
-            return null;
+        if (hasConditions(node)) {
+            if (expiredEnd(node) != null) {
+                return EXPIRED;
+            }
+            try {
+                if (!VisibilityService.getInstance().matchesConditions(node)) {
+                    return HIDDEN;
+                }
+            } catch (Exception e) {
+                // A condition we cannot evaluate is not a finding we can defend.
+                return null;
+            }
         }
-        if (expiredEnd(node) != null) {
-            return EXPIRED;
-        }
-        try {
-            return VisibilityService.getInstance().matchesConditions(node) ? null : HIDDEN;
-        } catch (Exception e) {
-            // A condition we cannot evaluate is not a finding we can defend.
-            return null;
-        }
+        // Checked last, and never treated as a defect. An editor ticked a box:
+        // the page will not be cited, which may be exactly what they wanted. It
+        // is listed so nobody counts it as content that works for them.
+        return isNoindex(node) ? NOINDEX : null;
     }
 
     private static boolean canRead(JCRSessionWrapper guest, String path) {
@@ -191,6 +200,14 @@ public final class GuestVisibility {
             out.add((JCRNodeWrapper) it.nextNode());
         }
         return out;
+    }
+
+    private static boolean isNoindex(JCRNodeWrapper node) {
+        try {
+            return node.isNodeType(NOINDEX_MIXIN);
+        } catch (RepositoryException e) {
+            return false;
+        }
     }
 
     private static boolean hasConditions(JCRNodeWrapper node) {
@@ -234,6 +251,7 @@ public final class GuestVisibility {
         Calendar end = expiredEnd(node);
         out.put("expiredOn", end == null ? JSONObject.NULL : end.toInstant().toString());
         out.put("hasConditions", hasConditions(node));
+        out.put("noindex", isNoindex(node));
     }
 
     private static JSONObject row(JCRNodeWrapper page, String kind) {

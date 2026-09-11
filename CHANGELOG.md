@@ -61,6 +61,19 @@ rather than a delta. It needs nothing from any external vendor.
   not a defect. Also a critical check in the page score, since a gated page
   scores nothing whatever else is right about it.
 
+- **Pages marked noindex are listed too.** The community robots-noindex module
+  sets a mixin, so this costs no fetch. They appear under "closed on purpose",
+  never as a defect: an editor ticked a box and the page will simply not be
+  cited. The drawer states it for the page in view, and the llms.txt generator
+  now leaves those pages out, since listing a page in the map you hand an
+  assistant while telling it not to index that page contradicts itself.
+
+### Fixed
+
+- The settings panel crashed with "Cannot access before initialization". The
+  effect that runs the access check on open referenced the callback above its
+  own declaration.
+
 ### Changed
 
 - The robots.txt panel now shows what the server actually does, not only what

@@ -106,7 +106,7 @@ export const VisibilityPanel = ({path, language}) => {
                     <Typography variant="caption" className={styles.panelIntro}>
                         {t('visibility.deliberateIntro')}
                     </Typography>
-                    {rows(result.deliberate, false)}
+                    {rows(result.deliberate, true)}
                 </>
             )}
         </div>

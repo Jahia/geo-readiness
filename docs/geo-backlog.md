@@ -128,6 +128,11 @@ readable. And a `DENY` ace does not close a page against an inherited grant; bre
 inheritance does, which is what jContent's restrict-access uses. A fixture built on the deny would
 have proved nothing.
 
+Pages marked `noindex` are listed as well, read from the `jmix:noindex` mixin the community
+robots-noindex module sets, so it costs no fetch. They sit under "closed on purpose": the page
+will not be cited, but someone chose that, and a tool that calls a deliberate choice a defect gets
+ignored. The same signal now keeps those pages out of the generated `llms.txt`.
+
 Not done: the scan is synchronous and capped at 2000 pages, so a large site needs the background
 job from GEO-17 before this covers everything. The cross-check against the crawler result is
 implicit rather than explicit: the drawer shows both facts on the same tab, but nothing yet says

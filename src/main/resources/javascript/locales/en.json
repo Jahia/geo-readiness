@@ -290,8 +290,11 @@
         "isolatedRestriction": "Closed, inside an open section",
         "expiredCondition": "A visibility condition ended on {{date}}",
         "hiddenByCondition": "Hidden right now by a visibility condition",
-        "gatedBranch": "Part of a closed branch"
-      }
+        "gatedBranch": "Part of a closed branch",
+        "noindex": "Set to noindex, so it will not be cited"
+      },
+      "noindexTitle": "This page is set to noindex",
+      "noindex": "Search engines and AI crawlers are told not to index this page, so it will not be cited. That is often deliberate for legal or utility pages. If it is not, the setting is on the page itself."
     }
   }
 }
