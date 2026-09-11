@@ -1,5 +1,6 @@
 package org.jahia.se.modules.georeadiness.servlet;
 
+import org.jahia.se.modules.georeadiness.check.GuestVisibility;
 import org.jahia.se.modules.georeadiness.check.LlmsGenerator;
 import org.jahia.se.modules.georeadiness.check.RobotsEditor;
 import org.jahia.se.modules.georeadiness.check.RobotsRules;
@@ -140,9 +141,22 @@ public class SiteFilesServlet extends HttpServlet {
                 .getCurrentUserSession("live", Locale.forLanguageTag(language));
         JCRNodeWrapper node = live.getNode(path);
         JCRNodeWrapper site = node.getResolveSite();
+        String sitePath = site.getPath();
 
-        String generated = LlmsGenerator.generate(site, live, language,
-                n -> PublicUrls.forNode(n, req, resp, config.getPublicBaseUrl()));
+        // Generated from a guest session, so a page the caller can see but a
+        // visitor cannot is never advertised. The alternative, checking each
+        // page as we go, would answer the same question more slowly and give
+        // the walk two sources of truth.
+        String generated = GuestVisibility.inGuestSession(language, guest -> {
+            try {
+                return LlmsGenerator.generate(guest.getNode(sitePath), language,
+                        n -> PublicUrls.forNode(n, req, resp, config.getPublicBaseUrl()));
+            } catch (javax.jcr.RepositoryException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new javax.jcr.RepositoryException(e);
+            }
+        });
 
         // What is stored today, read from the editing workspace: that is what an
         // apply would overwrite, and it may differ from what live currently serves.

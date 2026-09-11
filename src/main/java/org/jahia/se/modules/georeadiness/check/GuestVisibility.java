@@ -60,6 +60,19 @@ public final class GuestVisibility {
     private GuestVisibility() {
     }
 
+    /**
+     * Runs work in a live session owned by `guest`, for callers that need to see
+     * the site the way a crawler does rather than the way an editor does.
+     */
+    public static <T> T inGuestSession(String language, GuestCallback<T> work) throws RepositoryException {
+        return asGuest(Locale.forLanguageTag(language), work::run);
+    }
+
+    @FunctionalInterface
+    public interface GuestCallback<T> {
+        T run(JCRSessionWrapper guestSession) throws RepositoryException;
+    }
+
     /** One page, for the drawer. Cheap: two session reads and a condition evaluation. */
     public static JSONObject forPage(String path, String language) throws RepositoryException {
         Locale locale = Locale.forLanguageTag(language);

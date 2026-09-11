@@ -1,7 +1,7 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Badge, Button, Close, Tab, TabItem, Typography} from '@jahia/moonstone';
+import {Badge, Banner, Button, Close, Tab, TabItem, Typography} from '@jahia/moonstone';
 import {runCrawlerCheck} from './api/crawlerCheck';
 import {ScoreTab} from './tabs/ScoreTab';
 import {CrawlerTab} from './tabs/CrawlerTab';
@@ -10,7 +10,7 @@ import tabStyles from './tabs/Tabs.module.css';
 import styles from './GeoReadinessDrawer.module.css';
 
 const NS = 'geo-readiness';
-const CACHE_SCHEMA = 3;
+const CACHE_SCHEMA = 4;
 
 // Results are cached per page and language so reopening the drawer is instant.
 // Bump CACHE_SCHEMA whenever the report shape changes, or an old cached entry
@@ -131,6 +131,23 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
             <div className={styles.body}>
                 {phase === 'idle' && !report && (
                     <Typography variant="body" className={styles.empty}>{t('drawer.subtitle')}</Typography>
+                )}
+
+                {/*
+                  * Absolute facts about the page, above the tabs rather than
+                  * inside one: they frame every number below them, and the
+                  * drawer does not open on the tab that used to hold them.
+                  */}
+                {report && report.visibility && report.visibility.guestReadable === false && (
+                    <Banner variant="danger" title={t('score.check.guestReadable.label')}>
+                        {t('score.check.guestReadable.fix')}
+                    </Banner>
+                )}
+
+                {report && report.visibility && report.visibility.noindex && (
+                    <Banner variant="info" title={t('visibility.noindexTitle')}>
+                        {t('visibility.noindex')}
+                    </Banner>
                 )}
 
                 {report && report.published && (

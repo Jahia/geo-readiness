@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Chip, Typography} from '@jahia/moonstone';
+import {Chip, Typography} from '@jahia/moonstone';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -50,23 +50,6 @@ export const CrawlerTab = ({report}) => {
     return (
         <div>
             <div className={`${styles.verdict} ${styles[verdict.tone]}`}>{verdict.text}</div>
-
-            {/*
-              * GEO-19, stated here because it explains the rows below: a page a
-              * guest cannot read is unreadable to every crawler for good, and no
-              * amount of editing changes that.
-              */}
-            {report.visibility && report.visibility.guestReadable === false && (
-                <Banner variant="danger" title={t('score.check.guestReadable.label')}>
-                    {t('score.check.guestReadable.fix')}
-                </Banner>
-            )}
-
-            {report.visibility && report.visibility.noindex && (
-                <Banner variant="info" title={t('visibility.noindexTitle')}>
-                    {t('visibility.noindex')}
-                </Banner>
-            )}
 
             <Typography variant="caption" className={styles.url}>
                 {t('drawer.url')}: <a href={report.url} target="_blank" rel="noopener noreferrer">{report.url}</a>

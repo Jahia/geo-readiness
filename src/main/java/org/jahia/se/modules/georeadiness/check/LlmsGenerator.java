@@ -1,7 +1,6 @@
 package org.jahia.se.modules.georeadiness.check;
 
 import org.jahia.services.content.JCRNodeWrapper;
-import org.jahia.services.content.JCRSessionWrapper;
 
 import javax.jcr.RepositoryException;
 import java.util.ArrayList;
@@ -24,6 +23,8 @@ import java.util.List;
  *
  * Rules, in one place so they can be argued with:
  *  - only pages published in LIVE are listed, because llms.txt is a public file
+ *  - and only pages a visitor with no account can read, because the walk runs
+ *    in a guest session: advertising a gated page to an assistant is pointless
  *  - the home page leads the first section
  *  - a level-1 page with published children becomes its own section
  *  - pages hidden from the navigation are skipped, being usually utility pages
@@ -45,8 +46,13 @@ public final class LlmsGenerator {
     private LlmsGenerator() {
     }
 
-    public static String generate(JCRNodeWrapper site, JCRSessionWrapper liveSession, String language,
-            UrlResolver urls) throws Exception {
+    /**
+     * @param site the site node, read from whichever session decides what is
+     *             visible. Pass a node from a `guest` session and role
+     *             visibility is honoured for free: a page the caller cannot read
+     *             is simply not there to walk.
+     */
+    public static String generate(JCRNodeWrapper site, String language, UrlResolver urls) throws Exception {
         StringBuilder sb = new StringBuilder();
         int[] budget = {MAX_LINKS};
 

@@ -157,6 +157,11 @@ language-to-country default map, and returns null when it cannot answer. A flag 
 locale is a language, so this is a convention: no flag beats the wrong flag, which is why the
 unknown case renders the name alone.
 
+**Bump `CACHE_SCHEMA` in the drawer whenever the report grows a field, not only when it changes
+shape incompatibly.** The symptom is nasty: the API returns the new data, the code is correct, and
+the feature is invisible to every person who had opened the drawer before, because their cached
+report predates the field. Cost one round trip of "it does not show up" on the noindex notice.
+
 **A `useEffect` cannot reference a `useCallback` declared below it.** The dependency array is
 evaluated during render, before the `const`, so it throws `Cannot access 'x' before initialization`
 and the panel never renders. Shipped once, in the robots panel's auto-run effect. Declare

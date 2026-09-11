@@ -61,6 +61,10 @@ rather than a delta. It needs nothing from any external vendor.
   not a defect. Also a critical check in the page score, since a gated page
   scores nothing whatever else is right about it.
 
+- **The generated llms.txt honours role visibility.** The walk runs in a guest
+  session, so a page an editor can see but a visitor cannot is never advertised
+  to an assistant. Verified by gating one page: it leaves the file, and comes
+  back when the restriction does.
 - **Pages marked noindex are listed too.** The community robots-noindex module
   sets a mixin, so this costs no fetch. They appear under "closed on purpose",
   never as a defect: an editor ticked a box and the page will simply not be
@@ -70,6 +74,12 @@ rather than a delta. It needs nothing from any external vendor.
 
 ### Fixed
 
+- The noindex notice never reached the drawer. Two causes: the report shape
+  gained a `visibility` section without a `CACHE_SCHEMA` bump, so anyone who
+  had opened the drawer before got a cached report with no such section, and
+  the notice sat inside the crawler tab while the drawer opens on the score.
+  Page-level facts now render above the tabs, where they frame the numbers
+  below them.
 - The settings panel crashed with "Cannot access before initialization". The
   effect that runs the access check on open referenced the callback above its
   own declaration.

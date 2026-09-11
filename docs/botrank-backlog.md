@@ -129,7 +129,8 @@ by hand in a text box.
 
 **Acceptance**
 - Proposes a body from published pages, honouring noindex, language and role visibility, as the
-  sitemap module already does. *(noindex and language done; role visibility not yet)*
+  sitemap module already does. *(done: the walk runs in a guest session, so role visibility and
+  noindex both fall out of it)*
 - The editor curates before saving: include or exclude a section, override a page's one-line
   summary. Never overwrites hand edits silently.
 - Writes through the existing `llms.txt manager` module rather than serving a competing file. Two
