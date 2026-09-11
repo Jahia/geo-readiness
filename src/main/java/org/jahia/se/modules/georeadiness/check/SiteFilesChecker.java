@@ -22,24 +22,11 @@ import java.util.regex.Pattern;
  */
 public final class SiteFilesChecker {
 
-    /** Crawler name -> robots token. The token is what appears in robots.txt. */
-    public static final Map<String, String> AI_TOKENS = new LinkedHashMap<String, String>() {{
-        put("GPTBot", "GPTBot");
-        put("OAI-SearchBot", "OAI-SearchBot");
-        put("ChatGPT-User", "ChatGPT-User");
-        put("ClaudeBot", "ClaudeBot");
-        put("Claude-SearchBot", "Claude-SearchBot");
-        put("PerplexityBot", "PerplexityBot");
-        put("Perplexity-User", "Perplexity-User");
-        put("Google-Extended", "Google-Extended");
-        put("GoogleOther", "GoogleOther");
-        put("Bingbot", "bingbot");
-        put("CCBot", "CCBot");
-        put("Bytespider", "Bytespider");
-        put("Amazonbot", "Amazonbot");
-        put("Applebot-Extended", "Applebot-Extended");
-        put("meta-externalagent", "meta-externalagent");
-    }};
+    /**
+     * Crawler name to robots token, from the one registry in {@link AiCrawlers}
+     * so this list and the fetched list can never disagree again.
+     */
+    public static final Map<String, String> AI_TOKENS = AiCrawlers.robotsTokens();
 
     private static final Pattern MD_H1 = Pattern.compile("(?m)^#\\s+(.+)$");
     private static final Pattern MD_H2 = Pattern.compile("(?m)^##\\s+(.+)$");

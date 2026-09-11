@@ -63,7 +63,7 @@ Concretely, the servlet must keep:
   the *default* site's file (404 on this box), while `http://digitall.local.com:8080/robots.txt` is
   digitall's. `baseUrl()` follows the same logic: request host equals the site's `j:serverName` ->
   reuse the request's scheme and port; request host differs and the site has a real server name ->
-  `https://<serverName>`, which on a dev box is a `ConnectException` for all nine agents. That is
+  `https://<serverName>`, which on a dev box is a `ConnectException` for every agent. That is
   the edit-host-vs-public-host production case, not a bug. Add `127.0.0.1 <serverName>` to
   `/etc/hosts` and open jContent through that host. The file is `robots.txt`, plural.
 - **Vanity URLs only resolve when the request host maps to the site.** With many sites on
@@ -76,7 +76,11 @@ Concretely, the servlet must keep:
   not remove it to make a demo look green.
 - The node is resolved in the **live** workspace on purpose. Absent from live means never
   published, which the UI reports as a state, not an error.
-- Nine sequential fetches at up to 8s each is a slow request. It is deliberate: parallel fetches
+- **One crawler list, `AiCrawlers`.** The servlet used to fetch eight agents while the robots
+  checker evaluated fifteen tokens, so seven crawlers had a policy nobody had verified. Both sides
+  now read the same registry. Adding a crawler means adding it there, and nowhere else.
+- Sixteen fetches at up to 8s each would be over two minutes sequentially, so they run three at a
+  time and are consumed in order. Do not raise the concurrency to make it faster: parallel fetches
   from one server look like an attack to some WAFs. If it needs to be faster, cap concurrency at
   two or three, do not remove the timeout.
 - `analyse()` strips `script`, `style`, `noscript` and `template` before counting words. Without
@@ -84,7 +88,7 @@ Concretely, the servlet must keep:
 - The control agent must stay **first** in the map. `controlWords` is taken from the first agent
   that returns 200, and every "thin content" comparison is made against it.
 - Rate limiting is per user key with a sliding window, copied from page-audit. Each *check* is
-  nine outbound requests, so the limit is deliberately lower than page-audit's.
+  sixteen outbound requests, so the limit is deliberately lower than page-audit's.
 
 ## robots.txt traps
 

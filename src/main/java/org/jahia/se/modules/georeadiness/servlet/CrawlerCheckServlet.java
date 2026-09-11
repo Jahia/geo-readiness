@@ -1,5 +1,6 @@
 package org.jahia.se.modules.georeadiness.servlet;
 
+import org.jahia.se.modules.georeadiness.check.AiCrawlers;
 import org.jahia.se.modules.georeadiness.check.GeoScore;
 import org.jahia.se.modules.georeadiness.check.RobotsRules;
 import org.jahia.se.modules.georeadiness.check.SiteFilesChecker;
@@ -31,7 +32,13 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -63,18 +70,21 @@ public class CrawlerCheckServlet extends HttpServlet {
 
     private static final Logger logger = LoggerFactory.getLogger(CrawlerCheckServlet.class);
 
-    /** The control comes first on purpose: everything else is compared against it. */
-    private static final Map<String, String> DEFAULT_AGENTS = new LinkedHashMap<String, String>() {{
-        put("Browser (control)", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36");
-        put("GPTBot", "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot");
-        put("OAI-SearchBot", "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot");
-        put("ChatGPT-User", "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot");
-        put("ClaudeBot", "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ClaudeBot/1.0; +claudebot@anthropic.com");
-        put("PerplexityBot", "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot");
-        put("Google-Extended", "Mozilla/5.0 (compatible; Google-Extended/1.0)");
-        put("Bingbot", "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)");
-        put("CCBot", "CCBot/2.0 (https://commoncrawl.org/faq/)");
-    }};
+    /**
+     * One list for both halves of the check, from {@link AiCrawlers}. Fetching
+     * eight agents while evaluating fifteen robots tokens left seven crawlers
+     * with a policy nobody had verified, which is the gap this module exists to
+     * close.
+     */
+    private static final Map<String, String> DEFAULT_AGENTS = AiCrawlers.userAgents();
+
+    /**
+     * Sixteen sequential fetches at up to eight seconds each is over two minutes.
+     * Three at a time keeps the worst case near forty seconds while staying well
+     * short of what a WAF reads as an attack. Do not raise this to "make it fast":
+     * the timeout is the safety net, the concurrency is the compromise.
+     */
+    private static final int FETCH_CONCURRENCY = 3;
 
     private static final Pattern TITLE = Pattern.compile("(?is)<title[^>]*>(.*?)</title>");
     private static final Pattern H1 = Pattern.compile("(?is)<h1[^>]*>(.*?)</h1>");
@@ -206,8 +216,39 @@ public class CrawlerCheckServlet extends HttpServlet {
         int blockedButAllowed = 0;
         int reachableButDisallowed = 0;
 
-        for (Map.Entry<String, String> a : agents().entrySet()) {
-            JSONObject r = probe(publicUrl, a.getKey(), a.getValue());
+        // Fetched a few at a time, but consumed strictly in order: the control
+        // must stay first so controlWords is taken from it.
+        Map<String, String> toFetch = agents();
+        List<String> names = new ArrayList<>(toFetch.keySet());
+        List<JSONObject> probed = new ArrayList<>(names.size());
+        ExecutorService pool = Executors.newFixedThreadPool(Math.min(FETCH_CONCURRENCY, Math.max(1, names.size())));
+        try {
+            List<Future<JSONObject>> futures = new ArrayList<>(names.size());
+            for (String name : names) {
+                String ua = toFetch.get(name);
+                final String n = name;
+                futures.add(pool.submit((Callable<JSONObject>) () -> probe(publicUrl, n, ua)));
+            }
+            for (int i = 0; i < futures.size(); i++) {
+                try {
+                    probed.add(futures.get(i).get());
+                } catch (Exception e) {
+                    // One agent failing must not lose the other fifteen.
+                    JSONObject r = new JSONObject();
+                    r.put("name", names.get(i));
+                    r.put("status", JSONObject.NULL);
+                    r.put("ms", 0);
+                    r.put("bytes", 0);
+                    r.put("error", "FetchFailed");
+                    probed.add(r);
+                }
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+
+        Map<String, String> tokens = AiCrawlers.robotsTokens();
+        for (JSONObject r : probed) {
             int status = r.optInt("status", 0);
             if (controlWords < 0 && status == 200) {
                 controlWords = r.optJSONObject("html") != null ? r.getJSONObject("html").optInt("words", 0) : 0;
@@ -218,7 +259,7 @@ public class CrawlerCheckServlet extends HttpServlet {
 
             // Cross-check policy against reality. This is the part that tells an
             // editor which team owns the fix.
-            String token = SiteFilesChecker.AI_TOKENS.get(a.getKey());
+            String token = tokens.get(r.optString("name", ""));
             if (token != null) {
                 RobotsRules.Verdict v = rules.evaluate(token, pagePath);
                 r.put("robotsAllowed", v.allowed);

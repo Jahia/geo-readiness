@@ -194,7 +194,7 @@ quarter writing content nobody can read.
 - Server-side fetch of the published URL with a neutral UA and no cookies, reporting the HTTP
   status. A 403 or a challenge page is a critical finding, not a warning. *(done)*
 - Repeats the fetch as each named AI crawler UA and reports per-bot differences. That is how a WAF
-  rule gets caught. *(done, nine agents)*
+  rule gets caught. *(done, fifteen crawlers plus the control)*
 - Checks the initial HTML, not the rendered DOM, for H1, meta description, canonical, nav links
   and body text, catching client-side-only rendering. *(done)*
 - Compares initial-HTML text volume against the rendered page and flags a large gap. *(done)*

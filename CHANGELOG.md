@@ -11,8 +11,8 @@ rather than a delta. It needs nothing from any external vendor.
 
 ### Added
 
-- **Crawler access check.** One server-side fetch per AI bot user agent, nine
-  of them with a normal browser first as the control. No cookies, no session,
+- **Crawler access check.** One server-side fetch per AI bot user agent,
+  fifteen of them with a normal browser first as the control. No cookies, no session,
   redirects not followed, and the **initial HTML** is read rather than a
   rendered DOM. A page whose content only appears after JavaScript looks
   perfect to an editor and empty to a crawler, and this is the lens that shows
@@ -56,6 +56,13 @@ rather than a delta. It needs nothing from any external vendor.
   explanation.
 
 ### Changed
+
+- All fifteen AI crawlers are now fetched, not eight. The robots.txt checker
+  always evaluated fifteen tokens while the fetch covered eight, so seven
+  crawlers had a stated policy that nobody had verified against the server.
+  That is the exact gap this module exists to close. Both halves now read one
+  registry, `AiCrawlers`, and the fetches run three at a time so sixteen
+  requests stay near a second rather than two minutes.
 
 - The score and the crawler results are rendered as lists rather than
   tables, and the drawer is 820px wide instead of 620px. Moonstone table

@@ -20,7 +20,7 @@ JavaScript runs looks perfect to an editor and empty to a crawler.
 
 ## What it reports
 
-For each of nine user agents, starting with a normal browser as the control:
+For each of fifteen AI crawler user agents, starting with a normal browser as the control:
 
 | | |
 |---|---|
@@ -134,7 +134,7 @@ apply immediately, no redeploy.
 
 | Key | Default | What it does |
 |---|---|---|
-| `FETCH_TIMEOUT_MS` | 8000 | Per-fetch timeout. Nine agents are tried, so the worst case is nine times this. |
+| `FETCH_TIMEOUT_MS` | 8000 | Per-fetch timeout. Sixteen agents are tried, three at a time, so the worst case is about six times this. |
 | `MAX_BODY_BYTES` | 1500000 | How much of a page to read. |
 | `RATE_MAX_CALLS` / `RATE_WINDOW_MS` | 20 / 600000 | Per-user rate limit. Each check makes several outbound requests. |
 | `CRAWLER_AGENTS` | *(blank)* | Override the agent list as `name\|user-agent` pairs. Blank uses the built-in list. |

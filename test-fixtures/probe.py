@@ -18,18 +18,39 @@ from urllib.parse import urlparse
 
 AGENTS = {
     "Browser (control)": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
-    "GPTBot":          "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot",
-    "OAI-SearchBot":   "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot",
-    "ChatGPT-User":    "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
-    "ClaudeBot":       "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ClaudeBot/1.0; +claudebot@anthropic.com",
-    "PerplexityBot":   "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot",
+    "GPTBot": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot",
+    "OAI-SearchBot": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot",
+    "ChatGPT-User": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
+    "ClaudeBot": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ClaudeBot/1.0; +claudebot@anthropic.com",
+    "Claude-SearchBot": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Claude-SearchBot/1.0; +claudebot@anthropic.com",
+    "PerplexityBot": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot",
+    "Perplexity-User": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexity-user",
     "Google-Extended": "Mozilla/5.0 (compatible; Google-Extended/1.0)",
-    "Bingbot":         "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
-    "CCBot":           "CCBot/2.0 (https://commoncrawl.org/faq/)",
+    "GoogleOther": "Mozilla/5.0 (compatible; GoogleOther)",
+    "Bingbot": "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+    "CCBot": "CCBot/2.0 (https://commoncrawl.org/faq/)",
+    "Bytespider": "Mozilla/5.0 (compatible; Bytespider; spider-feedback@bytedance.com)",
+    "Amazonbot": "Mozilla/5.0 (compatible; Amazonbot/0.1; +https://developer.amazon.com/support/amazonbot)",
+    "Applebot-Extended": "Mozilla/5.0 (compatible; Applebot-Extended/0.1; +http://www.apple.com/go/applebot)",
+    "meta-externalagent": "meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)",
 }
-TOKENS = {"GPTBot": "GPTBot", "OAI-SearchBot": "OAI-SearchBot", "ChatGPT-User": "ChatGPT-User",
-          "ClaudeBot": "ClaudeBot", "PerplexityBot": "PerplexityBot",
-          "Google-Extended": "Google-Extended", "Bingbot": "bingbot", "CCBot": "CCBot"}
+TOKENS = {
+    "GPTBot": "GPTBot",
+    "OAI-SearchBot": "OAI-SearchBot",
+    "ChatGPT-User": "ChatGPT-User",
+    "ClaudeBot": "ClaudeBot",
+    "Claude-SearchBot": "Claude-SearchBot",
+    "PerplexityBot": "PerplexityBot",
+    "Perplexity-User": "Perplexity-User",
+    "Google-Extended": "Google-Extended",
+    "GoogleOther": "GoogleOther",
+    "Bingbot": "bingbot",
+    "CCBot": "CCBot",
+    "Bytespider": "Bytespider",
+    "Amazonbot": "Amazonbot",
+    "Applebot-Extended": "Applebot-Extended",
+    "meta-externalagent": "meta-externalagent",
+}
 
 
 def fetch(url, ua, timeout=10):
