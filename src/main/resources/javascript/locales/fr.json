@@ -114,7 +114,32 @@
           "verdictRefused_plural": "{{count}} robots IA sont refusés par le serveur",
           "verdictAgree": "robots.txt et le serveur sont d'accord pour chaque robot.",
           "verdictMismatch": "{{count}} robot est traité différemment de ce qu'indique robots.txt. L'un des deux a tort.",
-          "verdictMismatch_plural": "{{count}} robots sont traités différemment de ce qu'indique robots.txt. L'un des deux a tort."
+          "verdictMismatch_plural": "{{count}} robots sont traités différemment de ce qu'indique robots.txt. L'un des deux a tort.",
+          "bot": {
+            "GPTBot": "Collecte des pages pour entraîner les modèles d'OpenAI. La bloquer n'empêche pas ChatGPT de vous citer.",
+            "OAI-SearchBot": "Construit l'index des résultats de recherche de ChatGPT. La bloquer vous retire de ces réponses.",
+            "ChatGPT-User": "Récupère une page quand quelqu'un interroge ChatGPT à son sujet. La bloquer empêche ChatGPT d'ouvrir vos pages à la demande.",
+            "ClaudeBot": "Collecte des pages pour entraîner les modèles d'Anthropic. La bloquer n'empêche pas Claude de vous citer.",
+            "Claude-SearchBot": "Construit l'index de recherche de Claude. La bloquer vous retire de ces réponses.",
+            "PerplexityBot": "Construit l'index de recherche de Perplexity. La bloquer vous retire de ses réponses.",
+            "Perplexity-User": "Récupère une page quand quelqu'un interroge Perplexity à son sujet.",
+            "Google-Extended": "Détermine si votre contenu entraîne Gemini et alimente ses réponses. Sans effet sur le classement dans Google Search.",
+            "GoogleOther": "Robot Google polyvalent utilisé par plusieurs équipes produit. Son usage exact n'est pas documenté.",
+            "Bingbot": "Construit l'index Bing, qui alimente aussi Microsoft Copilot. La bloquer vous retire des deux.",
+            "CCBot": "Collecte des pages pour Common Crawl, un jeu de données public sur lequel de nombreux modèles s'entraînent.",
+            "Bytespider": "Collecte des pages pour entraîner les modèles de ByteDance.",
+            "Amazonbot": "Explore le site pour les réponses d'Alexa et la recherche Amazon.",
+            "Applebot-Extended": "Détermine si votre contenu entraîne Apple Intelligence. Sans effet sur les résultats Siri ou Spotlight.",
+            "meta-externalagent": "Collecte des pages pour entraîner les modèles de Meta."
+          },
+          "purpose": {
+            "search": "Répond aux questions",
+            "training": "Entraîne les modèles",
+            "other": "Mixte ou non documenté"
+          },
+          "searchBlockedTitle": "{{count}} robot qui répond aux questions est bloqué",
+          "searchBlockedTitle_plural": "{{count}} robots qui répondent aux questions sont bloqués",
+          "searchBlocked": "Bloquer un robot qui construit les réponses vous retire des réponses de cet assistant. Bloquer un robot qui ne fait qu'entraîner les modèles, non. Vérifiez que c'est bien votre intention : {{names}}."
         }
       },
       "llms": {

@@ -170,6 +170,33 @@ export const RobotsControlPanel = ({path, language}) => {
                 </Typography>
             </div>
 
+            {(() => {
+                // Refused by the server or disallowed by the file: either way the
+                // assistant does not see you. Training crawlers are left out,
+                // because refusing those is a normal and costless decision.
+                const blocked = (preview.agents || []).filter(a => {
+                    if (a.purpose !== 'search') {
+                        return false;
+                    }
+
+                    const stance = decisions[a.token] || a.current;
+                    const live = access && access.byName[a.name];
+                    return stance === 'block' || (live && live.status !== 200);
+                });
+                if (blocked.length === 0) {
+                    return null;
+                }
+
+                return (
+                    <Banner
+                        variant="warning"
+                        title={t('files.robots.control.searchBlockedTitle', {count: blocked.length})}
+                    >
+                        {t('files.robots.control.searchBlocked', {names: blocked.map(a => a.name).join(', ')})}
+                    </Banner>
+                );
+            })()}
+
             {access && (() => {
                 const bots = (preview.agents || []).map(a => access.byName[a.name]).filter(Boolean);
                 const refused = bots.filter(b => b.status !== 200).length;
@@ -196,7 +223,15 @@ export const RobotsControlPanel = ({path, language}) => {
                         <li key={a.token} className={styles.checkItem}>
                             <span className={styles.checkText}>
                                 <Typography variant="body" className={styles.checkLabel}>{a.name}</Typography>
+                                <Typography variant="caption" className={styles.checkFix}>
+                                    {t(`files.robots.control.bot.${a.name}`, '')}
+                                </Typography>
                                 <span className={styles.agentChips}>
+                                    <Chip
+                                        label={t(`files.robots.control.purpose.${a.purpose || 'other'}`)}
+                                        color={a.purpose === 'search' ? 'accent' : 'default'}
+                                        variant="bright"
+                                    />
                                     <Chip
                                         label={a.named ?
                                             t('files.robots.byName') :

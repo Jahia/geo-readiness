@@ -72,6 +72,14 @@ rather than a delta. It needs nothing from any external vendor.
   now leaves those pages out, since listing a page in the map you hand an
   assistant while telling it not to index that page contradicts itself.
 
+- **Each AI crawler says what it is for.** A one-line description per crawler,
+  and a split between the seven that answer questions and the seven that only
+  train models. Refusing a training crawler protects your content and costs no
+  visibility; refusing one that answers questions takes you out of that
+  assistant's replies. The panel warns only for the second kind, whether the
+  block comes from robots.txt or from the server. GoogleOther is marked mixed
+  rather than assigned a side its documentation does not support.
+
 ### Fixed
 
 - The noindex notice never reached the drawer. Two causes: the report shape

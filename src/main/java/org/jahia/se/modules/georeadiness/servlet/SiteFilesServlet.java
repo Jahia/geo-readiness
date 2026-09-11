@@ -1,5 +1,6 @@
 package org.jahia.se.modules.georeadiness.servlet;
 
+import org.jahia.se.modules.georeadiness.check.AiCrawlers;
 import org.jahia.se.modules.georeadiness.check.GuestVisibility;
 import org.jahia.se.modules.georeadiness.check.LlmsGenerator;
 import org.jahia.se.modules.georeadiness.check.RobotsEditor;
@@ -210,6 +211,8 @@ public class SiteFilesServlet extends HttpServlet {
             a.put("token", e.getValue());
             a.put("named", v.namedExplicitly);
             a.put("current", v.allowed ? RobotsEditor.ALLOW : RobotsEditor.BLOCK);
+            // What blocking this one would actually cost the site.
+            a.put("purpose", AiCrawlers.purposes().getOrDefault(e.getKey(), AiCrawlers.OTHER));
             agents.put(a);
         }
 

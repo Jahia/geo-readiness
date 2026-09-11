@@ -162,9 +162,11 @@ discovering months later that GPTBot was blocked.
 **Acceptance**
 - GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-SearchBot, PerplexityBot,
   Perplexity-User, Google-Extended, GoogleOther, CCBot each listed by name with a plain-language
-  description.
-- Shows the currently effective directive per bot, not just the file.
-- Warns when a rule blocks a bot the site is otherwise trying to be visible in.
+  description. *(done, fifteen crawlers, each saying what blocking it costs)*
+- Shows the currently effective directive per bot, not just the file. *(done, and beside it what
+  the server actually did when we fetched as that crawler)*
+- Warns when a rule blocks a bot the site is otherwise trying to be visible in. *(done, see the
+  search-versus-training split below)*
 
 **How it shipped.** Fifteen crawlers, each with an allow or block choice, merged into the site's
 existing `robots.txt` rather than replacing it. The two choices are deliberately not symmetric:
@@ -179,6 +181,16 @@ applying the same choices twice produces no phantom diff.
 
 The merge is line-based, not a full RFC 9309 rewrite. It does not reorder, deduplicate or tidy,
 because a robots.txt an operator wrote by hand should come back recognisable.
+
+**Search versus training is the distinction that matters.** Seven of the fifteen answer questions
+(OAI-SearchBot, ChatGPT-User, Claude-SearchBot, PerplexityBot, Perplexity-User, Bingbot,
+Amazonbot): blocking one of those takes the site out of that assistant's replies. Seven only
+collect content to train models (GPTBot, ClaudeBot, Google-Extended, CCBot, Bytespider,
+Applebot-Extended, meta-externalagent): refusing those is a normal decision that costs no
+visibility. GoogleOther is classed as mixed because its use is not published, which is more honest
+than picking a side. Each crawler carries a one-line description of what it does and what blocking
+it costs, and the panel warns only when an answering crawler is blocked, whether by the file or by
+the server.
 
 **Data** the site's own robots.txt. **Surface** page drawer, write side. **Effort** was S.
 

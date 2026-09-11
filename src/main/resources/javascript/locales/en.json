@@ -114,7 +114,32 @@
           "verdictRefused_plural": "{{count}} AI crawlers are refused by the server",
           "verdictAgree": "robots.txt and the server agree on every crawler.",
           "verdictMismatch": "{{count}} crawler is treated differently from what robots.txt says. One of the two is wrong.",
-          "verdictMismatch_plural": "{{count}} crawlers are treated differently from what robots.txt says. One of the two is wrong."
+          "verdictMismatch_plural": "{{count}} crawlers are treated differently from what robots.txt says. One of the two is wrong.",
+          "bot": {
+            "GPTBot": "Collects pages to train OpenAI's models. Blocking it does not affect whether ChatGPT can cite you.",
+            "OAI-SearchBot": "Builds the index behind ChatGPT's search results. Blocking it takes you out of those answers.",
+            "ChatGPT-User": "Fetches a page when someone asks ChatGPT about it. Blocking it means ChatGPT cannot open your pages on request.",
+            "ClaudeBot": "Collects pages to train Anthropic's models. Blocking it does not affect whether Claude can cite you.",
+            "Claude-SearchBot": "Builds the index behind Claude's search. Blocking it takes you out of those answers.",
+            "PerplexityBot": "Builds Perplexity's search index. Blocking it takes you out of its answers.",
+            "Perplexity-User": "Fetches a page when someone asks Perplexity about it.",
+            "Google-Extended": "Controls whether your content trains Gemini and grounds its answers. It does not affect Google Search ranking.",
+            "GoogleOther": "A general-purpose Google crawler used by several product teams. Its exact use is not published.",
+            "Bingbot": "Builds the Bing index, which also grounds Microsoft Copilot. Blocking it takes you out of both.",
+            "CCBot": "Collects pages for Common Crawl, a public dataset many models train on.",
+            "Bytespider": "Collects pages to train ByteDance's models.",
+            "Amazonbot": "Crawls for Alexa answers and Amazon search.",
+            "Applebot-Extended": "Controls whether your content trains Apple Intelligence. It does not affect Siri or Spotlight results.",
+            "meta-externalagent": "Collects pages to train Meta's models."
+          },
+          "purpose": {
+            "search": "Answers questions",
+            "training": "Trains models",
+            "other": "Mixed or undocumented"
+          },
+          "searchBlockedTitle": "{{count}} crawler that answers questions is blocked",
+          "searchBlockedTitle_plural": "{{count}} crawlers that answer questions are blocked",
+          "searchBlocked": "Blocking a crawler that builds answers removes you from that assistant's replies. Blocking one that only trains models does not. Check this is what you meant: {{names}}."
         }
       },
       "llms": {
