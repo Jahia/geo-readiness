@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 
 /**
  * Everything a visitor with no account can reach, keyed by the public path it is
@@ -64,8 +65,8 @@ public final class PublishedMap {
          * reported against the English page.
          */
         public final String language;
-
-        Entry(String jcrPath, String title, String modifiedOn, boolean noindex, boolean page, String language) {
+        Entry(String jcrPath, String title, String modifiedOn, boolean noindex, boolean page,
+                String language) {
             this.jcrPath = jcrPath;
             this.title = title;
             this.modifiedOn = modifiedOn;
@@ -148,6 +149,43 @@ public final class PublishedMap {
                     return langs;
                 });
     }
+
+    /**
+     * The entry for a public path that no longer resolves, when the node it
+     * names is published at a *different* address today - which on this platform
+     * means a vanity url was added and Jahia now redirects this path to it.
+     *
+     * Resolved from the path rather than by asking each node for its old
+     * address, because the outbound rewriter substitutes the vanity url even
+     * when explicitly asked not to, so the node side cannot answer. The guess at
+     * the node path is only ever accepted when the repository confirms it, so a
+     * wrong one simply finds nothing.
+     */
+    public static Entry movedFrom(Map<String, Entry> published, String sitePath, String path) {
+        if (published == null || path == null || published.containsKey(path)) {
+            return null;
+        }
+        String rest = path;
+        int dot = rest.lastIndexOf(".html");
+        if (dot > 0) {
+            rest = rest.substring(0, dot);
+        }
+        // A language prefix is part of the address, not of the node path.
+        Matcher lang = LANG_PREFIX.matcher(rest);
+        if (lang.find()) {
+            rest = rest.substring(lang.end() - 1);
+        }
+        String candidate = sitePath + rest;
+        for (Entry e : published.values()) {
+            if (candidate.equals(e.jcrPath)) {
+                return e;
+            }
+        }
+        return null;
+    }
+
+    private static final java.util.regex.Pattern LANG_PREFIX =
+            java.util.regex.Pattern.compile("^/[a-z]{2}(?:_[A-Z]{2})?/");
 
     /** Compared on path, not on the whole url: host and scheme differ legitimately. */
     public static String pathOf(String url) {

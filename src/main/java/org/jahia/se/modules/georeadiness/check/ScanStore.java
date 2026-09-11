@@ -65,6 +65,8 @@ public final class ScanStore {
     private static final String LINKS = "geoLinks";
     /** GEO-25, likewise: a fact about addresses, not a check a page passes. */
     private static final String VANITY = "geoVanity";
+    /** Whether the served llms.txt still matches what generating would produce. */
+    private static final String LLMS = "geoLlms";
 
     private ScanStore() {
     }
@@ -100,6 +102,7 @@ public final class ScanStore {
                 out.put("sitemapCheckedAt", date(l, SITEMAP_AT));
                 out.put("links", json(l, LINKS));
                 out.put("vanity", json(l, VANITY));
+                out.put("llms", json(l, LLMS));
             }
             return out;
         });
@@ -199,6 +202,17 @@ public final class ScanStore {
         inStore(sitePath, (store, session) -> {
             JCRNodeWrapper l = language(store, language);
             l.setProperty(VANITY, vanity.toString());
+            session.save();
+            return null;
+        });
+    }
+
+    /** Records whether the published llms.txt is still current. */
+    public static void saveLlms(String sitePath, String language, JSONObject llms)
+            throws RepositoryException {
+        inStore(sitePath, (store, session) -> {
+            JCRNodeWrapper l = language(store, language);
+            l.setProperty(LLMS, llms.toString());
             session.save();
             return null;
         });

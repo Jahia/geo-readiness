@@ -9,7 +9,7 @@ import styles from './Tabs.module.css';
 const NS = 'geo-readiness';
 // Enough rows to act on, few enough that one bad group cannot bury the rest.
 const ROWS = 10;
-const GROUPS = ['missing', 'unknown', 'staleDate', 'noindexListed'];
+const GROUPS = ['redirects', 'missing', 'unknown', 'staleDate', 'noindexListed'];
 
 
 /**

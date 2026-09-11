@@ -164,6 +164,15 @@ Concretely, the servlet must keep:
   site with vanity URLs shows the page under its vanity address in one file and its tree path in
   the other. Worth knowing before reading a sitemap disagreement as a bug in the comparison.
 
+- **You cannot ask `PublicUrls` for a page's non-vanity address.** `preferVanity=false` skips our
+  own lookup, but the outbound rewriter then substitutes the vanity url anyway when the request is
+  the mock one the scan uses. Resolve from the path side instead: `PublishedMap.movedFrom` turns a
+  listed address back into a node and only accepts the guess when the repository confirms it. This
+  cost a full build-deploy-scan cycle reporting zero findings that should have been two.
+- **`SiteFilesChecker` stores `rawBody` for robots.txt only.** The llms.txt branch did not, so a
+  check that read it silently saw an absent file and reported "not outdated" - a pass that looked
+  like good news. Same class as the `JCRNodeWrapper` trap: a missing input became a clean result.
+
 ## robots.txt traps
 
 - **The path evaluated against robots.txt must include the query string.** Rules like

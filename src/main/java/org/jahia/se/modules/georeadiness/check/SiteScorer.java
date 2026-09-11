@@ -213,6 +213,28 @@ public final class SiteScorer {
             logger.debug("vanity url check failed for {}", sitePath, e);
         }
 
+        // Is the published llms.txt still about this site? Compared against what
+        // regenerating would produce now, using the copy the site files check
+        // already fetched, so it costs one generation and no request.
+        try {
+            JSONObject llmsJson = siteFiles.optJSONObject("llms");
+            String servedLlms = llmsJson == null ? null : llmsJson.optString("rawBody", null);
+            String regenerated = GuestVisibility.inGuestSession(language, guest -> {
+                try {
+                    return LlmsGenerator.generate(guest.getNode(sitePath), language,
+                            n -> PublicUrls.forNode(n, opts.publicBaseUrl));
+                } catch (javax.jcr.RepositoryException e) {
+                    throw e;
+                } catch (Exception e) {
+                    throw new javax.jcr.RepositoryException(e);
+                }
+            });
+            ScanStore.saveLlms(sitePath, language, LlmsFreshness.check(servedLlms, regenerated,
+                    PublishedMap.forSite(sitePath, siteBase), sitePath));
+        } catch (Exception e) {
+            logger.debug("llms.txt freshness failed for {}", sitePath, e);
+        }
+
         ScanStore.progress(sitePath, language, paths.size());
         ScanStore.finishRun(sitePath, language, aggregate, failures);
         return aggregate;

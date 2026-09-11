@@ -56,7 +56,10 @@ a delta. It needs nothing from any external vendor.
   repository node instead of being fetched, so a 378-URL site costs no requests to check. Four
   disagreements are reported: published pages the sitemap never mentions, entries that resolve to
   nothing published, `lastmod` values that contradict the node's real modification date, and pages
-  the sitemap advertises while their own markup says `noindex`. The published set is built as guest
+  the sitemap advertises while their own markup says `noindex`. A fifth, reported as one finding
+  rather than two: the sitemap module does not use vanity URLs, so a page that has one is listed
+  under the address Jahia redirects away from - crawlers sent through a redirect to reach content
+  with a direct address. The published set is built as guest
   and across every site language, because a sitemap is language-aware and written for anonymous
   crawlers. It has its own dashboard tab with its own refresh, because it is a comparison and not a
   score, and a presence test that requires the response to actually be a sitemap: "200 with a tag
@@ -83,6 +86,14 @@ a delta. It needs nothing from any external vendor.
   and a page with aliases whose canonical tag is missing or names something else entirely.
   Deliberately no check for two pages claiming one address - Jahia renames the second on save, so
   it cannot happen.
+
+- **llms.txt is checked against the site it describes.** The file is written once and served
+  unchanged, so it goes stale silently - an assistant is handed a map of a site that has moved on,
+  and nothing anywhere says so. The served copy is diffed against what regenerating would produce
+  right now, so the finding is exactly as trustworthy as the button offered to fix it, and the
+  reason is named: the address now redirects, the page is no longer part of the generated list, it
+  is gone, or it is published and missing from the file. Not tied to the readiness score, which
+  regenerating does not move.
 
 **Writing, behind generate → diff → confirm**
 

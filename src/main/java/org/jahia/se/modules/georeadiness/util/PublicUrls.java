@@ -39,16 +39,37 @@ public final class PublicUrls {
      * would follow rather than one we assembled by hand.
      */
     public static String forNode(JCRNodeWrapper node, String configuredBase) throws Exception {
+        return forNode(node, configuredBase, true);
+    }
+
+    /** Request-free variant, with the vanity url optionally ignored. */
+    public static String forNode(JCRNodeWrapper node, String configuredBase, boolean preferVanity)
+            throws Exception {
         String base = base(node, null, configuredBase);
         java.net.URL u = new java.net.URL(base);
         int port = u.getPort() == -1 ? u.getDefaultPort() : u.getPort();
         HttpServletRequest req = MockHttp.request(u.getProtocol(), u.getHost(), port, Jahia.getContextPath());
-        return forNode(node, req, MockHttp.response(), configuredBase);
+        return forNode(node, req, MockHttp.response(), configuredBase, preferVanity);
     }
 
     /** Absolute public url for a node. `configuredBase` is PUBLIC_BASE_URL, blank to derive it. */
     public static String forNode(JCRNodeWrapper node, HttpServletRequest req, HttpServletResponse resp,
             String configuredBase) throws Exception {
+        return forNode(node, req, resp, configuredBase, true);
+    }
+
+    /**
+     * As above, with `preferVanity` false to get the address the page would have
+     * without its vanity url - the one Jahia redirects *from*.
+     *
+     * The sitemap module does not use vanity urls, so a page that has one is
+     * listed there under this address while it actually answers on the other.
+     * Knowing both is what lets that be reported as one finding, "the sitemap
+     * lists an address that redirects", rather than as an unexplained pair of a
+     * missing page and an unknown entry.
+     */
+    public static String forNode(JCRNodeWrapper node, HttpServletRequest req, HttpServletResponse resp,
+            String configuredBase, boolean preferVanity) throws Exception {
         // A default vanity url IS the page's address: Jahia answers 200 there
         // and 301s the tree path to it. The outbound rewriter does not always
         // produce one - it did not here, with the site's own host in the request
@@ -58,7 +79,7 @@ public final class PublicUrls {
         // reports the page missing because the sitemap lists the vanity; and the
         // link graph cannot match the links pointing at it. Ask the repository,
         // which is the authority, before falling back to the rewriter.
-        String vanity = defaultVanity(node);
+        String vanity = preferVanity ? defaultVanity(node) : null;
         if (vanity != null) {
             return base(node, req, configuredBase) + vanity;
         }

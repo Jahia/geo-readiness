@@ -175,6 +175,20 @@
           "noMixinTitle": "Pas encore de llms.txt",
           "placeholderTitle": "Texte par défaut",
           "appliedTitle": "Enregistré"
+        },
+        "stale": {
+          "title": "llms.txt ne correspond plus à ce site",
+          "summary": "{{stale}} entrées sont obsolètes et {{missing}} pages ne sont pas listées. Régénérer le fichier ci-dessous le remettra en cohérence.",
+          "why": {
+            "addressChanged": "l'adresse a changé, celle-ci redirige désormais",
+            "noLongerListed": "ne fait plus partie de la liste générée",
+            "gone": "n'est plus publiée, ou aucun visiteur ne peut la lire",
+            "notListed": "publiée, mais absente du fichier"
+          }
+        },
+        "fresh": {
+          "title": "llms.txt est à jour",
+          "summary": "Les {{count}} entrées correspondent à ce que produirait une génération maintenant : régénérer ne changerait rien."
         }
       },
       "llmsFull": {
@@ -408,13 +422,15 @@
         "missing": "Publiée, mais absente du sitemap",
         "unknown": "Dans le sitemap, mais rien de publié ne répond",
         "staleDate": "La date du sitemap est fausse",
-        "noindexListed": "Listée dans le sitemap et marquée noindex"
+        "noindexListed": "Listée dans le sitemap et marquée noindex",
+        "redirects": "Le sitemap indique une adresse qui redirige"
       },
       "why": {
         "missing": "Un robot n'a aucune raison de les chercher.",
         "unknown": "Du budget d'exploration dépensé sur des adresses qui ne mènent nulle part.",
         "staleDate": "Annoncer une page plus ancienne qu'elle n'est dissuade les robots de la réexplorer. Affiché ainsi : annoncé puis réel.",
-        "noindexListed": "La carte dit d'indexer, la page dit de ne pas le faire. L'un des deux est une erreur."
+        "noindexListed": "La carte dit d'indexer, la page dit de ne pas le faire. L'un des deux est une erreur.",
+        "redirects": "Ces pages ont une URL personnalisée, et le sitemap nomme encore l'adresse depuis laquelle Jahia redirige. Les robots passent par une redirection pour atteindre un contenu qui a une adresse directe, alors que les moteurs attendent l'URL finale dans un sitemap."
       },
       "counts": "{{entries}} entrées dans le sitemap · {{published}} pages et contenus publiés lisibles par un visiteur.",
       "noindexListedTitle": "Cette page est dans le sitemap et marquée noindex",

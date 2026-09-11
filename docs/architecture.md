@@ -47,6 +47,7 @@ JavaScript-only page is still caught, by the word-count check.
 | `TemplateRollup` | Groups findings by template and decides which are the template's fault. |
 | `PublishedMap` | Everything a guest can reach, keyed by public path, across every site language. Shared, because getting it wrong is not visible in the results. |
 | `LinkGraph` | Inbound links per page, read from rendered HTML and topped up with repository references. Navigation counted apart from content. |
+| `LlmsFreshness` | Whether the served llms.txt still matches what generating would produce. |
 | `VanityUrls` | Every address a page answers on, checked against the site's languages and the canonical tag. |
 | `SitemapCheck` | Resolves every `sitemap.xml` entry back to a node and compares it with what is actually published, as guest, across every site language. |
 | `ScanStore` | Reads and writes the scan on the site node. |

@@ -1,8 +1,9 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Banner, Button, Separator, Textarea, Typography} from '@jahia/moonstone';
 import {previewLlms, applyLlms} from '../api/siteFiles';
+import {scanStatus} from '../api/siteScore';
 import {DiffView} from './DiffView';
 import styles from './Tabs.module.css';
 
@@ -20,6 +21,19 @@ export const LlmsGeneratorPanel = ({path, language}) => {
     const [phase, setPhase] = useState('idle');
     const [confirming, setConfirming] = useState(false);
     const [error, setError] = useState(null);
+    // Whether the file being served still matches what generating would produce.
+    // Read from the last scan, which compares the two for free.
+    const [freshness, setFreshness] = useState(null);
+
+    useEffect(() => {
+        let live = true;
+        scanStatus({path, language})
+            .then(s => live && setFreshness(s.llms))
+            .catch(() => {});
+        return () => {
+            live = false;
+        };
+    }, [path, language]);
 
     const generate = useCallback(async () => {
         setPhase('running');
@@ -65,6 +79,46 @@ export const LlmsGeneratorPanel = ({path, language}) => {
             <Typography variant="body" className={styles.panelIntro}>
                 {t('files.llms.generate.intro')}
             </Typography>
+
+            {/*
+              * A stale llms.txt fails silently: nothing errors, an assistant is
+              * just handed a map of a site that has moved on. This is the only
+              * place that says so, and the button to fix it is right below.
+              */}
+            {freshness && freshness.outdated && (
+                <Banner variant="warning" title={t('files.llms.stale.title')}>
+                    {t('files.llms.stale.summary', {
+                        stale: (freshness.stale || []).length,
+                        missing: (freshness.missing || []).length
+                    })}
+                    <ul className={styles.checkList}>
+                        {(freshness.stale || []).slice(0, 5).map(r => (
+                            <li key={`s:${r.path}`} className={styles.checkItem}>
+                                <span className={styles.checkText}>
+                                    <Typography variant="caption" className={styles.checkFix}>
+                                        {r.path} · {t(`files.llms.stale.why.${r.why}`)}
+                                    </Typography>
+                                </span>
+                            </li>
+                        ))}
+                        {(freshness.missing || []).slice(0, 5).map(r => (
+                            <li key={`m:${r.path}`} className={styles.checkItem}>
+                                <span className={styles.checkText}>
+                                    <Typography variant="caption" className={styles.checkFix}>
+                                        {r.path} · {t('files.llms.stale.why.notListed')}
+                                    </Typography>
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </Banner>
+            )}
+
+            {freshness && freshness.present && !freshness.outdated && (
+                <Banner variant="info" title={t('files.llms.fresh.title')}>
+                    {t('files.llms.fresh.summary', {count: freshness.listed})}
+                </Banner>
+            )}
 
             <div className={styles.actions}>
                 <Button

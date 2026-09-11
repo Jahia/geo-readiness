@@ -175,6 +175,20 @@
           "noMixinTitle": "No llms.txt yet",
           "placeholderTitle": "Placeholder only",
           "appliedTitle": "Saved"
+        },
+        "stale": {
+          "title": "llms.txt no longer matches this site",
+          "summary": "{{stale}} entries are out of date and {{missing}} pages are not listed. Regenerating below will bring it back in line.",
+          "why": {
+            "addressChanged": "the address changed, this one now redirects",
+            "noLongerListed": "no longer part of the generated list",
+            "gone": "no longer published, or no visitor can read it",
+            "notListed": "published, but missing from the file"
+          }
+        },
+        "fresh": {
+          "title": "llms.txt is up to date",
+          "summary": "All {{count}} entries match what generating would produce right now, so regenerating would change nothing."
         }
       },
       "llmsFull": {
@@ -408,13 +422,15 @@
         "missing": "Published, but not in the sitemap",
         "unknown": "In the sitemap, but nothing published answers",
         "staleDate": "The date in the sitemap is wrong",
-        "noindexListed": "Listed in the sitemap and marked noindex"
+        "noindexListed": "Listed in the sitemap and marked noindex",
+        "redirects": "The sitemap lists an address that redirects"
       },
       "why": {
         "missing": "A crawler has no reason to look for these.",
         "unknown": "Crawl budget spent on addresses that lead nowhere.",
         "staleDate": "Claiming a page is older than it is tells crawlers not to bother recrawling it. Shown as claimed then actual.",
-        "noindexListed": "The map says index this, the page says do not. One of the two is a mistake."
+        "noindexListed": "The map says index this, the page says do not. One of the two is a mistake.",
+        "redirects": "These pages have a vanity URL, and the sitemap still names the address Jahia redirects away from. Crawlers are being sent through a redirect to reach content that has a direct address, and search engines want the final URL in a sitemap."
       },
       "counts": "{{entries}} entries in the sitemap · {{published}} published pages and content items a visitor can read.",
       "noindexListedTitle": "This page is in the sitemap and marked noindex",

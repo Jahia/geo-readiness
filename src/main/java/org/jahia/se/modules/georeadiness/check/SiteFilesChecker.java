@@ -122,6 +122,12 @@ public final class SiteFilesChecker {
         }
         o.put("present", present);
 
+        if (present) {
+            // Kept so the freshness check can compare what is served against
+            // what generating would produce, without fetching the file twice.
+            o.put("rawBody", f.body.length() > 60000 ? f.body.substring(0, 60000) : f.body);
+        }
+
         if (present && validateStructure) {
             Matcher h1 = MD_H1.matcher(f.body);
             o.put("h1", h1.find() ? h1.group(1).trim() : JSONObject.NULL);

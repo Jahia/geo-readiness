@@ -184,6 +184,7 @@ what it is written for. Four findings come out of it:
 | `unknown` | In the sitemap, resolves to nothing published. A stale entry. |
 | `staleDate` | The entry's `lastmod` disagrees with the node's real modification date. Shown as `sitemap date -> real date`. |
 | `noindexListed` | Listed in the sitemap and carrying `noindex`. The two files contradict each other. |
+| `redirects` | The page has a vanity URL and the sitemap names the address Jahia redirects away from. |
 
 `agrees` is true only when all four are empty.
 
@@ -192,7 +193,13 @@ action: the page is absent from the map, the map advertises it while the page sa
 the map's date for it is wrong (shown as the two dates). Matching is on path **and** language, so a
 finding that belongs to the French URL does not appear on the English page.
 
-**Redirects are not detected.** Resolution cannot see them. A sitemap entry that 301s to another
+`redirects` exists because the sitemap module does not use vanity URLs while the page does. Left
+alone that reads as two unrelated findings - the real address missing, the listed one unknown - when
+it is one thing: crawlers are being sent through a redirect to reach content that has a direct
+address, and search engines want the final URL in a sitemap. The pair is recognised and reported
+once.
+
+**Redirects within the sitemap's own entries are not detected.** Resolution cannot see them. A sitemap entry that 301s to another
 page resolves to whatever it names and is reported as clean.
 
 ### Why the page count and the entry count do not match
@@ -234,6 +241,31 @@ Counted once per source page: linking to the same target twice from one page is 
 decision. Only the language the scan read is judged - the other languages' pages were never
 fetched, so they have no links *observed*, which is not the same as having none. The site home page
 is never reported.
+
+
+## Is llms.txt still about this site
+
+`llms.txt` is generated once and then served unchanged, so it goes out of date silently: nothing
+fails, nothing returns an error, an assistant is simply handed a map of a site that has moved on.
+That happened on the test site the moment a vanity URL was added - the file kept pointing at
+`/home/agencies.html`, which now redirects, with no signal anywhere.
+
+It is compared against **the generator**, not against a second set of rules. Asking "which pages
+belong in it" a different way would be a second implementation to keep in step, and the two would
+drift. The served file is diffed against what regenerating would produce right now, which makes the
+finding exactly as trustworthy as the button offered to fix it: if they differ, regenerating changes
+something; if they agree, it would not.
+
+| Finding | Means |
+|---|---|
+| `addressChanged` | The listed address now redirects - usually a vanity URL added after the file was written. |
+| `noLongerListed` | Still published, but no longer part of what the generator produces. |
+| `gone` | Unpublished, or no visitor can read it. |
+| not listed | Published and in the current generation, but absent from the file. |
+
+Deliberately **not tied to the readiness score**. Regenerating this file does not move the score -
+the score is about crawler access and what arrives in the HTML - so prompting for it there would
+send somebody to do something that changes nothing they were looking at.
 
 
 ## Where each one is computed

@@ -97,9 +97,42 @@ public final class SitemapCheck {
         JSONArray unknown = new JSONArray();
         JSONArray staleDate = new JSONArray();
         JSONArray noindexListed = new JSONArray();
+        JSONArray redirects = new JSONArray();
+
+        // The sitemap module does not use vanity urls, so a page that has one is
+        // listed under the address Jahia redirects *from*. Left alone that reads
+        // as two unrelated findings - the real address missing, the listed one
+        // unknown - when it is one thing: the sitemap is handing crawlers a
+        // redirect instead of the page. Recognise the pair and report it once.
+        Set<String> pairedPrimary = new LinkedHashSet<>();
+        Set<String> pairedAlt = new LinkedHashSet<>();
+        for (String listed : entries.keySet()) {
+            PublishedMap.Entry moved = PublishedMap.movedFrom(published, sitePath, listed);
+            if (moved == null) {
+                continue;
+            }
+            // The node is published, at an address the sitemap does not list,
+            // while the sitemap lists one that redirects to it. One problem.
+            String now = null;
+            for (Map.Entry<String, PublishedMap.Entry> p : published.entrySet()) {
+                if (p.getValue() == moved && !entries.containsKey(p.getKey())) {
+                    now = p.getKey();
+                    break;
+                }
+            }
+            if (now == null) {
+                continue;
+            }
+            if (redirects.length() < MAX_REPORTED) {
+                redirects.put(row(moved, now, listed));
+            }
+            pairedPrimary.add(now);
+            pairedAlt.add(listed);
+        }
 
         for (Map.Entry<String, PublishedMap.Entry> p : published.entrySet()) {
-            if (!entries.containsKey(p.getKey()) && missing.length() < MAX_REPORTED) {
+            if (!entries.containsKey(p.getKey()) && !pairedPrimary.contains(p.getKey())
+                    && missing.length() < MAX_REPORTED) {
                 missing.put(row(p.getValue(), p.getKey(), null));
             }
         }
@@ -107,6 +140,10 @@ public final class SitemapCheck {
         for (Map.Entry<String, String> e : entries.entrySet()) {
             PublishedMap.Entry node = published.get(e.getKey());
             if (node == null) {
+                if (pairedAlt.contains(e.getKey())) {
+                    // Already reported, as the redirect it is.
+                    continue;
+                }
                 if (unknown.length() < MAX_REPORTED) {
                     JSONObject r = new JSONObject();
                     r.put("path", e.getKey());
@@ -129,8 +166,10 @@ public final class SitemapCheck {
         out.put("unknown", unknown);
         out.put("staleDate", staleDate);
         out.put("noindexListed", noindexListed);
+        out.put("redirects", redirects);
         out.put("agrees", missing.length() == 0 && unknown.length() == 0
-                && staleDate.length() == 0 && noindexListed.length() == 0);
+                && staleDate.length() == 0 && noindexListed.length() == 0
+                && redirects.length() == 0);
         return out;
     }
 
