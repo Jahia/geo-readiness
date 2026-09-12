@@ -563,7 +563,9 @@
       "stale": "nothing changed",
       "days": "{{count}} days",
       "months": "{{count}} months",
-      "limits": "A group is flagged on its newest item, not its oldest or its average: \"nothing here has been touched\" is actionable, while \"the oldest item is old\" is true of every site. Dates are the repository's own, so a page rebuilt without content changes does not count as fresh. Only the language shown is measured, since a translation carries its own dates."
+      "limits": "A group is flagged on its newest item, not its oldest or its average: \"nothing here has been touched\" is actionable, while \"the oldest item is old\" is true of every site. Dates are the repository's own, so a page rebuilt without content changes does not count as fresh. Only the language shown is measured, since a translation carries its own dates.",
+      "items": "{{count}} items",
+      "rangeTip": "newest {{newest}} · half older than {{median}} · oldest {{oldest}}"
     },
     "languages": {
       "title": "Readiness one language at a time",
@@ -583,7 +585,11 @@
       "pageMissingTitle": "This page does not exist in every language",
       "pageMissing": "It has no translation in: {{languages}}. Assistants answering in those languages have nothing of this page to cite.",
       "pageUnpublishedTitle": "A translation of this page is not published",
-      "pageUnpublished": "It is translated into {{languages}} but that translation has not been published, so no visitor or crawler can see it."
+      "pageUnpublished": "It is translated into {{languages}} but that translation has not been published, so no visitor or crawler can see it.",
+      "series": {
+        "coverage": "Translated coverage",
+        "score": "Readiness score"
+      }
     },
     "schema": {
       "tab": "Structured data",
@@ -617,7 +623,12 @@
         "saved": "Mapping saved.",
         "errorTitle": "The content model could not be read",
         "error": "Node types could not be listed for this site. The server log has the detail.",
-        "limits": "Saving a mapping stores it. It never writes into a page or a template: the drawer shows the snippet for a page and a person places it. \"Deliberately none\" marks a type that should not emit structured data, so it stops being reported as unmapped."
+        "limits": "Saving a mapping stores it. It never writes into a page or a template: the drawer shows the snippet for a page and a person places it. \"Deliberately none\" marks a type that should not emit structured data, so it stops being reported as unmapped.",
+        "legend": {
+          "complete": "Can emit complete JSON-LD",
+          "incomplete": "Mapped, but a required property has no source",
+          "unmapped": "Not mapped"
+        }
       },
       "mapping": {
         "unmapped": "Not mapped",

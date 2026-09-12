@@ -79,6 +79,11 @@ outside them as the summary of all three.
 Everything except the site scan is a repository query, so most panels answer immediately rather
 than waiting for a walk of the site.
 
+Where a number has a shape worth seeing, the panel draws it: a meter under the site score, bars per
+section, a histogram of content age with a newest-to-oldest range per type, coverage beside score
+per language, and one stacked bar for structured-data coverage. All plain HTML and CSS in
+Moonstone's own colors - no chart library - with a tooltip on hover and on keyboard focus.
+
 **Site score.** Every published page scored on a schedule you set, one fetch each. Shows the
 overall figure and the movement since the last run, a breakdown by section, the pages with
 findings, and the schedule itself: a cron expression built from dropdowns, an optional scope, and
@@ -159,7 +164,7 @@ else needs installing. `yarn.lock` is committed and must stay committed.
 
 ```bash
 mvn clean install
-curl -s --user root:root --form bundle=@target/geo-readiness-1.0.0.jar \
+curl -s --user root:root --form bundle=@target/geo-readiness-*.jar \
      --form start=true http://localhost:8080/modules/api/bundles
 ```
 

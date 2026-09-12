@@ -1,0 +1,300 @@
+/*
+ * Chart tokens, all from Moonstone. Validated as a set on Moonstone's light
+ * surface (#fdfdfd): the dark accent and purple pass the colorblind and
+ * normal-vision floors as adjacent series; the plain accent (#00a0e3) sits at
+ * 2.89:1 and is not used for marks; gray reads as gray and is a track, not a
+ * series. Status colors are reserved and always paired with text.
+ */
+.chart {
+    --geo-series1: var(--moon-color-accent_dark, #0072b1);
+    --geo-series2: var(--moon-color-purple, #8840f4);
+    --geo-series3: var(--moon-color-accent_light, #63d1ff);
+    --geo-track: var(--moon-color-gray_light40, rgba(218, 218, 218, 0.4));
+    --geo-good: var(--moon-color-success_dark, #267729);
+    --geo-warn: var(--moon-color-warning, #ffbb00);
+    --geo-bad: var(--moon-color-danger, #f44053);
+    --geo-ink2: var(--moon-color-gray_dark, #293136);
+    --geo-ink3: var(--moon-color-gray, #7a7f88);
+    --geo-surface: var(--moon-color-light, #fdfdfd);
+
+    position: relative;
+    margin: 0.25rem 0 0.75rem;
+}
+
+/* ---- rows: label above, one mark line below ------------------------------ */
+
+.rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.row {
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--moon-color-gray_light, #e7e9ec);
+}
+
+.row:last-child {
+    border-bottom: 0;
+}
+
+.rowHead {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin-bottom: 0.3rem;
+}
+
+.rowLabel {
+    font-size: 0.875rem;
+    color: var(--geo-ink2);
+}
+
+.rowSub {
+    font-size: 0.75rem;
+    color: var(--geo-ink3);
+}
+
+.flag {
+    margin-left: auto;
+    font-size: 0.72rem;
+    padding: 0.05rem 0.45rem;
+    border-radius: 3px;
+    background: var(--geo-warn);
+    color: #3b2a00;
+}
+
+/*
+ * The mark line. Thin, a track behind it in a lighter step, the value at the
+ * tip in text ink - never in the series color. Hit target is the whole line,
+ * not the painted pixels.
+ */
+.track {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 1.4rem;
+    border-radius: 3px;
+    outline: none;
+}
+
+.track:focus-visible {
+    box-shadow: 0 0 0 2px var(--geo-series3);
+}
+
+.trackThin {
+    height: 1.05rem;
+    margin-top: 0.1rem;
+}
+
+.track::before {
+    content: '';
+    position: absolute;
+    inset: 50% 0 auto 0;
+    height: 0.55rem;
+    transform: translateY(-50%);
+    border-radius: 3px;
+    background: var(--geo-track);
+}
+
+.bar {
+    position: relative;
+    height: 0.55rem;
+    min-width: 2px;
+    border-radius: 0 4px 4px 0; /* rounded data-end, square at the baseline */
+    background: var(--geo-series1);
+    transition: width 0.25s ease;
+}
+
+.track:hover .bar,
+.track:focus-visible .bar {
+    filter: brightness(1.12);
+}
+
+.tipValue {
+    position: relative;
+    margin-left: 0.5rem;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--geo-ink2);
+    white-space: nowrap;
+}
+
+.absent {
+    position: relative;
+    font-size: 0.75rem;
+    font-style: italic;
+    color: var(--geo-ink3);
+    padding-left: 0.2rem;
+}
+
+/*
+ * ---- series tones (marks only, never text) --------------------------------
+ * Scoped under .chart on purpose: every mark (.bar, .swatch, .segment,
+ * .meterFill, .range, .marker) declares its own default background, and at
+ * equal specificity whichever rule comes later in the file wins. That made the
+ * second series render in the first series' color. Two-class selectors beat
+ * every one-class default regardless of order.
+ */
+
+.chart .series1 { background: var(--geo-series1); }
+.chart .series2 { background: var(--geo-series2); }
+.chart .series3 { background: var(--geo-series3); }
+.chart .fillGood { background: var(--geo-good); }
+.chart .fillWarn { background: var(--geo-warn); }
+.chart .fillBad { background: var(--geo-bad); }
+
+/* ---- meter ---------------------------------------------------------------- */
+
+.meter {
+    margin: 0.35rem 0 0.9rem;
+}
+
+.meterTrack {
+    height: 0.7rem;
+    border-radius: 4px;
+    background: var(--geo-track);
+    overflow: hidden;
+}
+
+.meterFill {
+    height: 100%;
+    border-radius: 0 4px 4px 0;
+    background: var(--geo-series1);
+    transition: width 0.3s ease;
+}
+
+/* ---- stacked bar ---------------------------------------------------------- */
+
+.stack {
+    display: flex;
+    gap: 2px; /* surface gap between segments, never a stroke */
+    height: 1.1rem;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--geo-surface);
+}
+
+.segment {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2px;
+    background: var(--geo-series1);
+    outline: none;
+}
+
+.segment:first-child { border-radius: 4px 0 0 4px; }
+.segment:last-child { border-radius: 0 4px 4px 0; }
+
+.segment:hover,
+.segment:focus-visible {
+    filter: brightness(1.12);
+}
+
+/* Scoped like the tones: as a legend swatch it must beat .swatch's default. */
+.chart .segmentRest {
+    background: var(--geo-track);
+}
+
+.inBar {
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    color: #fff;
+    padding: 0 0.4rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+}
+
+/* ---- range + marker (freshness) ------------------------------------------- */
+
+.range {
+    position: absolute;
+    top: 50%;
+    height: 0.55rem;
+    transform: translateY(-50%);
+    border-radius: 4px;
+    background: var(--geo-series1);
+    opacity: 0.55;
+}
+
+.marker {
+    position: absolute;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: var(--geo-series1);
+    box-shadow: 0 0 0 2px var(--geo-surface); /* surface ring */
+}
+
+.axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.4rem;
+    font-size: 0.7rem;
+    color: var(--geo-ink3);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---- legend --------------------------------------------------------------- */
+
+.legend {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.1rem;
+    margin: 0.6rem 0 0.4rem;
+    padding: 0;
+    font-size: 0.78rem;
+    color: var(--geo-ink2);
+}
+
+.legendItem {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.legendValue {
+    color: var(--geo-ink3);
+    font-variant-numeric: tabular-nums;
+}
+
+.swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    background: var(--geo-series1);
+}
+
+/* ---- tooltip -------------------------------------------------------------- */
+
+.tip {
+    position: absolute;
+    z-index: 3;
+    transform: translate(-50%, calc(-100% - 8px));
+    padding: 0.35rem 0.6rem;
+    border-radius: 4px;
+    background: var(--moon-color-dark, #131c21);
+    color: #fff;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+.tip strong {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.tipLabel {
+    margin-left: 0.45rem;
+    opacity: 0.8;
+}

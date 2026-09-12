@@ -183,6 +183,22 @@ Concretely, the servlet must keep:
   schema-versus-page contradiction check cannot be made to fire end to end. Verify that comparison
   at the logic level and say so.
 
+- **Never build a CSS selector from a CSS-module class name.** The production `localIdentName`
+  is base64 and can end in `=` - `k3ZrYCe10X7fGEsp-P8wFg==` - which is not a valid selector, so
+  `el.closest('.' + styles.chart)` threw a SyntaxError inside the hover handler and no tooltip ever
+  appeared, on any chart, with no console noise a user would see. Anchor on a data attribute
+  (`[data-geo-chart]`) instead. Found by calling the React prop directly off `__reactProps$`, which
+  is the fastest way to tell "handler not attached" from "handler throws".
+- **A tone class must out-rank every mark's default background.** `.series2`, `.fillWarn`,
+  `.segmentRest` were single-class rules; `.swatch`, `.meterFill`, `.range` and `.marker` are
+  single-class too and declared later, so at equal specificity the default won and both series
+  rendered in one color - the legend and bars alike. Scope tones as `.chart .series2`: two classes
+  beat one regardless of source order.
+- **Automation hover and programmatic `focus()` are not a test of the tooltip.** The MCP hover
+  did not dispatch React's `mouseover`, and `.focus()` is silent when `document.hasFocus()` is
+  false, which it is in a driven tab. Dispatch `MouseEvent('mouseover', {bubbles:true})` and
+  `FocusEvent('focusin', {bubbles:true})` and read `[role="status"]` back.
+
 ## robots.txt traps
 
 - **The path evaluated against robots.txt must include the query string.** Rules like

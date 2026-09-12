@@ -56,6 +56,13 @@ JavaScript-only page is still caught, by the word-count check.
 | `SitemapCheck` | Resolves every `sitemap.xml` entry back to a node and compares it with what is actually published, as guest, across every site language. |
 | `ScanStore` | Reads and writes the scan on the site node. |
 
+### `charts/`
+
+| File | Role |
+|---|---|
+| `Charts.jsx` | `Meter`, `BarList`, `StackedBar`, `RangeList`, `PairedBars` - the five forms the panels use, in HTML/CSS with a shared hover/focus tooltip. No library. |
+| `Charts.module.css` | Tokens mapped from Moonstone, tone classes scoped under `.chart` so they beat every mark's default, mark specs (thin bar, rounded data-end, 2px surface gaps, surface ring on markers). |
+
 ### `servlet/`
 
 | Alias | Scope | Writes? |

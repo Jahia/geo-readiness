@@ -5,6 +5,7 @@ import {Banner, Button, Chip, Field, Input, Loader, Separator, Switch, Typograph
 import {CronBuilder} from './CronBuilder';
 import {scanStatus, runScan, saveSchedule} from '../api/siteScore';
 import {jcontentUrl} from '../util/jcontentUrl';
+import {Meter, BarList} from '../charts/Charts';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -149,6 +150,12 @@ export const SiteScorePanel = ({path, language}) => {
                             </span>
                         )}
                     </div>
+                    {/*
+                      * The one ratio the page leads with, as a meter: the fill
+                      * carries severity and the headline above carries the words,
+                      * so color is never the only signal.
+                      */}
+                    <Meter value={agg.percent} label={t('score17.headline', {percent: agg.percent})}/>
                     <Typography variant="caption" className={styles.panelIntro}>
                         {t('score17.counts', {
                             scored: agg.scored,
@@ -200,21 +207,19 @@ export const SiteScorePanel = ({path, language}) => {
                     <Typography variant="subheading" className={styles.panelSub}>
                         {t('score17.bySection')}
                     </Typography>
-                    <ul className={styles.checkList}>
-                        {agg.sections.map(s => (
-                            <li key={s.section} className={styles.checkItem}>
-                                <span className={styles.checkText}>
-                                    <Typography variant="body" className={styles.checkLabel}>{s.section}</Typography>
-                                    <Typography variant="caption" className={styles.checkFix}>
-                                        {t('score17.pages', {count: s.pages})}
-                                    </Typography>
-                                </span>
-                                <span className={styles.checkMeta}>
-                                    <Chip label={`${s.percent}%`} color={s.percent >= 80 ? 'success' : 'warning'}/>
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
+                    <BarList
+                        max={100}
+                        format={v => `${v}%`}
+                        tipFor={r => t('score17.pages', {count: r.pages})}
+                        rows={agg.sections.map(s => ({
+                            key: s.section,
+                            label: s.section,
+                            sublabel: t('score17.pages', {count: s.pages}),
+                            value: s.percent,
+                            pages: s.pages,
+                            status: s.percent >= 80 ? undefined : 'warn'
+                        }))}
+                    />
                 </>
             )}
 

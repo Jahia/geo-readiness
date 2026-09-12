@@ -4,6 +4,23 @@ All notable changes to GEO Readiness are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/); this project follows semantic-ish versioning
 aligned with the Jahia module version.
 
+## [Unreleased]
+
+### Added
+
+- **Charts, without a chart library.** Four panels now carry a visual form drawn in plain HTML and
+  CSS: a meter under the site score whose fill carries severity; horizontal bars for the score by
+  section; a histogram of content age plus a range bar per type and section running from newest
+  to oldest with the median marked; coverage and readiness score side by side per language; and a
+  single stacked bar for structured-data coverage. Every mark has a hover and keyboard tooltip. A
+  charting dependency inside a Module Federation bundle is weight every jContent page pays, plus a
+  second theme to keep in step with Moonstone - and the forms needed are bars and a meter.
+- **Colors from Moonstone's own tokens, validated rather than eyeballed.** The two series hues
+  (dark accent, purple) were run through a colorblind-safety and contrast validator on Moonstone's
+  light surface as an adjacent pair. The plain accent fails 3:1 and is not used for marks; gray is
+  a track, never a series. A missing value is never drawn as a zero-length bar - an unmeasured
+  language renders as text saying so.
+
 ## [1.0.0] - 2026-09-11
 
 First release, so this section describes the whole module rather than a delta. It needs nothing

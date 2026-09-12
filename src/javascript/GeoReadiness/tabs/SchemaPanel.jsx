@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Banner, Button, Chip, Dropdown, Loader, Separator, Typography} from '@jahia/moonstone';
 import {checkSchema, saveSchemaMap} from '../api/siteScore';
+import {StackedBar} from '../charts/Charts';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -92,6 +93,16 @@ export const SchemaPanel = ({path, language}) => {
                             total: data.total
                         })}
                     </Typography>
+
+                    {/* Part-to-whole in one bar: what can emit, what is mapped but thin, what is not mapped. */}
+                    <StackedBar
+                        total={data.total}
+                        restLabel={t('schema.panel.legend.unmapped')}
+                        segments={[
+                            {key: 'complete', label: t('schema.panel.legend.complete'), value: data.completeItems, tone: 'series1'},
+                            {key: 'incomplete', label: t('schema.panel.legend.incomplete'), value: data.mappedItems - data.completeItems, tone: 'series2'}
+                        ]}
+                    />
 
                     <ul className={styles.checkList}>
                         {types.map(row => {

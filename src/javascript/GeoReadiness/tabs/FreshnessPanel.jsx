@@ -1,8 +1,9 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Chip, Dropdown, Loader, Separator, Typography} from '@jahia/moonstone';
+import {Banner, Dropdown, Loader, Separator, Typography} from '@jahia/moonstone';
 import {scanStatus, checkFreshness} from '../api/siteScore';
+import {BarList, RangeList} from '../charts/Charts';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -46,28 +47,31 @@ export const FreshnessPanel = ({path, language}) => {
     const f = state.freshness;
     const threshold = (f && f.staleDays) || state.staleDays || 365;
     const counts = f ? Object.fromEntries((f.distribution || []).map(b => [b.label, b.count])) : {};
-    const widest = Math.max(1, ...Object.values(counts));
+
+    // Shared x-axis across both breakdowns, so a bar's length means the same
+    // thing whether the group is a type or a section.
+    const oldest = f ? Math.max(1, ...[...(f.byType || []), ...(f.bySection || [])].map(g => g.oldest)) : 1;
 
     const groups = (rows, key) => (
-        <ul className={styles.checkList}>
-            {(rows || []).map(g => (
-                <li key={`${key}:${g.name}`} className={styles.checkItem}>
-                    <span className={styles.checkText}>
-                        <Typography variant="body" className={styles.checkLabel}>{g.name}</Typography>
-                        <Typography variant="caption" className={styles.checkFix}>
-                            {t('freshness.group', {
-                                count: g.count,
-                                newest: months(g.newest, t),
-                                median: months(g.median, t)
-                            })}
-                        </Typography>
-                    </span>
-                    <span className={styles.checkMeta}>
-                        {g.stale && <Chip label={t('freshness.stale')} color="warning"/>}
-                    </span>
-                </li>
-            ))}
-        </ul>
+        <RangeList
+            max={oldest}
+            format={d => months(d, t)}
+            tipFor={r => t('freshness.rangeTip', {
+                newest: months(r.from, t),
+                median: months(r.marker, t),
+                oldest: months(r.to, t)
+            })}
+            rows={(rows || []).map(g => ({
+                key: `${key}:${g.name}`,
+                label: g.name,
+                sublabel: t('freshness.items', {count: g.count}),
+                flag: g.stale ? t('freshness.stale') : null,
+                from: g.newest,
+                to: g.oldest,
+                marker: g.median,
+                stale: g.stale
+            }))}
+        />
     );
 
     return (
@@ -113,31 +117,18 @@ export const FreshnessPanel = ({path, language}) => {
                     </Typography>
 
                     {/*
-                      * A plain bar per bucket. The shape is the point - whether
-                      * the site is mostly recent or mostly a year old - and a
-                      * chart library for five numbers would be a dependency and
-                      * a theme to maintain.
+                      * A histogram, one hue. The shape is the point: whether the
+                      * site is mostly recent or mostly a year old.
                       */}
-                    <ul className={styles.checkList}>
-                        {BUCKETS.map(b => (
-                            <li key={b} className={styles.checkItem}>
-                                <span className={styles.checkText}>
-                                    <Typography variant="body" className={styles.checkLabel}>
-                                        {t(`freshness.bucket.${b}`)}
-                                    </Typography>
-                                    <span
-                                        className={styles.ageBar}
-                                        style={{width: `${Math.round(((counts[b] || 0) / widest) * 100)}%`}}
-                                    />
-                                </span>
-                                <span className={styles.checkMeta}>
-                                    <Typography variant="caption" className={styles.checkValue}>
-                                        {counts[b] || 0}
-                                    </Typography>
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
+                    <BarList
+                        format={v => String(v)}
+                        tipFor={r => t('freshness.items', {count: r.value})}
+                        rows={BUCKETS.map(b => ({
+                            key: b,
+                            label: t(`freshness.bucket.${b}`),
+                            value: counts[b] || 0
+                        }))}
+                    />
 
                     <Separator spacing="big" size="full"/>
                     <Typography variant="subheading" className={styles.panelSub}>
