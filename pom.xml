@@ -32,7 +32,10 @@
     </scm>
 
     <properties>
-        <jahia-depends>default</jahia-depends>
+        <!-- jcontent hosts the UI; robots and llms own the mixins the site-files
+             editor writes. Naming them means Jahia refuses to start this module
+             rather than failing at the first write. -->
+        <jahia-depends>default,jcontent,robots,llms</jahia-depends>
         <yarn.arguments>build:production</yarn.arguments>
     </properties>
 
@@ -55,8 +58,6 @@
                 <configuration>
                     <instructions>
                         <Bundle-Name>GEO Readiness</Bundle-Name>
-                        <Bundle-SymbolicName>geo-readiness</Bundle-SymbolicName>
-                        <Jahia-Depends>default</Jahia-Depends>
                         <_dsannotations>*</_dsannotations>
                     </instructions>
                 </configuration>
