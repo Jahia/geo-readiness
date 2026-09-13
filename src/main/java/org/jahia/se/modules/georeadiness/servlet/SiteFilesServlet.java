@@ -8,6 +8,7 @@ import org.jahia.se.modules.georeadiness.check.RobotsRules;
 import org.jahia.se.modules.georeadiness.check.SiteFilesChecker;
 import org.jahia.se.modules.georeadiness.config.GeoReadinessConfigService;
 import org.jahia.se.modules.georeadiness.util.PublicUrls;
+import org.jahia.se.modules.georeadiness.util.SiteScope;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRPublicationService;
 import org.jahia.services.content.JCRSessionFactory;
@@ -103,6 +104,11 @@ public class SiteFilesServlet extends HttpServlet {
         }
 
         try {
+            // Both files belong to the site, both preview against live, and an
+            // apply publishes. So the gate is the site and the dashboard's own
+            // permission, settled before any action runs.
+            SiteScope.require(path, language, SiteScope.DASHBOARD);
+
             switch (action) {
                 case "previewLlms":
                     writeJson(resp, HttpServletResponse.SC_OK, previewLlms(path, language, req, resp));
@@ -122,7 +128,7 @@ public class SiteFilesServlet extends HttpServlet {
                 default:
                     deny(resp, HttpServletResponse.SC_BAD_REQUEST, "unknown action");
             }
-        } catch (javax.jcr.AccessDeniedException e) {
+        } catch (javax.jcr.PathNotFoundException | javax.jcr.AccessDeniedException e) {
             deny(resp, HttpServletResponse.SC_FORBIDDEN, "not allowed");
         } catch (Exception e) {
             logger.warn("site-files {} failed for {}: {}", action, path, e.getMessage());

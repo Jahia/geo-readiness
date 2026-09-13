@@ -149,6 +149,18 @@ public class CrawlerCheckServlet extends HttpServlet {
             return;
         }
 
+        // The drawer opens on a node the caller has selected in jContent, so the
+        // floor is "edits this content", not "can read the published page". Read
+        // it in the editing workspace first and let that decide.
+        try {
+            JCRSessionFactory.getInstance()
+                    .getCurrentUserSession("default", java.util.Locale.forLanguageTag(language))
+                    .getNode(path);
+        } catch (Exception e) {
+            deny(resp, HttpServletResponse.SC_FORBIDDEN, "cannot read node");
+            return;
+        }
+
         // The node must exist in LIVE and the caller must be able to read it.
         // Absent from live means never published, which is a real answer, not an error.
         String publicUrl;
