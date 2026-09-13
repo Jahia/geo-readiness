@@ -86,6 +86,11 @@ matrix - pages down, failing checks across - so a check every page fails reads a
 which is the template's doing rather than the authors'. All plain HTML and CSS in Moonstone's own
 colors - no chart library - with a tooltip on hover and on keyboard focus.
 
+No findings list is capped. A list is shown in full up to twenty-five rows; past ten rows a
+pagination control appears so a denser view can be chosen, and past twenty-five the list pages,
+saying "Showing 1–25 of 40" above its rows so a header count and the visible rows never disagree
+without the explanation between them.
+
 **Site score.** Every published page scored on a schedule you set, one fetch each. Shows the
 overall figure and the movement since the last run, a breakdown by section, the pages with
 findings, and the schedule itself: a cron expression built from dropdowns, an optional scope, and
