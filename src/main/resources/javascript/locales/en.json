@@ -579,7 +579,11 @@
       },
       "axisOlder": "older",
       "axisRecent": "more recent",
-      "untouched": "nothing here has changed in {{age}}"
+      "untouched": "nothing here has changed in {{age}}",
+      "allTitle": "Every page, oldest first",
+      "allHelp": "The whole list, so the groups above tell you where to look and this tells you which page. Each row opens in jContent.",
+      "noDate": "no date",
+      "truncated": "Long lists are cut at {{count}} rows; the groups above still count everything."
     },
     "languages": {
       "title": "Readiness one language at a time",

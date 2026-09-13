@@ -579,7 +579,11 @@
       },
       "axisOlder": "plus ancien",
       "axisRecent": "plus récent",
-      "untouched": "rien n'a changé ici depuis {{age}}"
+      "untouched": "rien n'a changé ici depuis {{age}}",
+      "allTitle": "Toutes les pages, de la plus ancienne à la plus récente",
+      "allHelp": "La liste complète : les regroupements ci-dessus indiquent où chercher, celle-ci indique quelle page. Chaque ligne s'ouvre dans jContent.",
+      "noDate": "sans date",
+      "truncated": "Les listes longues sont coupées à {{count}} lignes ; les regroupements ci-dessus comptent toujours la totalité."
     },
     "languages": {
       "title": "La préparation, langue par langue",

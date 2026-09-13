@@ -4,6 +4,8 @@ import {useTranslation} from 'react-i18next';
 import {Banner, Dropdown, Loader, Separator, Typography} from '@jahia/moonstone';
 import {scanStatus, checkFreshness} from '../api/siteScore';
 import {BarList, Histogram} from '../charts/Charts';
+import {jcontentUrl} from '../util/jcontentUrl';
+import {Paged} from '../util/Paged';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -170,6 +172,67 @@ export const FreshnessPanel = ({path, language}) => {
                         {t('freshness.bySectionHelp')}
                     </Typography>
                     {groups(f.bySection, 'section')}
+
+                    <Separator spacing="big" size="full"/>
+                    <Typography variant="subheading" className={styles.panelSub}>
+                        {t('freshness.allTitle')}
+                    </Typography>
+                    <Typography variant="caption" className={styles.panelIntro}>
+                        {t('freshness.allHelp')}
+                    </Typography>
+
+                    {/*
+                      * The groups above say where to look; this says which page.
+                      * Oldest first, so the list opens on the work rather than on
+                      * whatever the repository happened to return first.
+                      */}
+                    <Paged rows={f.items || []}>
+                        {slice => (
+                            <ul className={styles.checkList}>
+                                {slice.map(r => (
+                                    <li key={r.jcrPath} className={styles.checkItem}>
+                                        <span className={styles.checkText}>
+                                            {jcontentUrl(r.jcrPath, language) ? (
+                                                <a
+                                                    className={styles.pageLink}
+                                                    href={jcontentUrl(r.jcrPath, language)}
+                                                    title={t('score17.openPage')}
+                                                >
+                                                    {r.title}
+                                                </a>
+                                            ) : (
+                                                <Typography variant="body" className={styles.checkLabel}>
+                                                    {r.title}
+                                                </Typography>
+                                            )}
+                                            <Typography variant="caption" className={styles.checkFix}>
+                                                {`${r.type} · ${r.section} · ${r.path}`}
+                                            </Typography>
+                                        </span>
+                                        <span className={styles.checkMeta}>
+                                            <Typography
+                                                variant="caption"
+                                                className={r.stale ? styles.checkStale : styles.checkValue}
+                                            >
+                                                {r.days === null ?
+                                                    t('freshness.noDate') :
+                                                    age(r.days, t)}
+                                            </Typography>
+                                            <Typography variant="caption" className={styles.checkFix}>
+                                                {r.modifiedOn || ''}
+                                            </Typography>
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </Paged>
+
+                    {f.itemsTruncated && (
+                        <Typography variant="caption" className={styles.panelIntro}>
+                            {t('freshness.truncated', {count: (f.items || []).length})}
+                        </Typography>
+                    )}
 
                     <p className={styles.explain}>{t('freshness.limits')}</p>
                 </>
