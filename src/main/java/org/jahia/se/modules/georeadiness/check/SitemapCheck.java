@@ -6,6 +6,7 @@ import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.content.JCRTemplate;
 import org.json.JSONArray;
+import org.jahia.se.modules.georeadiness.util.FetchGuard;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -268,6 +269,11 @@ public final class SitemapCheck {
         while (children.find() && into.size() < MAX_ENTRIES) {
             Matcher loc = LOC.matcher(children.group(1));
             if (!loc.find()) {
+                continue;
+            }
+            // A sitemap index names its children, and the file is fetched
+            // content: only a child on the site's own origin is followed.
+            if (!FetchGuard.isWithin(loc.group(1), base)) {
                 continue;
             }
             SiteFilesChecker.Fetched child = SiteFilesChecker.fetch(loc.group(1), timeoutMs, maxBytes);

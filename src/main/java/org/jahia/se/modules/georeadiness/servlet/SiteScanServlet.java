@@ -11,13 +11,14 @@ import org.jahia.se.modules.georeadiness.check.SitemapCheck;
 import org.jahia.se.modules.georeadiness.scheduler.ScanScheduler;
 import org.jahia.se.modules.georeadiness.scheduler.SiteScanJob;
 import org.jahia.se.modules.georeadiness.config.GeoReadinessConfigService;
-import org.jahia.services.content.JCRNodeWrapper;
+import org.jahia.se.modules.georeadiness.util.SiteScope;
 import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.usermanager.JahiaUser;
 import org.jahia.services.usermanager.JahiaUserManagerService;
 import org.json.JSONObject;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +49,12 @@ import java.util.Map;
  */
 @Component(
         service = {HttpServlet.class, Servlet.class},
-        property = {"alias=/geo-readiness/site-scan", "allow-api-token=true"},
+        property = {
+                "alias=/geo-readiness/site-scan",
+                "allow-api-token=true",
+                "service.description=GEO readiness site scans",
+                "service.vendor=Jahia Solutions Group SA"
+        },
         immediate = true)
 public class SiteScanServlet extends HttpServlet {
 
@@ -62,7 +68,7 @@ public class SiteScanServlet extends HttpServlet {
 
     private final Map<String, Deque<Long>> callWindows = new ConcurrentHashMap<>();
 
-    @org.osgi.service.component.annotations.Reference
+    @Reference
     private GeoReadinessConfigService config;
 
     @Override
@@ -88,16 +94,19 @@ public class SiteScanServlet extends HttpServlet {
         String action = body.optString("action", "");
         String path = body.optString("path", "");
         String language = body.optString("language", "en");
+        String scope = body.optString("scope", "").trim();
         if (path.isEmpty() || !path.startsWith("/sites/")) {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "path required");
             return;
         }
+        // The language becomes a node name under a system session further down,
+        // so it is a path unless it is checked here.
+        if (!SiteScope.isLanguage(language)) {
+            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "language required");
+            return;
+        }
 
         try {
-            // The caller must be able to see the site in the editing workspace
-            // before we tell them anything about it. The scans themselves then
-            // run with a system session, because reporting what guest CANNOT see
-            // is the whole point and a caller-scoped session could not do it.
             // Only the expensive actions are rate limited. Reading the stored
             // state is what the dashboard polls while a scan runs, and limiting
             // that would make a long scan look like a failure after a minute.
@@ -108,7 +117,23 @@ public class SiteScanServlet extends HttpServlet {
                 return;
             }
 
-            String sitePath = resolveSite(path, language);
+            // The caller must hold the dashboard's own permission on the site
+            // before we tell them anything about it, or act on it. The scans
+            // themselves then run with a system session, because reporting what
+            // guest CANNOT see is the whole point and a caller-scoped session
+            // could not do it.
+            String sitePath;
+            String within;
+            try {
+                sitePath = SiteScope.require(path, language, SiteScope.DASHBOARD);
+                // A scan reads and stores under a system session, so the subtree
+                // it is pointed at is resolved and confirmed to be in the site.
+                within = SiteScope.requireWithin(sitePath, scope, language);
+            } catch (javax.jcr.PathNotFoundException | javax.jcr.AccessDeniedException e) {
+                deny(resp, HttpServletResponse.SC_FORBIDDEN, "cannot read node");
+                return;
+            }
+
             switch (action) {
                 case "guestVisibility":
                     writeJson(resp, HttpServletResponse.SC_OK,
@@ -169,17 +194,15 @@ public class SiteScanServlet extends HttpServlet {
                     return;
                 case "saveSchedule":
                     writeJson(resp, HttpServletResponse.SC_OK,
-                            saveSchedule(sitePath, language, body, req));
+                            saveSchedule(sitePath, language, within, body, req));
                     return;
                 case "runScan":
-                    runScan(sitePath, language, body.optString("scope", ""), req);
+                    runScan(sitePath, language, within, req);
                     writeJson(resp, HttpServletResponse.SC_OK, ScanStore.read(sitePath, language));
                     return;
                 default:
                     deny(resp, HttpServletResponse.SC_BAD_REQUEST, "unknown action");
             }
-        } catch (javax.jcr.PathNotFoundException | javax.jcr.AccessDeniedException e) {
-            deny(resp, HttpServletResponse.SC_FORBIDDEN, "cannot read node");
         } catch (Exception e) {
             logger.warn("site-scan {} failed for {}: {}", action, path, e.getMessage());
             logger.debug("site-scan failure", e);
@@ -199,11 +222,11 @@ public class SiteScanServlet extends HttpServlet {
      * Validates the cron before storing anything, then installs or removes the
      * trigger so the stored config and the scheduler cannot disagree.
      */
-    private JSONObject saveSchedule(String sitePath, String language, JSONObject body, HttpServletRequest req)
+    private JSONObject saveSchedule(String sitePath, String language, String scope, JSONObject body,
+            HttpServletRequest req)
             throws Exception {
         String cron = body.optString("cron", "").trim();
         boolean enabled = body.optBoolean("enabled", false);
-        String scope = body.optString("scope", "").trim();
 
         if (enabled && !ScanScheduler.isValidCron(cron)) {
             JSONObject err = new JSONObject();
@@ -212,7 +235,10 @@ public class SiteScanServlet extends HttpServlet {
         }
 
         String base = baseUrlFor(sitePath, language, req);
-        ScanStore.saveConfig(sitePath, cron, enabled, scope, base);
+        // Recorded so a run can ask again whether this account is still
+        // entitled to it, rather than trusting a decision made once.
+        String owner = currentUser() == null ? "" : currentUser().getLocalPath();
+        ScanStore.saveConfig(sitePath, cron, enabled, scope, base, owner);
 
         if (enabled) {
             org.quartz.JobDataMap data = new org.quartz.JobDataMap();
@@ -223,6 +249,7 @@ public class SiteScanServlet extends HttpServlet {
             data.put(SiteScanJob.TIMEOUT_MS, config.getFetchTimeoutMs());
             data.put(SiteScanJob.MAX_BYTES, config.getMaxBodyBytes());
             data.put(SiteScanJob.MAX_PAGES, MAX_PAGES);
+            data.put(SiteScanJob.USER_KEY, owner);
             ScanScheduler.schedule(sitePath, language, cron, data);
         } else {
             ScanScheduler.unschedule(sitePath, language);
@@ -263,13 +290,6 @@ public class SiteScanServlet extends HttpServlet {
         JCRSessionWrapper live = JCRSessionFactory.getInstance()
                 .getCurrentUserSession("live", Locale.forLanguageTag(language));
         return org.jahia.se.modules.georeadiness.util.PublicUrls.base(live.getNode(sitePath), req, "");
-    }
-
-    private String resolveSite(String path, String language) throws Exception {
-        JCRSessionWrapper edit = JCRSessionFactory.getInstance()
-                .getCurrentUserSession("default", Locale.forLanguageTag(language));
-        JCRNodeWrapper node = edit.getNode(path);
-        return node.getResolveSite().getPath();
     }
 
     private boolean rateLimitOk(String userKey) {

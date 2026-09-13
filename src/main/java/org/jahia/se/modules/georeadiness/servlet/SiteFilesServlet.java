@@ -8,6 +8,7 @@ import org.jahia.se.modules.georeadiness.check.RobotsRules;
 import org.jahia.se.modules.georeadiness.check.SiteFilesChecker;
 import org.jahia.se.modules.georeadiness.config.GeoReadinessConfigService;
 import org.jahia.se.modules.georeadiness.util.PublicUrls;
+import org.jahia.se.modules.georeadiness.util.SiteScope;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRPublicationService;
 import org.jahia.services.content.JCRSessionFactory;
@@ -54,7 +55,12 @@ import java.util.Map;
  */
 @Component(
         service = {HttpServlet.class, Servlet.class},
-        property = {"alias=/geo-readiness/site-files", "allow-api-token=true"},
+        property = {
+                "alias=/geo-readiness/site-files",
+                "allow-api-token=true",
+                "service.description=GEO readiness robots.txt and llms.txt editing",
+                "service.vendor=Jahia Solutions Group SA"
+        },
         immediate = true)
 public class SiteFilesServlet extends HttpServlet {
 
@@ -101,8 +107,23 @@ public class SiteFilesServlet extends HttpServlet {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "path required");
             return;
         }
+        // Becomes a node name under a system session further down.
+        if (!SiteScope.isLanguage(language)) {
+            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "language required");
+            return;
+        }
 
         try {
+            // Both files belong to the site, both preview against live, and an
+            // apply publishes. So the gate is the site and the dashboard's own
+            // permission, settled before any action runs.
+            try {
+                SiteScope.require(path, language, SiteScope.DASHBOARD);
+            } catch (javax.jcr.PathNotFoundException | javax.jcr.AccessDeniedException e) {
+                deny(resp, HttpServletResponse.SC_FORBIDDEN, "not allowed");
+                return;
+            }
+
             switch (action) {
                 case "previewLlms":
                     writeJson(resp, HttpServletResponse.SC_OK, previewLlms(path, language, req, resp));

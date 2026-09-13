@@ -1,11 +1,16 @@
 package org.jahia.se.modules.georeadiness.check;
 
 import org.jahia.services.content.JCRCallback;
+import org.jahia.se.modules.georeadiness.util.SiteScope;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.content.JCRTemplate;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import javax.jcr.PathNotFoundException;
+import javax.jcr.NodeIterator;
+import java.util.List;
+import java.util.ArrayList;
 
 import javax.jcr.RepositoryException;
 import java.util.Calendar;
@@ -41,6 +46,7 @@ public final class ScanStore {
     private static final String ENABLED = "geoEnabled";
     private static final String SCOPE = "geoScope";
     private static final String BASE_URL = "geoBaseUrl";
+    private static final String USER_KEY = "geoUserKey";
 
     // Run state, per language.
     private static final String STATUS = "geoStatus";
@@ -122,13 +128,76 @@ public final class ScanStore {
      * captured from the request that saved the schedule: the address the site
      * was reachable at when somebody configured this.
      */
-    public static void saveConfig(String sitePath, String cron, boolean enabled, String scope, String baseUrl)
+    /** One stored schedule, as the lifecycle needs it to reinstall a trigger. */
+    public static final class Schedule {
+        public final String sitePath;
+        public final String language;
+        public final String cron;
+        public final String scope;
+        public final String baseUrl;
+        public final String userKey;
+
+        Schedule(String sitePath, String language, String cron, String scope, String baseUrl, String userKey) {
+            this.sitePath = sitePath;
+            this.language = language;
+            this.cron = cron;
+            this.scope = scope;
+            this.baseUrl = baseUrl;
+            this.userKey = userKey;
+        }
+    }
+
+    /**
+     * Every enabled schedule on the instance, read from where it was stored.
+     *
+     * The triggers themselves do not survive the bundle, so this is what the
+     * module reinstalls them from when it starts.
+     */
+    public static List<Schedule> schedules() throws RepositoryException {
+        return JCRTemplate.getInstance().doExecuteWithSystemSession(null, "default",
+                (JCRCallback<List<Schedule>>) session -> {
+                    List<Schedule> out = new ArrayList<>();
+                    JCRNodeWrapper sites;
+                    try {
+                        sites = session.getNode("/sites");
+                    } catch (PathNotFoundException e) {
+                        return out;
+                    }
+                    NodeIterator it = sites.getNodes();
+                    while (it.hasNext()) {
+                        JCRNodeWrapper site = (JCRNodeWrapper) it.nextNode();
+                        if (!site.isNodeType("jnt:virtualsite") || !site.hasNode(STORE_NODE)) {
+                            continue;
+                        }
+                        JCRNodeWrapper store = site.getNode(STORE_NODE);
+                        if (!bool(store, ENABLED, false)) {
+                            continue;
+                        }
+                        String cron = str(store, CRON, "");
+                        if (cron.isEmpty()) {
+                            continue;
+                        }
+                        NodeIterator langs = store.getNodes();
+                        while (langs.hasNext()) {
+                            JCRNodeWrapper lang = (JCRNodeWrapper) langs.nextNode();
+                            out.add(new Schedule(site.getPath(), lang.getName(), cron,
+                                    str(store, SCOPE, ""), str(store, BASE_URL, ""),
+                                    str(store, USER_KEY, "")));
+                        }
+                    }
+                    return out;
+                });
+    }
+
+    public static void saveConfig(String sitePath, String cron, boolean enabled, String scope, String baseUrl,
+            String userKey)
             throws RepositoryException {
         inStore(sitePath, (store, session) -> {
             store.setProperty(CRON, cron == null ? "" : cron.trim());
             store.setProperty(ENABLED, enabled);
             store.setProperty(SCOPE, scope == null ? "" : scope.trim());
             store.setProperty(BASE_URL, baseUrl == null ? "" : baseUrl.trim());
+            store.setProperty(USER_KEY, userKey == null ? "" : userKey.trim());
             session.save();
             return null;
         });
@@ -291,8 +360,18 @@ public final class ScanStore {
                 });
     }
 
+    /**
+     * The per-language child of the store.
+     *
+     * JCR reads a relative path the way a filesystem does, so this name is kept
+     * to one segment: the servlets check the language they are given, and the
+     * scheduled job reaches here without passing one of them.
+     */
     private static JCRNodeWrapper language(JCRNodeWrapper store, String language) throws RepositoryException {
         String name = language == null || language.trim().isEmpty() ? "und" : language.trim();
+        if (!SiteScope.isLanguage(name)) {
+            name = "und";
+        }
         return store.hasNode(name) ? store.getNode(name) : store.addNode(name, "nt:unstructured");
     }
 

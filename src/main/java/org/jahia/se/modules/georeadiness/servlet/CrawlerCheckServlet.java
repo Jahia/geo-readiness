@@ -17,6 +17,7 @@ import org.jahia.se.modules.georeadiness.check.RobotsRules;
 import org.jahia.se.modules.georeadiness.check.SiteFilesChecker;
 import org.jahia.se.modules.georeadiness.config.GeoReadinessConfigService;
 import org.jahia.se.modules.georeadiness.util.PublicUrls;
+import org.jahia.se.modules.georeadiness.util.SiteScope;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.content.JCRSessionWrapper;
@@ -29,6 +30,7 @@ import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.jcr.RepositoryException;
 import javax.servlet.Servlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -42,6 +44,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
@@ -75,7 +78,12 @@ import java.util.stream.Collectors;
  */
 @Component(
         service = {HttpServlet.class, Servlet.class},
-        property = {"alias=/geo-readiness/crawler-check", "allow-api-token=true"},
+        property = {
+                "alias=/geo-readiness/crawler-check",
+                "allow-api-token=true",
+                "service.description=GEO readiness per-page crawler check",
+                "service.vendor=Jahia Solutions Group SA"
+        },
         immediate = true)
 public class CrawlerCheckServlet extends HttpServlet {
 
@@ -146,6 +154,26 @@ public class CrawlerCheckServlet extends HttpServlet {
         String language = body.optString("language", "en");
         if (path.isEmpty() || !path.startsWith("/sites/")) {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "path required");
+            return;
+        }
+
+        if (!SiteScope.isLanguage(language)) {
+            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "language required");
+            return;
+        }
+        // The drawer opens on a node the caller has selected in jContent, so the
+        // floor is "edits this content", not "can read the published page". Read
+        // it in the editing workspace first and let that decide.
+        try {
+            JCRSessionFactory.getInstance()
+                    .getCurrentUserSession("default", Locale.forLanguageTag(language))
+                    .getNode(path);
+        } catch (javax.jcr.PathNotFoundException | javax.jcr.AccessDeniedException e) {
+            deny(resp, HttpServletResponse.SC_FORBIDDEN, "cannot read node");
+            return;
+        } catch (RepositoryException e) {
+            logger.warn("Could not resolve {} in default: {}", path, e.getMessage());
+            deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "operation failed");
             return;
         }
 

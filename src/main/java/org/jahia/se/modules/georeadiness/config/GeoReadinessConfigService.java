@@ -16,6 +16,10 @@ import java.util.Map;
 @Component(
         service = GeoReadinessConfigService.class,
         configurationPid = "org.jahia.se.modules.georeadiness",
+        property = {
+                "service.description=GEO readiness configuration",
+                "service.vendor=Jahia Solutions Group SA"
+        },
         immediate = true)
 public class GeoReadinessConfigService {
 
