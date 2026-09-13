@@ -3,27 +3,46 @@ import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Banner, Dropdown, Loader, Separator, Typography} from '@jahia/moonstone';
 import {scanStatus, checkFreshness} from '../api/siteScore';
-import {BarList, RangeList} from '../charts/Charts';
+import {BarList, Histogram} from '../charts/Charts';
+import {jcontentUrl} from '../util/jcontentUrl';
+import {Paged} from '../util/Paged';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
-const BUCKETS = ['month', 'quarter', 'halfYear', 'year', 'older'];
 const THRESHOLDS = [90, 180, 365, 730];
+
+/**
+ * The age buckets in time order, oldest first, so the histogram reads left to
+ * right the way a timeline does. `from` is the youngest age the bucket can
+ * hold, which is what decides whether the whole bucket is past the threshold.
+ */
+const BUCKETS = [
+    {key: 'older', from: 365},
+    {key: 'year', from: 180},
+    {key: 'halfYear', from: 90},
+    {key: 'quarter', from: 30},
+    {key: 'month', from: 0}
+];
 
 /**
  * GEO-24. How old the published content is, and where nothing has moved.
  *
- * Its own tab, and refreshable on its own: ageing what is published is a
- * repository question, so it answers immediately and never needs a site scan.
- * Changing the threshold recomputes rather than filtering a stored answer, and
- * the choice is remembered so the scheduled run measures against the same line.
+ * Two questions, one mark each. The histogram answers "when was any of this
+ * last touched", over a time axis. The group bars answer "how long since
+ * anything here changed at all", which is the number the threshold is applied
+ * to, so a flagged group and a long bar say the same thing.
+ *
+ * An earlier version drew a range per group, from newest to oldest with the
+ * median marked. It encoded spread, which is not a question anybody asked, and
+ * on most groups newest and oldest are the same date so the range collapsed to
+ * a dot. Length now means one thing: how long the group has been sitting still.
  */
 export const FreshnessPanel = ({path, language}) => {
     const {t} = useTranslation(NS);
     const [state, setState] = useState(null);
     const [busy, setBusy] = useState(false);
 
-    const load = useCallback(async (staleDays) => {
+    const load = useCallback(async staleDays => {
         setBusy(true);
         try {
             setState(staleDays ?
@@ -48,29 +67,27 @@ export const FreshnessPanel = ({path, language}) => {
     const threshold = (f && f.staleDays) || state.staleDays || 365;
     const counts = f ? Object.fromEntries((f.distribution || []).map(b => [b.label, b.count])) : {};
 
-    // Shared x-axis across both breakdowns, so a bar's length means the same
-    // thing whether the group is a type or a section.
-    const oldest = f ? Math.max(1, ...[...(f.byType || []), ...(f.bySection || [])].map(g => g.oldest)) : 1;
+    // One scale across both breakdowns, so a bar's length means the same thing
+    // whether the group is a type or a section.
+    const longest = f ?
+        Math.max(1, ...[...(f.byType || []), ...(f.bySection || [])].map(g => g.newest)) :
+        1;
 
+    // Worst first: the group nobody has touched in longest is the one to act on.
     const groups = (rows, key) => (
-        <RangeList
-            max={oldest}
-            format={d => months(d, t)}
-            tipFor={r => t('freshness.rangeTip', {
-                newest: months(r.from, t),
-                median: months(r.marker, t),
-                oldest: months(r.to, t)
-            })}
-            rows={(rows || []).map(g => ({
-                key: `${key}:${g.name}`,
-                label: g.name,
-                sublabel: t('freshness.items', {count: g.count}),
-                flag: g.stale ? t('freshness.stale') : null,
-                from: g.newest,
-                to: g.oldest,
-                marker: g.median,
-                stale: g.stale
-            }))}
+        <BarList
+            max={longest}
+            format={d => age(d, t)}
+            tipFor={r => t('freshness.untouched', {age: age(r.value, t)})}
+            rows={[...(rows || [])]
+                .sort((a, b) => b.newest - a.newest)
+                .map(g => ({
+                    key: `${key}:${g.name}`,
+                    label: g.name,
+                    sublabel: t('freshness.items', {count: g.count}),
+                    value: g.newest,
+                    status: g.stale ? 'warn' : undefined
+                }))}
         />
     );
 
@@ -112,21 +129,29 @@ export const FreshnessPanel = ({path, language}) => {
             {f && (
                 <>
                     <Separator spacing="big" size="full"/>
+                    <Typography variant="subheading" className={styles.panelSub}>
+                        {t('freshness.whenTitle')}
+                    </Typography>
                     <Typography variant="caption" className={styles.panelIntro}>
                         {t('freshness.counts', {total: f.total, undated: f.undated})}
                     </Typography>
 
                     {/*
-                      * A histogram, one hue. The shape is the point: whether the
-                      * site is mostly recent or mostly a year old.
+                      * The shape is the answer: whether the site's mass sits on
+                      * the left, where nothing has been touched in a long time.
+                      * A bucket entirely past the threshold carries the warning
+                      * tone, so the chosen line shows up in the picture.
                       */}
-                    <BarList
+                    <Histogram
+                        axisLeft={t('freshness.axisOlder')}
+                        axisRight={t('freshness.axisRecent')}
                         format={v => String(v)}
-                        tipFor={r => t('freshness.items', {count: r.value})}
+                        tipFor={r => t(`freshness.bucket.${r.key}`)}
                         rows={BUCKETS.map(b => ({
-                            key: b,
-                            label: t(`freshness.bucket.${b}`),
-                            value: counts[b] || 0
+                            key: b.key,
+                            label: t(`freshness.bucketShort.${b.key}`),
+                            value: counts[b.key] || 0,
+                            status: b.from >= threshold ? 'warn' : undefined
                         }))}
                     />
 
@@ -148,6 +173,67 @@ export const FreshnessPanel = ({path, language}) => {
                     </Typography>
                     {groups(f.bySection, 'section')}
 
+                    <Separator spacing="big" size="full"/>
+                    <Typography variant="subheading" className={styles.panelSub}>
+                        {t('freshness.allTitle')}
+                    </Typography>
+                    <Typography variant="caption" className={styles.panelIntro}>
+                        {t('freshness.allHelp')}
+                    </Typography>
+
+                    {/*
+                      * The groups above say where to look; this says which page.
+                      * Oldest first, so the list opens on the work rather than on
+                      * whatever the repository happened to return first.
+                      */}
+                    <Paged rows={f.items || []}>
+                        {slice => (
+                            <ul className={styles.checkList}>
+                                {slice.map(r => (
+                                    <li key={r.jcrPath} className={styles.checkItem}>
+                                        <span className={styles.checkText}>
+                                            {jcontentUrl(r.jcrPath, language) ? (
+                                                <a
+                                                    className={styles.pageLink}
+                                                    href={jcontentUrl(r.jcrPath, language)}
+                                                    title={t('score17.openPage')}
+                                                >
+                                                    {r.title}
+                                                </a>
+                                            ) : (
+                                                <Typography variant="body" className={styles.checkLabel}>
+                                                    {r.title}
+                                                </Typography>
+                                            )}
+                                            <Typography variant="caption" className={styles.checkFix}>
+                                                {`${r.type} · ${r.section} · ${r.path}`}
+                                            </Typography>
+                                        </span>
+                                        <span className={styles.checkMeta}>
+                                            <Typography
+                                                variant="caption"
+                                                className={r.stale ? styles.checkStale : styles.checkValue}
+                                            >
+                                                {r.days === null ?
+                                                    t('freshness.noDate') :
+                                                    age(r.days, t)}
+                                            </Typography>
+                                            <Typography variant="caption" className={styles.checkFix}>
+                                                {r.modifiedOn || ''}
+                                            </Typography>
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </Paged>
+
+                    {f.itemsTruncated && (
+                        <Typography variant="caption" className={styles.panelIntro}>
+                            {t('freshness.truncated', {count: (f.items || []).length})}
+                        </Typography>
+                    )}
+
                     <p className={styles.explain}>{t('freshness.limits')}</p>
                 </>
             )}
@@ -156,7 +242,7 @@ export const FreshnessPanel = ({path, language}) => {
 };
 
 /** Days read as months once past a couple, which is how people discuss this. */
-function months(days, t) {
+function age(days, t) {
     if (days < 60) {
         return t('freshness.days', {count: days});
     }

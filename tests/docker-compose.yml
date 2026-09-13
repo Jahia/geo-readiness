@@ -1,0 +1,77 @@
+# The stack for the geo-readiness e2e suite.
+#
+# Shaped for `Jahia/jahia-modules-action`'s integration-tests action, which is why
+# the Cypress service is named `cypress` and sits behind the `test` profile: the
+# action brings every service EXCEPT cypress up first, provisions the module, and
+# only then runs the tests container. `docker compose up -d` locally therefore
+# starts Jahia alone, which is what you want while writing specs.
+#
+# Locally:
+#   cp .env.example .env        # then edit JAHIA_IMAGE / SUPER_USER_PASSWORD
+#   docker compose up -d
+#   yarn install && yarn e2e:ci
+#
+# The module under test is NOT installed by this file. See tests/README.md.
+
+version: '3.8'
+
+services:
+    jahia:
+        image: '${JAHIA_IMAGE}'
+        container_name: jahia
+        deploy:
+            resources:
+                limits:
+                    memory: 6gb
+                reservations:
+                    memory: 4gb
+        environment:
+            JAHIA_LICENSE: ${JAHIA_LICENSE}
+            SUPER_USER_PASSWORD: ${SUPER_USER_PASSWORD}
+            PROCESSING_SERVER: 'true'
+            MAX_RAM_PERCENTAGE: 80
+            RESTORE_MODULE_STATES: 'false'
+            NEXUS_USERNAME: ${NEXUS_USERNAME}
+            NEXUS_PASSWORD: ${NEXUS_PASSWORD}
+            TZ: ${TIMEZONE}
+        ports:
+            - '8080:8080'
+            - '8101:8101'
+        # The crawler check fetches the site's public URL from inside this
+        # container, so the name the site is served under has to resolve here.
+        extra_hosts:
+            - jahia:127.0.0.1
+        networks:
+            - stack
+
+    cypress:
+        profiles: ["test"]
+        image: '${TESTS_IMAGE}'
+        container_name: cypress
+        deploy:
+            resources:
+                limits:
+                    memory: 4gb
+                reservations:
+                    memory: 2gb
+        depends_on:
+            - jahia
+        environment:
+            JAHIA_LICENSE: ${JAHIA_LICENSE}
+            MANIFEST: ${MANIFEST}
+            MODULE_ID: ${MODULE_ID}
+            JAHIA_USERNAME: ${JAHIA_USERNAME}
+            JAHIA_PASSWORD: ${JAHIA_PASSWORD}
+            JAHIA_URL: ${JAHIA_URL}
+            JAHIA_HOST: ${JAHIA_HOST}
+            JAHIA_PORT: ${JAHIA_PORT}
+            NEXUS_USERNAME: ${NEXUS_USERNAME}
+            NEXUS_PASSWORD: ${NEXUS_PASSWORD}
+            SUPER_USER_PASSWORD: ${SUPER_USER_PASSWORD}
+            SKIP_TESTS: ${SKIP_TESTS:-false}
+            TESTS_PROFILE: ${TESTS_PROFILE:-}
+        networks:
+            - stack
+
+networks:
+    stack:

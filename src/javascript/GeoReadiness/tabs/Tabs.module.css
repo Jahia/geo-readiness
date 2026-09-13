@@ -430,3 +430,13 @@
     opacity: 0.75;
     font-variant-numeric: tabular-nums;
 }
+
+/*
+ * The age of an item that is past the threshold. A status colour, so it is
+ * paired with the date beside it and never carries the meaning alone.
+ */
+.checkStale {
+    color: var(--moon-color-warning_dark, #8a6400);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}

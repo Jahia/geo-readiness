@@ -561,16 +561,29 @@
         "older": "Il y a plus d'un an"
       },
       "byType": "Par type de contenu",
-      "byTypeHelp": "La distinction qui évite qu'une page légale soit signalée à côté d'un article d'actualité : chaque type de contenu est jugé sur sa propre liste.",
+      "byTypeHelp": "Depuis combien de temps plus rien de ce type n'a changé. Plus c'est long, plus c'est préoccupant, et cette distinction évite qu'une page légale soit signalée à côté d'un article d'actualité.",
       "bySection": "Par section",
-      "bySectionHelp": "Les mêmes contenus regroupés selon la façon dont le travail se répartit habituellement.",
-      "group": "{{count}} contenus · le plus récent modifié il y a {{newest}} · la moitié plus ancienne que {{median}}",
-      "stale": "rien n'a changé",
+      "bySectionHelp": "La même mesure, regroupée selon la façon dont le travail se répartit habituellement.",
+      "stale": "au-delà du seuil",
       "days": "{{count}} jours",
       "months": "{{count}} mois",
       "limits": "Un groupe est signalé sur son contenu le plus récent, pas le plus ancien ni la moyenne : « rien n'a été touché ici » est actionnable, alors que « le plus ancien est ancien » est vrai de tous les sites. Les dates sont celles du référentiel : une page régénérée sans modification de contenu ne compte donc pas comme fraîche. Seule la langue affichée est mesurée, car une traduction porte ses propres dates.",
       "items": "{{count}} contenus",
-      "rangeTip": "le plus récent {{newest}} · la moitié plus ancienne que {{median}} · le plus ancien {{oldest}}"
+      "whenTitle": "Quand le site a été modifié pour la dernière fois",
+      "bucketShort": {
+        "month": "Ce mois-ci",
+        "quarter": "1 à 3 mois",
+        "halfYear": "3 à 6 mois",
+        "year": "6 à 12 mois",
+        "older": "Plus d'un an"
+      },
+      "axisOlder": "plus ancien",
+      "axisRecent": "plus récent",
+      "untouched": "rien n'a changé ici depuis {{age}}",
+      "allTitle": "Toutes les pages, de la plus ancienne à la plus récente",
+      "allHelp": "La liste complète : les regroupements ci-dessus indiquent où chercher, celle-ci indique quelle page. Chaque ligne s'ouvre dans jContent.",
+      "noDate": "sans date",
+      "truncated": "Les listes longues sont coupées à {{count}} lignes ; les regroupements ci-dessus comptent toujours la totalité."
     },
     "languages": {
       "title": "La préparation, langue par langue",

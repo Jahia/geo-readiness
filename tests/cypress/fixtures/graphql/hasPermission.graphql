@@ -1,0 +1,9 @@
+query hasPermission($path: String!, $permission: String!) {
+    jcr(workspace: EDIT) {
+        nodeByPath(path: $path) {
+            uuid
+            path
+            hasPermission(permissionName: $permission)
+        }
+    }
+}

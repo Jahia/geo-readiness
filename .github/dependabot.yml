@@ -1,0 +1,19 @@
+# See: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# open-pull-requests-limit: 0 keeps the alerts and the dependency graph without letting
+# Dependabot open pull requests, which is the Jahia module baseline.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    allow:
+      - dependency-type: "production"
+    open-pull-requests-limit: 0
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 0
+    allow:
+      - dependency-type: "production"

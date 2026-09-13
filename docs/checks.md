@@ -288,6 +288,22 @@ true of every site that has ever existed.
 The threshold is configurable and remembered, so a scheduled run measures against the same line an
 editor chose. Measured per language: a translation carries its own dates.
 
+**How it is drawn.** The distribution is a timeline, read left to right from oldest to most recent,
+with the bucket that lies entirely past the threshold in the warning colour: the line the editor
+chose is then visible in the picture rather than only in a caption. Each group is a single bar for
+how long it has been since anything in it changed, sorted worst first, which is the same number the
+flag is computed from - so a flagged group and a long bar say one thing, not two.
+
+An earlier version drew a range per group, newest to oldest with the median marked. It encoded
+spread, which is not a question anyone asks of a site, and on most groups the newest and oldest
+item share a date, so the range collapsed to a dot. It was removed rather than tuned.
+
+**The full list.** Under the groups, every published item in the language being measured: title,
+type, section, public path, the date it last changed and how long ago. Anything carrying no date
+comes first, then oldest to newest, so the list opens on the work. Rows open in jContent and page
+like every other list here. Long lists are cut at five thousand rows and say so; the counts and the
+groups above them still measure everything.
+
 No drawer line, deliberately. An author editing a page already knows how old it is.
 
 

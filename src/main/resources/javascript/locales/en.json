@@ -561,16 +561,29 @@
         "older": "More than a year ago"
       },
       "byType": "By content type",
-      "byTypeHelp": "The distinction that stops a legal page being flagged next to a news article: each kind of content is judged against its own list.",
+      "byTypeHelp": "How long since anything of this kind changed at all. Longer is worse, and the distinction is what stops a legal page being flagged next to a news article.",
       "bySection": "By section",
-      "bySectionHelp": "The same content grouped the way the work is usually divided up.",
-      "group": "{{count}} items · newest changed {{newest}} ago · half older than {{median}}",
-      "stale": "nothing changed",
+      "bySectionHelp": "The same measure, grouped the way the work is usually divided up.",
+      "stale": "past the threshold",
       "days": "{{count}} days",
       "months": "{{count}} months",
       "limits": "A group is flagged on its newest item, not its oldest or its average: \"nothing here has been touched\" is actionable, while \"the oldest item is old\" is true of every site. Dates are the repository's own, so a page rebuilt without content changes does not count as fresh. Only the language shown is measured, since a translation carries its own dates.",
       "items": "{{count}} items",
-      "rangeTip": "newest {{newest}} · half older than {{median}} · oldest {{oldest}}"
+      "whenTitle": "When the site was last touched",
+      "bucketShort": {
+        "month": "This month",
+        "quarter": "1-3 months",
+        "halfYear": "3-6 months",
+        "year": "6-12 months",
+        "older": "Over a year"
+      },
+      "axisOlder": "older",
+      "axisRecent": "more recent",
+      "untouched": "nothing here has changed in {{age}}",
+      "allTitle": "Every page, oldest first",
+      "allHelp": "The whole list, so the groups above tell you where to look and this tells you which page. Each row opens in jContent.",
+      "noDate": "no date",
+      "truncated": "Long lists are cut at {{count}} rows; the groups above still count everything."
     },
     "languages": {
       "title": "Readiness one language at a time",

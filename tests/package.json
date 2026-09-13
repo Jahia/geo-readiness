@@ -1,0 +1,34 @@
+{
+  "name": "geo-readiness-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cypress end-to-end suite for the geo-readiness Jahia UI extension",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "e2e:ci": "cypress run --browser chrome",
+    "e2e:debug": "cypress open",
+    "typecheck": "tsc --noEmit",
+    "verify": "cypress verify",
+    "report:merge": "mkdir -p results/reports && mochawesome-merge results/*.json > results/reports/report.json",
+    "report:html": "marge results/reports/report.json -o results/reports"
+  },
+  "devDependencies": {
+    "@jahia/cypress": "^8.5.0",
+    "cross-fetch": "^4.1.0",
+    "cypress": "^13.15.0",
+    "cypress-multi-reporters": "^2.0.4",
+    "mocha": "^10.8.2",
+    "mocha-junit-reporter": "^2.2.1",
+    "mochawesome": "^7.1.3",
+    "mochawesome-merge": "^4.3.0",
+    "mochawesome-report-generator": "^6.2.0",
+    "typescript": "^5.6.3"
+  },
+  "comments": {
+    "cross-fetch": "Not used by this suite directly. @jahia/cypress 8.5.0 requires it from dist/support/apollo/links.js without declaring it, and @apollo/client 3.14 no longer pulls it in, so the support file fails to bundle without it. Remove once the dependency is declared upstream — see tests/README.md.",
+    "mochawesome": "Same story: dist/support/contextReporter.js requires mochawesome/addContext without declaring it. It doubles as this suite's reporter, so it is wanted here either way."
+  }
+}
