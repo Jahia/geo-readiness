@@ -1,0 +1,21 @@
+# PR lane: the module under test is built by the pipeline and deployed by the
+# integration-tests action, so this manifest does NOT install it. What it does is
+# make the instance able to resolve everything else the suite needs.
+#
+# geo-readiness declares <jahia-depends>default</jahia-depends> and nothing more,
+# so it has no module dependencies. The suite's own requirement is a template set
+# for createSite — override with CYPRESS_GEO_TEMPLATE_SET if the image already
+# ships a different one.
+#
+# Applied by the CI action as ${MANIFEST}. By hand:
+#   curl -s --fail -u root:<pwd> -X POST \
+#        -H "Content-Type: application/yaml" \
+#        --data-binary @tests/provisioning-manifest-build.yml \
+#        http://localhost:8080/modules/api/provisioning
+
+- addMavenRepository: 'https://store.jahia.com/nexus/content/repositories/jahia-public-app-store@id=JahiaStore'
+- addMavenRepository: 'https://devtools.jahia.com/nexus/content/groups/public/@snapshots@noreleases@id=JahiaSnapshot'
+
+- installBundle: "mvn:org.jahia.modules/dx-base-demo-templates/2.4.0"
+  autoStart: true
+  ignoreIfPresent: true

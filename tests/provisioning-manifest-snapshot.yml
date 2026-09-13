@@ -1,0 +1,14 @@
+# Nightly lane: nothing is built locally. Every module, the one under test
+# included, is resolved by the instance from Maven coordinates.
+#
+# Keep the geo-readiness version in step with the root pom's <version>.
+
+- addMavenRepository: 'https://store.jahia.com/nexus/content/repositories/jahia-public-app-store@id=JahiaStore'
+- addMavenRepository: 'https://devtools.jahia.com/nexus/content/groups/public/@snapshots@noreleases@id=JahiaSnapshot'
+
+- installBundle: "mvn:org.jahia.modules/dx-base-demo-templates/2.4.0"
+  autoStart: true
+  ignoreIfPresent: true
+
+- installBundle: "mvn:org.jahia.se.modules/geo-readiness/1.2.0-SNAPSHOT"
+  autoStart: true
