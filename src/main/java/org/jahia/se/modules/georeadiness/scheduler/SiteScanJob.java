@@ -2,12 +2,20 @@ package org.jahia.se.modules.georeadiness.scheduler;
 
 import org.jahia.se.modules.georeadiness.check.ScanStore;
 import org.jahia.se.modules.georeadiness.check.SiteScorer;
+import org.jahia.se.modules.georeadiness.util.SiteScope;
+import org.jahia.services.content.JCRCallback;
+import org.jahia.services.content.JCRTemplate;
+import org.jahia.services.content.decorator.JCRUserNode;
+import org.jahia.services.usermanager.JahiaUserManagerService;
 import org.jahia.services.scheduler.BackgroundJob;
 import org.jahia.settings.SettingsBean;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.jcr.PathNotFoundException;
+import java.util.Locale;
 
 /**
  * The scheduled half of GEO-17. One run scores one site in one language.
@@ -27,6 +35,8 @@ public class SiteScanJob extends BackgroundJob {
     public static final String TIMEOUT_MS = "geoTimeoutMs";
     public static final String MAX_BYTES = "geoMaxBytes";
     public static final String MAX_PAGES = "geoMaxPages";
+    /** Who asked for this schedule. Re-checked on every run. */
+    public static final String USER_KEY = "geoUserKey";
 
     @Override
     public void executeJahiaJob(JobExecutionContext context) throws Exception {
@@ -42,6 +52,17 @@ public class SiteScanJob extends BackgroundJob {
         String language = data.getString(LANGUAGE);
         if (sitePath == null || language == null) {
             logger.warn("GEO scan job started without a site or language");
+            return;
+        }
+
+        // A schedule outlives the rights of whoever saved it, so the run asks
+        // again rather than trusting what was stored. A trigger nobody is
+        // entitled to any more removes itself instead of running nightly.
+        String userKey = data.getString(USER_KEY);
+        if (!stillPermitted(userKey, sitePath, language)) {
+            logger.warn("GEO scan of {} [{}] removed: {} no longer holds the permission",
+                    sitePath, language, userKey);
+            ScanScheduler.unschedule(sitePath, language);
             return;
         }
 
@@ -63,6 +84,34 @@ public class SiteScanJob extends BackgroundJob {
             ScanStore.failRun(sitePath, language, "scan failed");
             logger.error("GEO scan of {} [{}] failed", sitePath, language, e);
             throw e;
+        }
+    }
+
+    /**
+     * True when the account that installed the schedule still holds the
+     * dashboard's permission on the site. An unknown account is refused: a
+     * trigger with no owner has nobody entitled to it.
+     */
+    private static boolean stillPermitted(String userKey, String sitePath, String language) {
+        if (userKey == null || userKey.isEmpty()) {
+            return false;
+        }
+        try {
+            JCRUserNode owner = JahiaUserManagerService.getInstance().lookupUserByPath(userKey);
+            if (owner == null) {
+                return false;
+            }
+            return Boolean.TRUE.equals(JCRTemplate.getInstance().doExecute(owner.getJahiaUser(), "default",
+                    Locale.forLanguageTag(language), (JCRCallback<Boolean>) session -> {
+                        try {
+                            return session.getNode(sitePath).hasPermission(SiteScope.DASHBOARD.get(0));
+                        } catch (PathNotFoundException e) {
+                            return false;
+                        }
+                    }));
+        } catch (Exception e) {
+            logger.warn("Could not confirm the owner of the GEO scan of {}: {}", sitePath, e.getMessage());
+            return false;
         }
     }
 

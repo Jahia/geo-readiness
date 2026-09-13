@@ -18,6 +18,7 @@ import org.jahia.services.usermanager.JahiaUser;
 import org.jahia.services.usermanager.JahiaUserManagerService;
 import org.json.JSONObject;
 import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +49,12 @@ import java.util.Map;
  */
 @Component(
         service = {HttpServlet.class, Servlet.class},
-        property = {"alias=/geo-readiness/site-scan", "allow-api-token=true"},
+        property = {
+                "alias=/geo-readiness/site-scan",
+                "allow-api-token=true",
+                "service.description=GEO readiness site scans",
+                "service.vendor=Jahia Solutions Group SA"
+        },
         immediate = true)
 public class SiteScanServlet extends HttpServlet {
 
@@ -62,7 +68,7 @@ public class SiteScanServlet extends HttpServlet {
 
     private final Map<String, Deque<Long>> callWindows = new ConcurrentHashMap<>();
 
-    @org.osgi.service.component.annotations.Reference
+    @Reference
     private GeoReadinessConfigService config;
 
     @Override
@@ -229,7 +235,10 @@ public class SiteScanServlet extends HttpServlet {
         }
 
         String base = baseUrlFor(sitePath, language, req);
-        ScanStore.saveConfig(sitePath, cron, enabled, scope, base);
+        // Recorded so a run can ask again whether this account is still
+        // entitled to it, rather than trusting a decision made once.
+        String owner = currentUser() == null ? "" : currentUser().getLocalPath();
+        ScanStore.saveConfig(sitePath, cron, enabled, scope, base, owner);
 
         if (enabled) {
             org.quartz.JobDataMap data = new org.quartz.JobDataMap();
@@ -240,6 +249,7 @@ public class SiteScanServlet extends HttpServlet {
             data.put(SiteScanJob.TIMEOUT_MS, config.getFetchTimeoutMs());
             data.put(SiteScanJob.MAX_BYTES, config.getMaxBodyBytes());
             data.put(SiteScanJob.MAX_PAGES, MAX_PAGES);
+            data.put(SiteScanJob.USER_KEY, owner);
             ScanScheduler.schedule(sitePath, language, cron, data);
         } else {
             ScanScheduler.unschedule(sitePath, language);

@@ -3,11 +3,13 @@ package org.jahia.se.modules.georeadiness.util;
 import org.jahia.bin.Jahia;
 import org.jahia.services.SpringContextSingleton;
 import org.jahia.services.content.JCRNodeWrapper;
+import org.jahia.services.content.decorator.JCRSiteNode;
 import org.jahia.services.seo.urlrewrite.UrlRewriteService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 import javax.servlet.http.HttpServletResponse;
 
 /**
@@ -167,24 +169,46 @@ public final class PublicUrls {
             throws javax.jcr.RepositoryException {
         String b = configuredBase;
         if (b == null || b.trim().isEmpty()) {
-            String server = node.getResolveSite().getServerName();
+            JCRSiteNode site = node.getResolveSite();
+            String server = site == null ? null : site.getServerName();
             boolean hasHost = server != null && !server.isEmpty() && !"localhost".equalsIgnoreCase(server);
-            if (req == null) {
-                // No request at all: the scheduled scan. The site's own server name
-                // is the only statement of where it lives that we have.
-                return hasHost ? "https://" + server : "http://localhost:8080";
+            if (!hasHost) {
+                // The site does not say where it lives, so neither can we. The
+                // request cannot answer it either: its Host header is written by
+                // whoever sent it. PUBLIC_BASE_URL is the way to say it.
+                return "http://localhost:8080";
             }
-            String reqHost = req.getServerName();
-            boolean siteHasHost = server != null && !server.isEmpty() && !"localhost".equalsIgnoreCase(server);
-            if (!siteHasHost || server.equalsIgnoreCase(reqHost)) {
+            // The host is the site's own, always. A request may say how that host
+            // is reached - scheme and port, which differ between an edit host and
+            // a public one - but only once it is already addressing that host.
+            if (req != null && servedBy(site, req.getServerName())) {
                 int port = req.getServerPort();
                 boolean defaultPort = ("http".equals(req.getScheme()) && port == 80)
                         || ("https".equals(req.getScheme()) && port == 443);
-                b = req.getScheme() + "://" + reqHost + (defaultPort ? "" : ":" + port);
+                b = req.getScheme() + "://" + req.getServerName() + (defaultPort ? "" : ":" + port);
             } else {
                 b = "https://" + server;
             }
         }
         return b.replaceAll("/+$", "");
+    }
+
+    /** True when {@code host} is one of the names this site answers to. */
+    private static boolean servedBy(JCRSiteNode site, String host) {
+        if (host == null || host.isEmpty()) {
+            return false;
+        }
+        if (host.equalsIgnoreCase(site.getServerName())) {
+            return true;
+        }
+        List<String> aliases = site.getServerNameAliases();
+        if (aliases != null) {
+            for (String alias : aliases) {
+                if (host.equalsIgnoreCase(alias)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

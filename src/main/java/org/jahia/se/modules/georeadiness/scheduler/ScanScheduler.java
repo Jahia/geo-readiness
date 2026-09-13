@@ -10,6 +10,8 @@ import org.quartz.Trigger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Date;
+
 /**
  * Installs and removes the cron trigger for one site and language.
  *
@@ -74,7 +76,7 @@ public final class ScanScheduler {
     }
 
     /** When the next run is due, or null when nothing is scheduled. */
-    public static java.util.Date nextRun(String sitePath, String language) {
+    public static Date nextRun(String sitePath, String language) {
         try {
             Trigger t = scheduler().getTrigger(triggerName(sitePath, language), GROUP);
             return t == null ? null : t.getNextFireTime();
@@ -97,7 +99,25 @@ public final class ScanScheduler {
     }
 
     private static Scheduler scheduler() {
-        SchedulerService service = (SchedulerService) SpringContextSingleton.getBean("SchedulerService");
-        return service.getScheduler();
+        Object bean = SpringContextSingleton.getBean("SchedulerService");
+        if (!(bean instanceof SchedulerService)) {
+            throw new IllegalStateException("SchedulerService is unavailable");
+        }
+        return ((SchedulerService) bean).getScheduler();
+    }
+
+    /** Removes every trigger this module owns. Used when the bundle stops. */
+    public static void unscheduleAll() {
+        try {
+            Scheduler scheduler = scheduler();
+            for (String name : scheduler.getTriggerNames(GROUP)) {
+                scheduler.unscheduleJob(name, GROUP);
+            }
+            for (String name : scheduler.getJobNames(GROUP)) {
+                scheduler.deleteJob(name, GROUP);
+            }
+        } catch (Exception e) {
+            logger.warn("Could not remove GEO scan triggers: {}", e.getMessage());
+        }
     }
 }
