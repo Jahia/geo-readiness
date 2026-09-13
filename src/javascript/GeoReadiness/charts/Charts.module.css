@@ -131,7 +131,7 @@
 /*
  * ---- series tones (marks only, never text) --------------------------------
  * Scoped under .chart on purpose: every mark (.bar, .swatch, .segment,
- * .meterFill, .range, .marker) declares its own default background, and at
+ * .meterFill, .histFill) declares its own default background, and at
  * equal specificity whichever rule comes later in the file wins. That made the
  * second series render in the first series' color. Two-class selectors beat
  * every one-class default regardless of order.
@@ -209,29 +209,6 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: clip;
-}
-
-/* ---- range + marker (freshness) ------------------------------------------- */
-
-.range {
-    position: absolute;
-    top: 50%;
-    height: 0.55rem;
-    transform: translateY(-50%);
-    border-radius: 4px;
-    background: var(--geo-series1);
-    opacity: 0.55;
-}
-
-.marker {
-    position: absolute;
-    top: 50%;
-    width: 10px;
-    height: 10px;
-    transform: translate(-50%, -50%);
-    border-radius: 50%;
-    background: var(--geo-series1);
-    box-shadow: 0 0 0 2px var(--geo-surface); /* surface ring */
 }
 
 .axis {
@@ -396,4 +373,70 @@
 
 .matrixTotal .tipValue {
     margin-left: 0.6rem;
+}
+
+/* ---- histogram: counts over a time axis ----------------------------------- */
+
+.histogram {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px; /* surface between adjacent fills, never a stroke */
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid var(--moon-color-gray_light, #e7e9ec);
+}
+
+.histColumn {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    outline: none;
+}
+
+.histValue {
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--geo-ink2);
+    line-height: 1.4;
+    min-height: 1.4em; /* a bar with no count must not lift its own column */
+}
+
+/*
+ * A definite height, not a flexed one. The fill is sized as a percentage, and a
+ * percentage resolves against a definite height only: letting flex decide this
+ * box made every bar collapse towards the same size whatever it counted.
+ */
+.histTrack {
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+    height: 7rem;
+}
+
+.histFill {
+    width: 100%;
+    min-height: 2px;
+    border-radius: 4px 4px 0 0; /* rounded data-end, square at the baseline */
+    background: var(--geo-series1);
+    transition: height 0.25s ease;
+}
+
+.histColumn:hover .histFill,
+.histColumn:focus-visible .histFill {
+    filter: brightness(1.12);
+}
+
+.histColumn:focus-visible .histLabel {
+    text-decoration: underline;
+}
+
+.histLabel {
+    margin-top: 0.4rem;
+    /* Two lines' worth, so a one-line label does not lift its own baseline. */
+    min-height: 2.4em;
+    font-size: 0.72rem;
+    color: var(--geo-ink3);
+    text-align: center;
+    line-height: 1.2;
 }
