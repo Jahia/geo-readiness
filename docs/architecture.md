@@ -60,7 +60,7 @@ JavaScript-only page is still caught, by the word-count check.
 
 | File | Role |
 |---|---|
-| `Charts.jsx` | `Meter`, `BarList`, `StackedBar`, `RangeList`, `PairedBars`, `FailureMatrix` - the six forms the panels use, in HTML/CSS with a shared hover/focus tooltip. No library. |
+| `Charts.jsx` | `Meter`, `BarList`, `StackedBar`, `Histogram`, `PairedBars`, `FailureMatrix` - the six forms the panels use, in HTML/CSS with a shared hover/focus tooltip. No library. `Histogram` is the only vertical form: counts over a time axis, on a track with a definite height, because a percentage resolves against nothing else. |
 | `Charts.module.css` | Tokens mapped from Moonstone, tone classes scoped under `.chart` so they beat every mark's default, mark specs (thin bar, rounded data-end, 2px surface gaps, surface ring on markers). |
 
 ### `javascript/util/`
@@ -82,23 +82,38 @@ All three: authenticated callers only, `application/json` required so a cross-si
 reach them, per-user rate limiting on the expensive actions, and generic errors that leak no
 upstream detail.
 
+`site-scan` and `site-files` additionally require the permission the dashboard route declares in the
+front end, so the screen and the server state the same rule; `crawler-check` requires a read of the
+node in the editing workspace, which is the floor the drawer actually opens at.
+
 ### `scheduler/`
 
 `SiteScanJob` is a Quartz `BackgroundJob`; `ScanScheduler` installs one cron trigger per site and
-language. Quartz persists triggers, so a schedule survives a restart without re-registration.
-`isProcessingServer()` keeps a cluster from scanning the same site on every node.
+language. `isProcessingServer()` keeps a cluster from scanning the same site on every node.
+
+A trigger names a job class from this bundle, so leaving one in place across a refresh would point
+it at a class the framework has replaced. `ScanLifecycle` removes them when the bundle stops and
+reinstalls them from the repository when it starts, which is what keeps a redeploy from either
+stranding a trigger or discarding an editor's schedule. The schedule itself lives in the store,
+never only in Quartz.
+
+A run is owned: the store records the account that saved the schedule, and each run asks again
+whether that account still holds the permission. A trigger nobody is entitled to removes itself.
 
 ### `util/`
 
-`PublicUrls` builds a page's public address by asking Jahia rather than guessing: `node.getUrl()`
-then the outbound URL rewriter, which yields the vanity URL where one resolves. `MockHttp` supplies
-a request and response as dynamic proxies, because the rewriter needs them and a scheduled job has
-neither.
+| File | Role |
+|---|---|
+| `PublicUrls` | A page's public address by asking Jahia rather than guessing: `node.getUrl()` then the outbound URL rewriter, which yields the vanity URL where one resolves. The base host comes from `PUBLIC_BASE_URL` or the site's own server name; a request may contribute scheme and port, and only once it is already addressing that host. |
+| `MockHttp` | A request and response as dynamic proxies, because the rewriter needs them and a scheduled job has neither. |
+| `SiteScope` | Which site a request may act on, and where inside it. Resolves in the caller's session and compares the resolved path, because a request carries three values shaped like a path and JCR reads a relative one the way a filesystem does. Also the language pattern, since that value becomes a node name. |
+| `FetchGuard` | What may be fetched: an http(s) address on the same origin as the base. The sitemap index is fetched content naming further urls, so its children go through this. |
 
 ## Storage
 
 One hidden `nt:unstructured` node per site, `geo-readiness`, carrying `jmix:nolive` so it never
-publishes. A child node per language holds the run record and results.
+publishes. A child node per language holds the run record and results, and the language is checked
+against a pattern before it is used as that node's name.
 
 No CND ships. That is deliberate: a rejected content type does not merely fail, it breaks Content
 Editor across the instance until the module is removed. Nothing here needs a typed model.

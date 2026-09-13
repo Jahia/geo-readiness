@@ -80,11 +80,12 @@ Everything except the site scan is a repository query, so most panels answer imm
 than waiting for a walk of the site.
 
 Where a number has a shape worth seeing, the panel draws it: a meter under the site score, bars per
-section, a histogram of content age with a newest-to-oldest range per type, coverage beside score
-per language, one stacked bar for structured-data coverage, and the pages with findings as a
-matrix - pages down, failing checks across - so a check every page fails reads as a solid column,
-which is the template's doing rather than the authors'. All plain HTML and CSS in Moonstone's own
-colors - no chart library - with a tooltip on hover and on keyboard focus.
+section, a timeline of when the site was last touched, one bar per group for how long it has been
+sitting still, coverage beside score per language, one stacked bar for structured-data coverage,
+and the pages with findings as a matrix - pages down, failing checks across - so a check every page
+fails reads as a solid column, which is the template's doing rather than the authors'. All plain
+HTML and CSS in Moonstone's own colors - no chart library - with a tooltip on hover and on keyboard
+focus. Every mark encodes one thing: where a shape would have to mean two, it is two marks.
 
 No findings list is capped. A list is shown in full up to twenty-five rows; past ten rows a
 pagination control appears so a denser view can be chosen, and past twenty-five the list pages,
@@ -139,9 +140,24 @@ places it.
 language cannot average out a weak one. A language nobody has scanned reports as *not measured*,
 never as zero.
 
-**Freshness.** How old everything published actually is, grouped by content type and by section
-rather than ranked, so a legal notice is not flagged next to a news article. A group is flagged
-only when its *newest* item is past a threshold you set.
+**Freshness.** Three answers, and a mark that means one thing in each. A timeline reads left to
+right from oldest to most recent, so the shape says whether the site has been maintained; the
+bucket past your threshold carries the warning colour, which is how the line you chose shows up in
+the picture rather than only in a caption. Then one bar per content type and per section for how
+long it has been since anything in that group changed at all, worst first - grouped rather than
+ranked, so a legal notice is not flagged next to a news article, and flagged only when its *newest*
+item is past the threshold. Then every published page in the language being measured, oldest first,
+with its type, section, the date it last changed and how long ago, each row opening in jContent.
+
+## Who can use it
+
+The dashboard requires the **publish** permission on the site, and the endpoints behind it require
+the same one rather than trusting the screen to hide itself. An editor without it gets no dashboard
+and no robots.txt or llms.txt editor. The page drawer asks less: it opens for anyone who can read
+that page in the editing workspace, which is anyone who can select it in jContent.
+
+A scan's optional scope has to name a node inside the site it was started from, and it is resolved
+before it is compared, so a relative path cannot leave the site it came from.
 
 ## The score
 
@@ -169,6 +185,10 @@ written is exactly the text on screen, so hand edits made before applying surviv
 Requires Java 17 and Maven 3.6+. Node 22 and Yarn are downloaded by the build itself, so nothing
 else needs installing. `yarn.lock` is committed and must stay committed.
 
+The module declares `jcontent`, `robots` and `llms` as module dependencies: jcontent hosts the UI,
+and the other two own the node types the site-files editor writes. Jahia holds the module back
+until all three are started rather than starting it and failing at the first write.
+
 ```bash
 mvn clean install
 curl -s --user root:root --form bundle=@target/geo-readiness-*.jar \
@@ -177,6 +197,11 @@ curl -s --user root:root --form bundle=@target/geo-readiness-*.jar \
 
 Enable the module on the target site. Both entry points guard with
 `requireModuleInstalledOnSite`, so neither appears otherwise.
+
+An end-to-end suite lives in [`tests/`](tests/README.md) and runs against a live Jahia: the
+three endpoints across a guest, an editor without the permission and a publisher, the values a
+path-shaped input can take, request validation, the rate limit, and the two jContent screens. It is
+its own npm project, so `yarn install && yarn e2e` inside `tests/`.
 
 Before claiming anything works, read [`test-fixtures/README.md`](test-fixtures/README.md): a
 zero-dependency server that simulates the failure cases a healthy local Jahia cannot produce.
@@ -194,7 +219,12 @@ redeploy.
 | `MAX_BODY_BYTES` | 1500000 | How much of a page to read. |
 | `RATE_MAX_CALLS` / `RATE_WINDOW_MS` | 20 / 600000 | Per-user limit on the expensive actions. Reading a stored result is never limited. |
 | `CRAWLER_AGENTS` | *(blank)* | Override the agent list as `name|user-agent` pairs. Blank uses the built-in fifteen. |
-| `PUBLIC_BASE_URL` | *(blank)* | Force the base URL when the site's server name is not resolvable from inside the container. |
+| `PUBLIC_BASE_URL` | *(blank)* | The base URL to fetch. Set this when the site's server name is not resolvable from inside the container. |
+
+The address a check fetches comes from this setting, or from the site's own server name when it is
+blank. A request can say how that host is reached, scheme and port, but only once it is already
+addressing that host, because a `Host` header is written by whoever sent the request. A site that
+declares no server name therefore has nothing to fetch until `PUBLIC_BASE_URL` says so.
 
 ## Known gaps
 
@@ -213,6 +243,12 @@ redeploy.
   deduplicate or tidy, so a hand-written file comes back recognisable.
 - **The check fetches a page even when robots.txt disallows it**, deliberately. Knowing that a
   disallowed page is nonetheless reachable is a finding.
+- **A scan with a scope replaces the stored result for the whole site**, so every panel then
+  reports on that subtree until a full scan runs again.
+- **The full freshness list is cut at five thousand rows.** The counts and the groups above it
+  still measure everything.
+- **A scheduled scan runs as the account that saved it** and re-checks that account's permission on
+  every run, so revoking the permission stops the schedule rather than merely hiding the screen.
 
 ## Documentation
 

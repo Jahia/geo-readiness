@@ -6,6 +6,73 @@ aligned with the Jahia module version.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-13
+
+Freshness stops being a picture you have to decode and becomes a report you can act on, the
+endpoints hold to the permission the screen already declared, and the repository grows the test
+suite and the shared CI it never had.
+
+### Added
+
+- **Freshness reads as a timeline.** The distribution is drawn left to right from oldest to most
+  recent, so the shape says whether the site has been maintained. The bucket lying entirely past
+  the threshold carries the warning colour, which puts the line an editor chose into the picture
+  rather than leaving it in a caption. Empty buckets draw nothing at all.
+- **Every page and when it last changed.** Under the groups, one row per published item in the
+  language being measured: title, content type, section, public path, the date it last changed and
+  how long ago. Anything with no date comes first, then oldest to newest, so the list opens on the
+  work. Rows open in jContent and page like every other list here. Cut at five thousand rows, which
+  it says; the counts and the groups still measure everything.
+- **An end-to-end test suite.** Two releases had shipped with no automated test of any kind. The
+  suite covers the three endpoints across a guest, an editor without the dashboard's permission and
+  a publisher, the values a path-shaped input can take, request validation, the rate-limit window
+  and the two jContent screens. It asserts its own premise as well as its results, because a
+  refusal proves nothing unless the account demonstrably holds the neighbouring rights and lacks
+  only the one under test.
+- **The shared Jahia module CI.** The build was a checkout and one `mvn install`, so nothing gated a
+  pull request beyond compilation. The workflows now call `jahia/jahia-modules-action`: a
+  pull-request gate with static analysis and SonarQube, a merge path publishing a snapshot and an
+  SBOM, a release path, and a scheduled full analysis. Also a pull-request template and the
+  changelog-fragment mechanism the repository's own settings already imply.
+
+### Changed
+
+- **The endpoints require the permission the dashboard route declares.** That requirement lived
+  only in the front end, so the screen and the server can no longer drift apart. An editor without
+  it gets no dashboard and no robots.txt or llms.txt editor; the page drawer is unchanged and still
+  opens for anyone who can read the page in the editing workspace.
+- **A scan's scope must resolve inside the site it was started from**, and it is resolved before it
+  is compared rather than matched as a string, so a relative path cannot leave the site it came
+  from. The language a request carries is now required to look like a language, at the endpoints
+  and again where it becomes a node name.
+- **The address a check fetches comes from the site or from configuration.** A request may say how
+  that host is reached, scheme and port, but only once it is already addressing it: a `Host` header
+  is written by whoever sent the request. A site that declares no server name now has nothing to
+  fetch until `PUBLIC_BASE_URL` says so, where before the request decided. A sitemap index names
+  further files, and only a child on the same origin is followed.
+- **A schedule belongs to the account that saved it** and every run asks again whether that account
+  still holds the permission, so revoking it stops the schedule instead of merely hiding the screen.
+  Triggers are now tied to the bundle: removed when it stops, reinstalled from the repository when
+  it starts, so a redeploy neither strands one nor discards an editor's schedule.
+- **The module declares `jcontent`, `robots` and `llms` as dependencies.** Jahia holds it back until
+  those are started rather than starting it and failing at the first write.
+- **`Bundle-SymbolicName` and `Jahia-Depends` come from the parent's properties only.** Both were
+  also written into the bundle plugin's instructions, so each had two sources that could disagree.
+
+### Removed
+
+- **The range chart.** It drew each group from its newest item to its oldest with the median
+  marked, which encoded spread. Nobody asks that of a site, and on most groups the newest and
+  oldest item share a date, so the range collapsed to a dot. Nothing else drew one.
+
+### Fixed
+
+- **Seven advisories in the build's own dependencies**, five against `postcss` and two against
+  `serialize-javascript`, by taking the patched `css-loader` and `copy-webpack-plugin`. Neither
+  ships in the bundle, so this is the build's supply chain rather than the running module.
+- **Every declarative service component carries `service.description` and `service.vendor`**, which
+  is what the OSGi console reads when somebody asks what a service is and who ships it.
+
 ## [1.1.0] - 2026-09-13
 
 The visual release. Nothing new is measured; what was already measured is now drawn where a number
