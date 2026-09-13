@@ -649,6 +649,10 @@
         "wouldAdd": "Not in llms.txt, but regenerating it would add this page",
         "notGenerated": "Not in llms.txt, which lists only the site's main pages"
       }
+    },
+    "paging": {
+      "rowsPerView": "Rows per view",
+      "of": "of"
     }
   }
 }

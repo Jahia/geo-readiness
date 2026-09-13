@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Banner, Button, Chip, Separator, Typography} from '@jahia/moonstone';
 import {guestVisibility} from '../api/siteScan';
+import {Paged} from '../util/Paged';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -33,8 +34,10 @@ export const VisibilityPanel = ({path, language}) => {
     }, [path, language, t]);
 
     const rows = (list, showKind) => (
+        <Paged rows={list}>
+            {slice => (
         <ul className={styles.checkList}>
-            {list.map(f => (
+            {slice.map(f => (
                 <li key={f.path} className={styles.checkItem}>
                     <span className={styles.checkText}>
                         <Typography variant="body" className={styles.checkLabel}>{f.title}</Typography>
@@ -51,6 +54,8 @@ export const VisibilityPanel = ({path, language}) => {
                 </li>
             ))}
         </ul>
+            )}
+        </Paged>
     );
 
     return (

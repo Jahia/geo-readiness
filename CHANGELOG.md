@@ -27,6 +27,12 @@ aligned with the Jahia module version.
   visible before anyone reads a number. Each cell and column header carries a tooltip; every
   status color ships with its word in the legend. Paged ten at a time with Moonstone's pagination,
   the column set computed over every finding so columns do not reshuffle between pages.
+- **Every findings list pages, none is capped.** Sitemap findings, unlinked pages, address
+  conflicts and invisible content used to stop at ten rows with an "and N more" line - which told
+  the reader something was withheld and gave them no way to reach it. On a site with two hundred
+  stale sitemap dates, a hundred and ninety were invisible. Each group now pages ten at a time with
+  Moonstone's control, shown only when a group has more than one page of rows; a list that fits in
+  one view looks exactly as before.
 
 ## [1.0.0] - 2026-09-11
 

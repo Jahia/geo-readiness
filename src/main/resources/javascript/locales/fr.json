@@ -649,6 +649,10 @@
         "wouldAdd": "Absente de llms.txt, mais une régénération l'ajouterait",
         "notGenerated": "Absente de llms.txt, qui ne liste que les pages principales du site"
       }
+    },
+    "paging": {
+      "rowsPerView": "Lignes par vue",
+      "of": "sur"
     }
   }
 }

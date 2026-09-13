@@ -4,11 +4,11 @@ import {useTranslation} from 'react-i18next';
 import {Banner, Button, Chip, Loader, Separator, Typography} from '@jahia/moonstone';
 import {scanStatus, checkSitemap} from '../api/siteScore';
 import {jcontentUrl} from '../util/jcontentUrl';
+import {Paged} from '../util/Paged';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
 // Enough rows to act on, few enough that one bad group cannot bury the rest.
-const ROWS = 10;
 const GROUPS = ['redirects', 'missing', 'unknown', 'staleDate', 'noindexListed'];
 
 
@@ -128,8 +128,10 @@ export const SitemapPanel = ({path, language}) => {
                                             <Typography variant="caption" className={styles.checkFix}>
                                                 {t(`sitemap.why.${g.key}`)}
                                             </Typography>
+                                            <Paged rows={g.rows}>
+                                                {slice => (
                                             <ul className={styles.checkList}>
-                                                {g.rows.slice(0, ROWS).map(r => (
+                                                {slice.map(r => (
                                                     <li key={`${g.key}:${r.path}`} className={styles.checkItem}>
                                                         <span className={styles.checkText}>
                                                             {/*
@@ -173,11 +175,8 @@ export const SitemapPanel = ({path, language}) => {
                                                     </li>
                                                 ))}
                                             </ul>
-                                            {g.rows.length > ROWS && (
-                                                <Typography variant="caption" className={styles.checkFix}>
-                                                    {t('sitemap.andMore', {count: g.rows.length - ROWS})}
-                                                </Typography>
-                                            )}
+                                                )}
+                                            </Paged>
                                         </div>
                                     ))
                             )}
