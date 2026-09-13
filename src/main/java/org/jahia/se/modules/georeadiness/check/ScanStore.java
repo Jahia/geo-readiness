@@ -1,6 +1,7 @@
 package org.jahia.se.modules.georeadiness.check;
 
 import org.jahia.services.content.JCRCallback;
+import org.jahia.se.modules.georeadiness.util.SiteScope;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.content.JCRTemplate;
@@ -291,8 +292,18 @@ public final class ScanStore {
                 });
     }
 
+    /**
+     * The per-language child of the store.
+     *
+     * JCR reads a relative path the way a filesystem does, so this name is kept
+     * to one segment: the servlets check the language they are given, and the
+     * scheduled job reaches here without passing one of them.
+     */
     private static JCRNodeWrapper language(JCRNodeWrapper store, String language) throws RepositoryException {
         String name = language == null || language.trim().isEmpty() ? "und" : language.trim();
+        if (!SiteScope.isLanguage(name)) {
+            name = "und";
+        }
         return store.hasNode(name) ? store.getNode(name) : store.addNode(name, "nt:unstructured");
     }
 

@@ -102,12 +102,22 @@ public class SiteFilesServlet extends HttpServlet {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "path required");
             return;
         }
+        // Becomes a node name under a system session further down.
+        if (!SiteScope.isLanguage(language)) {
+            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "language required");
+            return;
+        }
 
         try {
             // Both files belong to the site, both preview against live, and an
             // apply publishes. So the gate is the site and the dashboard's own
             // permission, settled before any action runs.
-            SiteScope.require(path, language, SiteScope.DASHBOARD);
+            try {
+                SiteScope.require(path, language, SiteScope.DASHBOARD);
+            } catch (javax.jcr.PathNotFoundException | javax.jcr.AccessDeniedException e) {
+                deny(resp, HttpServletResponse.SC_FORBIDDEN, "not allowed");
+                return;
+            }
 
             switch (action) {
                 case "previewLlms":
@@ -128,7 +138,7 @@ public class SiteFilesServlet extends HttpServlet {
                 default:
                     deny(resp, HttpServletResponse.SC_BAD_REQUEST, "unknown action");
             }
-        } catch (javax.jcr.PathNotFoundException | javax.jcr.AccessDeniedException e) {
+        } catch (javax.jcr.AccessDeniedException e) {
             deny(resp, HttpServletResponse.SC_FORBIDDEN, "not allowed");
         } catch (Exception e) {
             logger.warn("site-files {} failed for {}: {}", action, path, e.getMessage());

@@ -93,6 +93,12 @@ public class SiteScanServlet extends HttpServlet {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "path required");
             return;
         }
+        // The language becomes a node name under a system session further down,
+        // so it is a path unless it is checked here.
+        if (!SiteScope.isLanguage(language)) {
+            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "language required");
+            return;
+        }
 
         try {
             // Only the expensive actions are rate limited. Reading the stored
@@ -110,12 +116,15 @@ public class SiteScanServlet extends HttpServlet {
             // themselves then run with a system session, because reporting what
             // guest CANNOT see is the whole point and a caller-scoped session
             // could not do it.
-            String sitePath = SiteScope.require(path, language, SiteScope.DASHBOARD);
-
-            // A scan reads and stores under a system session, so the subtree it
-            // is pointed at has to be inside the site that was just resolved.
-            if (!SiteScope.covers(sitePath, scope)) {
-                deny(resp, HttpServletResponse.SC_BAD_REQUEST, "scope outside site");
+            String sitePath;
+            String within;
+            try {
+                sitePath = SiteScope.require(path, language, SiteScope.DASHBOARD);
+                // A scan reads and stores under a system session, so the subtree
+                // it is pointed at is resolved and confirmed to be in the site.
+                within = SiteScope.requireWithin(sitePath, scope, language);
+            } catch (javax.jcr.PathNotFoundException | javax.jcr.AccessDeniedException e) {
+                deny(resp, HttpServletResponse.SC_FORBIDDEN, "cannot read node");
                 return;
             }
 
@@ -179,17 +188,15 @@ public class SiteScanServlet extends HttpServlet {
                     return;
                 case "saveSchedule":
                     writeJson(resp, HttpServletResponse.SC_OK,
-                            saveSchedule(sitePath, language, scope, body, req));
+                            saveSchedule(sitePath, language, within, body, req));
                     return;
                 case "runScan":
-                    runScan(sitePath, language, scope, req);
+                    runScan(sitePath, language, within, req);
                     writeJson(resp, HttpServletResponse.SC_OK, ScanStore.read(sitePath, language));
                     return;
                 default:
                     deny(resp, HttpServletResponse.SC_BAD_REQUEST, "unknown action");
             }
-        } catch (javax.jcr.PathNotFoundException | javax.jcr.AccessDeniedException e) {
-            deny(resp, HttpServletResponse.SC_FORBIDDEN, "cannot read node");
         } catch (Exception e) {
             logger.warn("site-scan {} failed for {}: {}", action, path, e.getMessage());
             logger.debug("site-scan failure", e);
