@@ -400,7 +400,9 @@
       "templateClean": "Nothing here is the template's fault.",
       "matrixHelp": "One cell per page and check. A column that is solid top to bottom is the template's doing, not the authors'.",
       "pass": "passes",
-      "failsOn": "{{check}} fails on {{count}} pages"
+      "failsOn": "{{check}} fails on {{count}} pages",
+      "rowsPerPage": "Pages per view",
+      "of": "of"
     },
     "cron": {
       "every": "Every",

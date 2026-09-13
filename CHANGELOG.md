@@ -25,7 +25,8 @@ aligned with the Jahia module version.
   chips said how many things were wrong on each page; it could not say which, or that two of them
   are wrong on every page - and a column that is solid top to bottom *is* the template roll-up,
   visible before anyone reads a number. Each cell and column header carries a tooltip; every
-  status color ships with its word in the legend.
+  status color ships with its word in the legend. Paged ten at a time with Moonstone's pagination,
+  the column set computed over every finding so columns do not reshuffle between pages.
 
 ## [1.0.0] - 2026-09-11
 

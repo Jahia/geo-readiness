@@ -1,7 +1,7 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Button, Chip, Field, Input, Loader, Separator, Switch, Typography} from '@jahia/moonstone';
+import {Banner, Button, Chip, Field, Input, Loader, Separator, Switch, TablePagination, Typography} from '@jahia/moonstone';
 import {CronBuilder} from './CronBuilder';
 import {scanStatus, runScan, saveSchedule} from '../api/siteScore';
 import {jcontentUrl} from '../util/jcontentUrl';
@@ -22,6 +22,11 @@ const POLL_MS = 4000;
  */
 export const SiteScorePanel = ({path, language}) => {
     const {t} = useTranslation(NS);
+    // Pages with findings is a matrix, and a matrix of five hundred rows is a
+    // wall. Ten at a time, with the column set computed over every finding so
+    // the columns do not reshuffle as you page.
+    const [findingsPage, setFindingsPage] = useState(1);
+    const [findingsPerPage, setFindingsPerPage] = useState(10);
     const [state, setState] = useState(null);
     const [phase, setPhase] = useState('loading');
     const [cron, setCron] = useState('');
@@ -286,17 +291,19 @@ export const SiteScorePanel = ({path, language}) => {
                       * the template roll-up, visible before anyone reads a number.
                       */}
                     <FailureMatrix
-                        pages={run.failures.slice(0, 25).map(f => ({
-                            key: f.path,
-                            label: f.title || f.path,
-                            sublabel: f.template ? t('score17.template', {name: f.template}) : f.path,
-                            href: jcontentUrl(f.path, language) || undefined,
-                            failed: f.failed || [],
-                            passed: f.passed,
-                            total: f.total
-                        }))}
+                        pages={run.failures
+                            .slice((findingsPage - 1) * findingsPerPage, findingsPage * findingsPerPage)
+                            .map(f => ({
+                                key: f.path,
+                                label: f.title || f.path,
+                                sublabel: f.template ? t('score17.template', {name: f.template}) : f.path,
+                                href: jcontentUrl(f.path, language) || undefined,
+                                failed: f.failed || [],
+                                passed: f.passed,
+                                total: f.total
+                            }))}
                         checks={Object.entries(
-                            run.failures.slice(0, 25).reduce((acc, f) => {
+                            run.failures.reduce((acc, f) => {
                                 (f.failed || []).forEach(id => {
                                     acc[id] = (acc[id] || 0) + 1;
                                 });
@@ -319,6 +326,20 @@ export const SiteScorePanel = ({path, language}) => {
                         tipFor={(pg, c) => `${c.label} · ${pg.label}`}
                         columnTipFor={c => t('score17.failsOn', {count: c.count, check: c.label})}
                     />
+                    {run.failures.length > findingsPerPage && (
+                        <TablePagination
+                            currentPage={findingsPage}
+                            totalNumberOfRows={run.failures.length}
+                            rowsPerPage={findingsPerPage}
+                            rowsPerPageOptions={[10, 25, 50]}
+                            label={{rowsPerPage: t('score17.rowsPerPage'), of: t('score17.of')}}
+                            onPageChange={setFindingsPage}
+                            onRowsPerPageChange={n => {
+                                setFindingsPerPage(n);
+                                setFindingsPage(1);
+                            }}
+                        />
+                    )}
                 </>
             )}
 

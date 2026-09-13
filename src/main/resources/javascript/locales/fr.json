@@ -400,7 +400,9 @@
       "templateClean": "Rien ici n'est imputable au gabarit.",
       "matrixHelp": "Une cellule par page et par vérification. Une colonne pleine de haut en bas vient du template, pas des rédacteurs.",
       "pass": "réussit",
-      "failsOn": "{{check}} échoue sur {{count}} pages"
+      "failsOn": "{{check}} échoue sur {{count}} pages",
+      "rowsPerPage": "Pages par vue",
+      "of": "sur"
     },
     "cron": {
       "every": "Chaque",
