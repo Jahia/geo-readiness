@@ -422,3 +422,11 @@
     white-space: pre;
     user-select: text;
 }
+
+/* The "showing 1-10 of 12" line above a paged list: quiet, but before the rows. */
+.pagedCaption {
+    display: block;
+    margin: 0.1rem 0 0.35rem;
+    opacity: 0.75;
+    font-variant-numeric: tabular-nums;
+}

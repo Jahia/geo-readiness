@@ -32,7 +32,9 @@ aligned with the Jahia module version.
   the reader something was withheld and gave them no way to reach it. On a site with two hundred
   stale sitemap dates, a hundred and ninety were invisible. Each group now pages ten at a time with
   Moonstone's control, shown only when a group has more than one page of rows; a list that fits in
-  one view looks exactly as before.
+  one view looks exactly as before. A paged group also says "Showing 1–10 of 12" *above* its rows,
+  because the group header already says 12 and ten rows follow - without that line the reader meets
+  the contradiction before the control that explains it.
 
 ## [1.0.0] - 2026-09-11
 

@@ -1,7 +1,8 @@
 import React, {useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {TablePagination} from '@jahia/moonstone';
+import {TablePagination, Typography} from '@jahia/moonstone';
+import styles from '../tabs/Tabs.module.css';
 
 const NS = 'geo-readiness';
 
@@ -28,11 +29,25 @@ export const Paged = ({rows, perPage, children}) => {
     }, [rows.length]);
 
     const slice = rows.slice((page - 1) * size, page * size);
+    const paged = rows.length > size;
+    const from = (page - 1) * size + 1;
+    const to = Math.min(page * size, rows.length);
 
     return (
         <>
+            {/*
+              * Said before the rows, not only after them. A group header says
+              * "12" and the list shows ten; with the control below the list, the
+              * reader meets the contradiction before the explanation. This line
+              * is the explanation, placed where the contradiction starts.
+              */}
+            {paged && (
+                <Typography variant="caption" className={styles.pagedCaption}>
+                    {t('paging.showing', {from, to, total: rows.length})}
+                </Typography>
+            )}
             {children(slice)}
-            {rows.length > size && (
+            {paged && (
                 <TablePagination
                     currentPage={page}
                     totalNumberOfRows={rows.length}

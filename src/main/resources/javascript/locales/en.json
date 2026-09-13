@@ -652,7 +652,8 @@
     },
     "paging": {
       "rowsPerView": "Rows per view",
-      "of": "of"
+      "of": "of",
+      "showing": "Showing {{from}}–{{to}} of {{total}}"
     }
   }
 }

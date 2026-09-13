@@ -652,7 +652,8 @@
     },
     "paging": {
       "rowsPerView": "Lignes par vue",
-      "of": "sur"
+      "of": "sur",
+      "showing": "Affichage de {{from}} à {{to}} sur {{total}}"
     }
   }
 }
