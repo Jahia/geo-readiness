@@ -1,0 +1,76 @@
+# This workflow is triggered every time a change is pushed to an open pull request.
+# It is the gating CI for a Jahia module PR.
+# Composite actions come from https://github.com/Jahia/jahia-modules-action, pinned by
+# their major alias @v2 (a generated Git tag, re-pointed by every v2.x.y release).
+name: On Code Change (PR)
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  update-signature:
+    name: Update module signature
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jahia/jahia-modules-action/update-signature@v2
+        with:
+          nexus_username: ${{ secrets.NEXUS_USERNAME }}
+          nexus_password: ${{ secrets.NEXUS_PASSWORD }}
+
+  static-analysis:
+    name: Static Analysis (linting, vulns)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Jahia/jahia-modules-action/static-analysis@v2
+        with:
+          primary_release_branch: main
+          auditci_level: critical
+          # Neither package.json (root, tests/) declares a `lint` script, and the action
+          # runs `yarn run lint` unconditionally when a package.json is present. Flip each
+          # to false once that folder has one — see .github/MIGRATION-NOTES.md.
+          skip_lint_modules: true
+          skip_lint_tests: true
+          # Test-tooling vulnerabilities do not ship to customers (this is the action default).
+          skip_vulns_tests: true
+
+  build:
+    name: Build Module
+    needs: update-signature
+    runs-on: ubuntu-latest
+    # Image with a warmed-up ~/.m2 so Maven does not download the world on every run.
+    # https://github.com/Jahia/jahia-docker-mvn-cache
+    container:
+      image: ghcr.io/jahia/jahia-docker-mvn-cache:17-jdk-noble-mvn-loaded
+      credentials:
+        username: ${{ secrets.GH_PACKAGES_USERNAME }}
+        password: ${{ secrets.GH_PACKAGES_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jahia/jahia-modules-action/build@v2
+        with:
+          nexus_username: ${{ secrets.NEXUS_USERNAME }}
+          nexus_password: ${{ secrets.NEXUS_PASSWORD }}
+          mvn_settings_filepath: '.github/maven.settings.xml'
+
+  sonar-analysis:
+    name: Sonar Analysis
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jahia/jahia-modules-action/sonar-analysis@v2
+        with:
+          primary_release_branch: main
+          github_pr_id: ${{ github.event.number }}
+          sonar_url: ${{ secrets.SONAR_URL }}
+          sonar_token: ${{ secrets.SONAR_TOKEN }}
+          mvn_settings_filepath: '.github/maven.settings.xml'
+          # The action defaults to Java 11; sonar-maven-plugin 5.x needs a Java 17 runtime.
+          java_version: '17'
+
+  # Integration tests are not wired yet. A tests/ Cypress suite exists, but the reusable
+  # workflow also needs tests/docker-compose.yml and a provisioning manifest, and neither is
+  # in the repository. The ready-to-paste job is in .github/MIGRATION-NOTES.md section 2.5.

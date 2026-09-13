@@ -1,0 +1,73 @@
+# This workflow is triggered when someone creates a new GitHub release and ticks
+# the "Set as a pre-release" box. It runs the Maven release (tag + version bump +
+# deploy to a Nexus staging repository), refreshes the module signature and promotes
+# the staging repository to a real release.
+#
+# The release tag IS the released version, in Jahia's underscore form: 1_2_0, not v1.2.0.
+# The action derives the Maven version from the tag by replacing "_" with "." — a tag
+# that starts with "v" produces an invalid version. See .github/MIGRATION-NOTES.md.
+name: Trigger Release creation
+
+on:
+  release:
+    types: [prereleased]
+
+jobs:
+  on-release:
+    runs-on: ubuntu-latest
+
+    container:
+      image: ghcr.io/jahia/jahia-docker-mvn-cache:17-jdk-noble-mvn-loaded
+      credentials:
+        username: ${{ secrets.GH_PACKAGES_USERNAME }}
+        password: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+    steps:
+      # The SSH key of a user in an admin group is what lets the release commits
+      # bypass the branch protection rules on main.
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.GH_SSH_PRIVATE_KEY_JAHIACI }}
+
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.GH_SSH_PRIVATE_KEY_JAHIACI }}
+
+      - uses: jahia/jahia-modules-action/release@v2
+        name: Release Module
+        with:
+          github_slug: Jahia/geo-readiness
+          primary_release_branch: main
+          release_id: ${{ github.event.release.id }}
+          release_version: ${{ github.event.release.tag_name }}
+          github_api_token: ${{ secrets.GH_API_TOKEN }}
+          nexus_username: ${{ secrets.NEXUS_USERNAME }}
+          nexus_password: ${{ secrets.NEXUS_PASSWORD }}
+          mvn_settings_filepath: '.github/maven.settings.xml'
+
+      - uses: jahia/jahia-modules-action/update-signature@v2
+        with:
+          nexus_username: ${{ secrets.NEXUS_USERNAME }}
+          nexus_password: ${{ secrets.NEXUS_PASSWORD }}
+          mvn_settings_filepath: '.github/maven.settings.xml'
+          force_signature: true
+
+      - uses: jahia/jahia-modules-action/release-publication@v2
+        name: Publish Module
+        with:
+          module_id: geo-readiness
+          release_version: ${{ github.event.release.tag_name }}
+          nexus_username: ${{ secrets.NEXUS_USERNAME }}
+          nexus_password: ${{ secrets.NEXUS_PASSWORD }}
+
+  sbom:
+    name: SBOM processing
+    needs: on-release
+    runs-on: ubuntu-latest
+    container:
+      image: cyclonedx/cyclonedx-cli:0.24.2
+    steps:
+      - uses: jahia/jahia-modules-action/sbom-processing@v2
+        with:
+          dependencytrack_hostname: ${{ vars.DEPENDENCYTRACK_HOSTNAME }}
+          dependencytrack_apikey: ${{ secrets.DEPENDENCYTRACK_APIKEY }}

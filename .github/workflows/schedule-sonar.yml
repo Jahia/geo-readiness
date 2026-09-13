@@ -1,0 +1,44 @@
+# Full SonarQube analysis of the default branch, on a schedule.
+# Unlike the PR analysis in on-code-change.yml, this run has no github_pr_id, which is
+# what makes the action also run the OWASP Dependency-Check scan and feed its report
+# to SonarQube.
+name: Sonar Analysis - Scheduled
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * 1,3,5' # At 4AM, on Monday, Wednesday and Friday
+
+jobs:
+  sonar-analysis:
+    name: Sonar Analysis
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        supported_branches: ["${{ github.event.repository.default_branch }}"]
+    container:
+      image: ghcr.io/jahia/jahia-docker-mvn-cache:17-jdk-noble-mvn-loaded
+      credentials:
+        username: ${{ secrets.GH_PACKAGES_USERNAME }}
+        password: ${{ secrets.GH_PACKAGES_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.supported_branches }}
+      - uses: jahia/jahia-modules-action/build@v2
+        with:
+          nexus_username: ${{ secrets.NEXUS_USERNAME }}
+          nexus_password: ${{ secrets.NEXUS_PASSWORD }}
+          mvn_settings_filepath: '.github/maven.settings.xml'
+      - uses: jahia/jahia-modules-action/sonar-analysis@v2
+        with:
+          primary_release_branch: ${{ matrix.supported_branches }}
+          # The build ran in this same job, so target/ is already on disk: no artifact
+          # download, which is what an empty build_artifacts means.
+          build_artifacts: ''
+          sonar_url: ${{ secrets.SONAR_URL }}
+          sonar_token: ${{ secrets.SONAR_TOKEN }}
+          mvn_settings_filepath: '.github/maven.settings.xml'
+          java_version: '17'
+          nvd_apikey: ${{ secrets.NVD_APIKEY }}
