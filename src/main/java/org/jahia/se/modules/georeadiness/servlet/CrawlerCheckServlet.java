@@ -78,7 +78,12 @@ import java.util.stream.Collectors;
  */
 @Component(
         service = {HttpServlet.class, Servlet.class},
-        property = {"alias=/geo-readiness/crawler-check", "allow-api-token=true"},
+        property = {
+                "alias=/geo-readiness/crawler-check",
+                "allow-api-token=true",
+                "service.description=GEO readiness per-page crawler check",
+                "service.vendor=Jahia Solutions Group SA"
+        },
         immediate = true)
 public class CrawlerCheckServlet extends HttpServlet {
 

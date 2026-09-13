@@ -55,7 +55,12 @@ import java.util.Map;
  */
 @Component(
         service = {HttpServlet.class, Servlet.class},
-        property = {"alias=/geo-readiness/site-files", "allow-api-token=true"},
+        property = {
+                "alias=/geo-readiness/site-files",
+                "allow-api-token=true",
+                "service.description=GEO readiness robots.txt and llms.txt editing",
+                "service.vendor=Jahia Solutions Group SA"
+        },
         immediate = true)
 public class SiteFilesServlet extends HttpServlet {
 
