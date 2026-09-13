@@ -63,6 +63,13 @@ JavaScript-only page is still caught, by the word-count check.
 | `Charts.jsx` | `Meter`, `BarList`, `StackedBar`, `RangeList`, `PairedBars`, `FailureMatrix` - the six forms the panels use, in HTML/CSS with a shared hover/focus tooltip. No library. |
 | `Charts.module.css` | Tokens mapped from Moonstone, tone classes scoped under `.chart` so they beat every mark's default, mark specs (thin bar, rounded data-end, 2px surface gaps, surface ring on markers). |
 
+### `javascript/util/`
+
+| File | Role |
+|---|---|
+| `Paged.jsx` | Pages any findings list with Moonstone's `TablePagination`. Full up to the page size (25 by default); the control appears from ten rows so a denser view can be chosen; past the page size the range is stated above the rows. |
+| `jcontentUrl.js` | jContent's own address for a node, routing `/contents/...` to the content-folders section so a link to a content item resolves instead of landing on nothing. |
+
 ### `servlet/`
 
 | Alias | Scope | Writes? |

@@ -210,6 +210,13 @@ Concretely, the servlet must keep:
   records `id -> severity` once per scan in `aggregate.severities` - it is the same eighteen for
   every page, so once is enough. A stored scan from before that field has no colors: rescan.
 
+- **`set -e` does not protect a release chain in this shell.** A Python step failed mid-way
+  (`substring not found`) and the chain carried on into the build, tag and GitHub release. It
+  happened to be harmless - the failed step was a docs edit nothing downstream needed - but a
+  failed version bump would have tagged and published the wrong number. Chain release steps with
+  `&&`, put the edits whose failure must stop everything *last* in their Python script, and read the
+  output before trusting the tag.
+
 ## robots.txt traps
 
 - **The path evaluated against robots.txt must include the query string.** Rules like
