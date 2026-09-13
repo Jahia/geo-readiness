@@ -60,7 +60,7 @@ JavaScript-only page is still caught, by the word-count check.
 
 | File | Role |
 |---|---|
-| `Charts.jsx` | `Meter`, `BarList`, `StackedBar`, `RangeList`, `PairedBars` - the five forms the panels use, in HTML/CSS with a shared hover/focus tooltip. No library. |
+| `Charts.jsx` | `Meter`, `BarList`, `StackedBar`, `RangeList`, `PairedBars`, `FailureMatrix` - the six forms the panels use, in HTML/CSS with a shared hover/focus tooltip. No library. |
 | `Charts.module.css` | Tokens mapped from Moonstone, tone classes scoped under `.chart` so they beat every mark's default, mark specs (thin bar, rounded data-end, 2px surface gaps, surface ring on markers). |
 
 ### `servlet/`

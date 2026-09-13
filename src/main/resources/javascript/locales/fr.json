@@ -397,7 +397,10 @@
       "byTemplateHelp": "Une vérification n'est imputée au gabarit que si elle échoue sur presque toutes les pages qu'il produit. Trois pages en échec sur quatre cents, ce sont trois auteurs ; quatre cents sur quatre cents, c'est le gabarit.",
       "oneFix": "{{count}} correction ici couvre toutes les pages",
       "oneFix_plural": "{{count}} corrections ici couvrent toutes les pages",
-      "templateClean": "Rien ici n'est imputable au gabarit."
+      "templateClean": "Rien ici n'est imputable au gabarit.",
+      "matrixHelp": "Une cellule par page et par vérification. Une colonne pleine de haut en bas vient du template, pas des rédacteurs.",
+      "pass": "réussit",
+      "failsOn": "{{check}} échoue sur {{count}} pages"
     },
     "cron": {
       "every": "Chaque",

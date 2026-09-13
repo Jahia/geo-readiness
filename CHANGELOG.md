@@ -20,6 +20,12 @@ aligned with the Jahia module version.
   light surface as an adjacent pair. The plain accent fails 3:1 and is not used for marks; gray is
   a track, never a series. A missing value is never drawn as a zero-length bar - an unmeasured
   language renders as text saying so.
+- **Pages with findings is a matrix, not a list.** Pages down, failing checks across, one cell
+  per pair colored by severity, columns ordered by how many pages fail them. A list of "15/17"
+  chips said how many things were wrong on each page; it could not say which, or that two of them
+  are wrong on every page - and a column that is solid top to bottom *is* the template roll-up,
+  visible before anyone reads a number. Each cell and column header carries a tooltip; every
+  status color ships with its word in the legend.
 
 ## [1.0.0] - 2026-09-11
 

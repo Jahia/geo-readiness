@@ -89,6 +89,7 @@ public final class SiteScorer {
         Map<String, String> canonicals = new LinkedHashMap<>();
         JSONArray failures = new JSONArray();
         Map<String, Integer> failCounts = new TreeMap<>();
+        Map<String, String> severities = new LinkedHashMap<>();
         Map<String, int[]> bySection = new LinkedHashMap<>();
         TemplateRollup.Accumulator byTemplate = new TemplateRollup.Accumulator();
         int scored = 0;
@@ -127,6 +128,14 @@ public final class SiteScorer {
 
                 JSONArray failed = one.getJSONArray("failed");
                 byTemplate.add(one.optString("template", ""), failed);
+                // The same eighteen every page, so recorded once: what the
+                // failure matrix needs to color a cell by how much it matters.
+                JSONObject sev = one.optJSONObject("severities");
+                if (sev != null && severities.isEmpty()) {
+                    for (String k : sev.keySet()) {
+                        severities.put(k, sev.getString(k));
+                    }
+                }
                 for (int f = 0; f < failed.length(); f++) {
                     String id = failed.getString(f);
                     failCounts.merge(id, 1, Integer::sum);
@@ -164,6 +173,7 @@ public final class SiteScorer {
         // share of checks that passed across every page scored.
         aggregate.put("percent", totalChecks == 0 ? 0 : Math.round(totalPassed * 100.0 / totalChecks));
         aggregate.put("failCounts", new JSONObject(failCounts));
+        aggregate.put("severities", new JSONObject(severities));
 
         JSONArray sections = new JSONArray();
         bySection.forEach((name, agg) -> {
@@ -348,11 +358,13 @@ public final class SiteScorer {
         int passed = 0;
         int total = 0;
         int critical = 0;
+        JSONObject severities = new JSONObject();
         for (int i = 0; i < checks.length(); i++) {
             JSONObject c = checks.getJSONObject(i);
             if (MULTI_AGENT_ONLY.equals(c.getString("id"))) {
                 continue;
             }
+            severities.put(c.getString("id"), c.getString("severity"));
             total++;
             if (c.getBoolean("passed")) {
                 passed++;
@@ -369,6 +381,7 @@ public final class SiteScorer {
         trimmed.put("criticalFailed", critical);
         out.put("score", trimmed);
         out.put("failed", failed);
+        out.put("severities", severities);
         return out;
     }
 

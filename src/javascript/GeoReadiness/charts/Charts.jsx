@@ -339,3 +339,115 @@ PairedBars.propTypes = {
 };
 
 PairedBars.defaultProps = {format: v => `${v}%`, missingLabel: '—'};
+
+/**
+ * Pages down, failing checks across, one cell per pair.
+ *
+ * A list of "15/17" chips says how many things are wrong on each page. It
+ * cannot say *which* things, or that two of them are wrong on every page - and
+ * that second fact is the whole point of the template roll-up: a column that is
+ * solid top to bottom is a template, not thirteen authors. Columns are ordered
+ * by how many pages fail them, so those stripes sit at the left.
+ *
+ * Cells are colored by severity, which is status - so each color always ships
+ * with its word in the legend and in the tooltip, never alone. A pass is the
+ * track color: it is what is left, not a series.
+ */
+export const FailureMatrix = ({pages, checks, legend, passLabel, tipFor, columnTipFor}) => {
+    const {show, hide, node} = useTip();
+    const tone = sev => (sev === 'critical' ? styles.fillBad : (sev === 'important' ? styles.fillWarn : styles.fillAdvisory));
+    return (
+        <div className={styles.chart} data-geo-chart="">
+            <div className={styles.matrixScroll}>
+                <table className={styles.matrix}>
+                    <thead>
+                        <tr>
+                            <th className={styles.matrixCorner}/>
+                            {checks.map(c => (
+                                <th
+                                    key={c.id}
+                                    className={styles.matrixCol}
+                                    tabIndex={0}
+                                    onMouseEnter={e => show(e, tipText(c.count, columnTipFor(c)))}
+                                    onFocus={e => show(e, tipText(c.count, columnTipFor(c)))}
+                                    onMouseLeave={hide}
+                                    onBlur={hide}
+                                >
+                                    <span className={styles.matrixColLabel}>{c.label}</span>
+                                </th>
+                            ))}
+                            <th className={styles.matrixTotal}/>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {pages.map(pg => (
+                            <tr key={pg.key}>
+                                <th className={styles.matrixRow}>
+                                    {pg.href ? (
+                                        <a className={styles.matrixLink} href={pg.href}>{pg.label}</a>
+                                    ) : (
+                                        <span>{pg.label}</span>
+                                    )}
+                                    {pg.sublabel && <span className={styles.matrixSub}>{pg.sublabel}</span>}
+                                </th>
+                                {checks.map(c => {
+                                    const failed = pg.failed.includes(c.id);
+                                    return (
+                                        <td key={c.id} className={styles.matrixCell}>
+                                            <span
+                                                className={`${styles.cell} ${failed ? tone(c.severity) : styles.cellPass}`}
+                                                tabIndex={failed ? 0 : -1}
+                                                onMouseEnter={e => show(e, tipText(failed ? legend[c.severity] : passLabel, tipFor(pg, c)))}
+                                                onFocus={e => show(e, tipText(failed ? legend[c.severity] : passLabel, tipFor(pg, c)))}
+                                                onMouseLeave={hide}
+                                                onBlur={hide}
+                                            />
+                                        </td>
+                                    );
+                                })}
+                                <td className={styles.matrixTotal}>
+                                    <span className={styles.tipValue}>{pg.passed}/{pg.total}</span>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+            <ul className={styles.legend}>
+                {['critical', 'important', 'advisory'].map(sev => (
+                    <li key={sev} className={styles.legendItem}>
+                        <span className={`${styles.swatch} ${tone(sev)}`}/>
+                        <span>{legend[sev]}</span>
+                    </li>
+                ))}
+                <li className={styles.legendItem}>
+                    <span className={`${styles.swatch} ${styles.cellPass}`}/>
+                    <span>{passLabel}</span>
+                </li>
+            </ul>
+            {node}
+        </div>
+    );
+};
+
+FailureMatrix.propTypes = {
+    pages: PropTypes.arrayOf(PropTypes.shape({
+        key: PropTypes.string.isRequired,
+        label: PropTypes.node.isRequired,
+        sublabel: PropTypes.node,
+        href: PropTypes.string,
+        failed: PropTypes.arrayOf(PropTypes.string).isRequired,
+        passed: PropTypes.number.isRequired,
+        total: PropTypes.number.isRequired
+    })).isRequired,
+    checks: PropTypes.arrayOf(PropTypes.shape({
+        id: PropTypes.string.isRequired,
+        label: PropTypes.node.isRequired,
+        severity: PropTypes.string,
+        count: PropTypes.number.isRequired
+    })).isRequired,
+    legend: PropTypes.object.isRequired,
+    passLabel: PropTypes.node.isRequired,
+    tipFor: PropTypes.func.isRequired,
+    columnTipFor: PropTypes.func.isRequired
+};

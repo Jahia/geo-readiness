@@ -5,7 +5,7 @@ import {Banner, Button, Chip, Field, Input, Loader, Separator, Switch, Typograph
 import {CronBuilder} from './CronBuilder';
 import {scanStatus, runScan, saveSchedule} from '../api/siteScore';
 import {jcontentUrl} from '../util/jcontentUrl';
-import {Meter, BarList} from '../charts/Charts';
+import {Meter, BarList, FailureMatrix} from '../charts/Charts';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -277,35 +277,48 @@ export const SiteScorePanel = ({path, language}) => {
                     <Typography variant="subheading" className={styles.panelSub}>
                         {t('score17.worstPages')}
                     </Typography>
-                    <ul className={styles.checkList}>
-                        {run.failures.slice(0, 25).map(f => (
-                            <li key={f.path} className={styles.checkItem}>
-                                <span className={styles.checkText}>
-                                    {jcontentUrl(f.path, language) ? (
-                                        <a
-                                            className={styles.pageLink}
-                                            href={jcontentUrl(f.path, language)}
-                                            title={t('score17.openPage')}
-                                        >
-                                            {f.title}
-                                        </a>
-                                    ) : (
-                                        <Typography variant="body" className={styles.checkLabel}>{f.title}</Typography>
-                                    )}
-                                    <Typography variant="caption" className={styles.checkFix}>
-                                        {f.path}
-                                        {f.template ? ` · ${t('score17.template', {name: f.template})}` : ''}
-                                    </Typography>
-                                </span>
-                                <span className={styles.checkMeta}>
-                                    {f.critical > 0 && (
-                                        <Chip label={t('score17.critical', {count: f.critical})} color="danger"/>
-                                    )}
-                                    <Chip label={`${f.passed}/${f.total}`} color="default"/>
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
+                    <Typography variant="caption" className={styles.panelIntro}>
+                        {t('score17.matrixHelp')}
+                    </Typography>
+                    {/*
+                      * Columns ordered by how many pages fail them, so a check
+                      * every page fails is a solid stripe at the left - which is
+                      * the template roll-up, visible before anyone reads a number.
+                      */}
+                    <FailureMatrix
+                        pages={run.failures.slice(0, 25).map(f => ({
+                            key: f.path,
+                            label: f.title || f.path,
+                            sublabel: f.template ? t('score17.template', {name: f.template}) : f.path,
+                            href: jcontentUrl(f.path, language) || undefined,
+                            failed: f.failed || [],
+                            passed: f.passed,
+                            total: f.total
+                        }))}
+                        checks={Object.entries(
+                            run.failures.slice(0, 25).reduce((acc, f) => {
+                                (f.failed || []).forEach(id => {
+                                    acc[id] = (acc[id] || 0) + 1;
+                                });
+                                return acc;
+                            }, {})
+                        )
+                            .sort((x, y) => y[1] - x[1])
+                            .map(([id, count]) => ({
+                                id,
+                                count,
+                                label: t(`score.check.${id}.label`),
+                                severity: (agg.severities || {})[id] || 'advisory'
+                            }))}
+                        legend={{
+                            critical: t('score.severity.critical'),
+                            important: t('score.severity.important'),
+                            advisory: t('score.severity.advisory')
+                        }}
+                        passLabel={t('score17.pass')}
+                        tipFor={(pg, c) => `${c.label} · ${pg.label}`}
+                        columnTipFor={c => t('score17.failsOn', {count: c.count, check: c.label})}
+                    />
                 </>
             )}
 

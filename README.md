@@ -81,8 +81,10 @@ than waiting for a walk of the site.
 
 Where a number has a shape worth seeing, the panel draws it: a meter under the site score, bars per
 section, a histogram of content age with a newest-to-oldest range per type, coverage beside score
-per language, and one stacked bar for structured-data coverage. All plain HTML and CSS in
-Moonstone's own colors - no chart library - with a tooltip on hover and on keyboard focus.
+per language, one stacked bar for structured-data coverage, and the pages with findings as a
+matrix - pages down, failing checks across - so a check every page fails reads as a solid column,
+which is the template's doing rather than the authors'. All plain HTML and CSS in Moonstone's own
+colors - no chart library - with a tooltip on hover and on keyboard focus.
 
 **Site score.** Every published page scored on a schedule you set, one fetch each. Shows the
 overall figure and the movement since the last run, a breakdown by section, the pages with

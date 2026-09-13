@@ -199,6 +199,17 @@ Concretely, the servlet must keep:
   false, which it is in a driven tab. Dispatch `MouseEvent('mouseover', {bubbles:true})` and
   `FocusEvent('focusin', {bubbles:true})` and read `[role="status"]` back.
 
+- **The locale JSON is bundled, so trailing garbage in it fails the whole build - silently under
+  `mvn -q`.** Appending `'\\n'` (a literal backslash-n) instead of a newline left `}\n` at the end
+  of both `en.json` and `fr.json`; `yarn build:production` exited 1, Maven reported only "failed to
+  run task", and a `grep ERROR` filter showed nothing useful. Run `yarn -s build:production`
+  directly to see webpack's own message. When appending to a JSON file from Python, write `"\n"`
+  from a normal string, and re-`json.load` the file afterwards as the check.
+- **The failure matrix needs check severities on the aggregate.** Rows carry failed check ids
+  only; severity lives in each page's full `checks` array, which the scan trims away. `SiteScorer`
+  records `id -> severity` once per scan in `aggregate.severities` - it is the same eighteen for
+  every page, so once is enough. A stored scan from before that field has no colors: rescan.
+
 ## robots.txt traps
 
 - **The path evaluated against robots.txt must include the query string.** Rules like
