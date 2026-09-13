@@ -23,10 +23,10 @@ const POLL_MS = 4000;
 export const SiteScorePanel = ({path, language}) => {
     const {t} = useTranslation(NS);
     // Pages with findings is a matrix, and a matrix of five hundred rows is a
-    // wall. Ten at a time, with the column set computed over every finding so
-    // the columns do not reshuffle as you page.
+    // wall. Twenty-five at a time - enough that a small site never pages - with
+    // the column set computed over every finding so columns do not reshuffle.
     const [findingsPage, setFindingsPage] = useState(1);
-    const [findingsPerPage, setFindingsPerPage] = useState(10);
+    const [findingsPerPage, setFindingsPerPage] = useState(25);
     const [state, setState] = useState(null);
     const [phase, setPhase] = useState('loading');
     const [cron, setCron] = useState('');
@@ -326,12 +326,12 @@ export const SiteScorePanel = ({path, language}) => {
                         tipFor={(pg, c) => `${c.label} · ${pg.label}`}
                         columnTipFor={c => t('score17.failsOn', {count: c.count, check: c.label})}
                     />
-                    {run.failures.length > findingsPerPage && (
+                    {run.failures.length > 10 && (
                         <TablePagination
                             currentPage={findingsPage}
                             totalNumberOfRows={run.failures.length}
                             rowsPerPage={findingsPerPage}
-                            rowsPerPageOptions={[10, 25, 50]}
+                            rowsPerPageOptions={[10, 25, 50, 100]}
                             label={{rowsPerPage: t('score17.rowsPerPage'), of: t('score17.of')}}
                             onPageChange={setFindingsPage}
                             onRowsPerPageChange={n => {

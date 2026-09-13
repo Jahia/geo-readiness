@@ -25,16 +25,17 @@ aligned with the Jahia module version.
   chips said how many things were wrong on each page; it could not say which, or that two of them
   are wrong on every page - and a column that is solid top to bottom *is* the template roll-up,
   visible before anyone reads a number. Each cell and column header carries a tooltip; every
-  status color ships with its word in the legend. Paged ten at a time with Moonstone's pagination,
+  status color ships with its word in the legend. Paged twenty-five at a time with Moonstone's pagination,
   the column set computed over every finding so columns do not reshuffle between pages.
 - **Every findings list pages, none is capped.** Sitemap findings, unlinked pages, address
   conflicts and invisible content used to stop at ten rows with an "and N more" line - which told
   the reader something was withheld and gave them no way to reach it. On a site with two hundred
-  stale sitemap dates, a hundred and ninety were invisible. Each group now pages ten at a time with
-  Moonstone's control, shown only when a group has more than one page of rows; a list that fits in
-  one view looks exactly as before. A paged group also says "Showing 1–10 of 12" *above* its rows,
-  because the group header already says 12 and ten rows follow - without that line the reader meets
-  the contradiction before the control that explains it.
+  stale sitemap dates, a hundred and ninety were invisible. Each group now pages twenty-five at a
+  time with Moonstone's control. Anything up to the chosen page size is shown in full, as is the
+  failure matrix; the control itself appears once a list passes ten rows, so a denser view can be
+  chosen and paged even when nothing is being withheld. A paged group also says "Showing 1–25
+  of 40" *above* its rows, so the header's count and the visible rows never disagree without the
+  explanation sitting between them.
 
 ## [1.0.0] - 2026-09-11
 
