@@ -1,5 +1,9 @@
 # geo-readiness Changelog
 
+## 1.3.0
+
+* Added an optional AI-written GEO report with prioritised recommendations and Markdown or JSON export.
+
 ## 1.2.0
 
 Freshness stops being a picture you have to decode and becomes a report you can act on, the
@@ -145,6 +149,7 @@ from any external vendor.
   overall figure, the movement since the last run, a breakdown by section, and the pages with
   findings. The schedule is built from dropdowns, with an optional scope and an enable toggle, and
   a running scan appears in the administration job list.
+
 * **Findings roll up to the template that produced them.** Templates are ranked by the pages they
   render, so the biggest single fix is first, and what the template is answerable for is separated
   from what merely happens on some of its pages. The drawer says so on the affected check: which
@@ -218,6 +223,7 @@ from any external vendor.
   source are named rather than invented, and a generated name that disagrees with the title the
   page renders is reported as a conflict, because structured data that contradicts its page is
   worse than none. The drawer shows the snippet with a copy button; nothing is written into a page.
+
 * **The page drawer now says where a page stands.** A score with no reference point is not
   information, so the drawer carries the site average and the page's own section average beside it,
   how many pages link here from navigation and from content, and whether the page is in llms.txt.
