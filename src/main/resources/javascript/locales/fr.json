@@ -314,7 +314,8 @@
         "vanity": "Adresses",
         "freshness": "Fraîcheur",
         "languages": "Langues",
-        "schema": "Données structurées"
+        "schema": "Données structurées",
+        "report": "Rapport"
       },
       "group": {
         "overview": "Vue d'ensemble",
@@ -667,6 +668,85 @@
       "rowsPerView": "Lignes par vue",
       "of": "sur",
       "showing": "Affichage de {{from}} à {{to}} sur {{total}}"
+    },
+    "report": {
+      "title": "Le rapport rédigé",
+      "intro": "Tout le reste de ce tableau de bord est mesuré, et le dit. Cet onglet demande à un modèle de lire ces mesures et d'écrire ce qu'elles signifient : où en est le site pour les robots d'IA, quoi corriger d'abord, qui peut le faire, et dans quel ordre. Il ne répond que sur demande, car chaque réponse est payante et prend du temps.",
+      "notConfiguredTitle": "Aucun fournisseur configuré",
+      "notConfigured": "Renseignez AI_PROVIDER, AI_MODEL et AI_API_KEY dans digital-factory-data/karaf/etc/org.jahia.se.modules.georeadiness.cfg pour activer cet onglet. Rien ne quitte le serveur avant cela.",
+      "provider": "Rédigé par {{provider}} · {{model}}",
+      "privacy": "Le fournisseur reçoit les mesures de ce site : scores, identifiants des contrôles en échec, chemins et titres des pages, décomptes. Jamais le corps des pages, jamais la clé.",
+      "generate": "Rédiger le rapport",
+      "regenerate": "Rédiger à nouveau",
+      "generating": "Rédaction…",
+      "generatingHint": "Lecture des mesures et rédaction. Cela peut prendre jusqu'à une minute.",
+      "neverTitle": "Pas encore de rapport",
+      "never": "Lancez d'abord une analyse du site pour qu'il y ait quelque chose à lire, puis demandez le rapport. Les panneaux sitemap, liens, fraîcheur et langues l'alimentent aussi.",
+      "errorTitle": "Le rapport n'a pas pu être rédigé",
+      "errorGeneric": "Le fournisseur n'a pas répondu.",
+      "rateLimited": "Trop de rapports demandés en dix minutes. La limite protège le budget ; réessayez un peu plus tard.",
+      "generatedAt": "Rédigé le {{date}}",
+      "otherLanguageTitle": "Rédigé dans une autre langue",
+      "otherLanguage": "Ce rapport a été rédigé en {{have}}. Votre interface est en {{want}} : rédigez-le à nouveau pour l'obtenir dans votre langue.",
+      "truncatedTitle": "Interrompu",
+      "truncated": "Le modèle a manqué de place avant la fin. La fin du rapport peut manquer ; augmenter AI_MAX_TOKENS lui en donne davantage.",
+      "summary": "Où en est le site",
+      "compliance": "Conformité par domaine",
+      "priorities": "Quoi faire, dans l'ordre",
+      "quickWins": "Gains rapides",
+      "roadmap": "Feuille de route",
+      "why": "Pourquoi :",
+      "how": "Comment :",
+      "pages": "Pages concernées",
+      "none": "Rien à recommander : les mesures n'ont rien donné au modèle sur quoi agir.",
+      "usage": "{{input}} jetons en entrée, {{output}} en sortie",
+      "disclaimer": "Rédigé par un modèle à partir des mesures prises par ce module. Il hiérarchise et explique ; il ne mesure rien lui-même et peut se tromper. Vérifiez une recommandation dans le panneau qu'elle concerne avant d'agir.",
+      "verdict": {
+        "compliant": "Conforme GEO",
+        "partial": "Partiellement conforme",
+        "not_compliant": "Non conforme"
+      },
+      "status": {
+        "met": "Atteint",
+        "partial": "Partiel",
+        "missing": "Manquant"
+      },
+      "area": {
+        "reachability": "Un robot peut-il y accéder",
+        "content": "Ce qui arrive est-il exploitable",
+        "structured_data": "Données structurées",
+        "freshness": "Fraîcheur",
+        "languages": "Langues",
+        "site_files": "robots.txt et llms.txt",
+        "links": "Liens internes",
+        "addresses": "Adresses publiques"
+      },
+      "owner": {
+        "editor": "un contributeur peut le faire",
+        "developer": "nécessite un développeur",
+        "administrator": "nécessite un administrateur"
+      },
+      "effort": {
+        "low": "effort faible",
+        "medium": "effort moyen",
+        "high": "effort élevé"
+      },
+      "phase": {
+        "now": "Maintenant",
+        "next": "Ensuite",
+        "later": "Plus tard"
+      },
+      "export": {
+        "markdown": "Exporter en Markdown",
+        "json": "Exporter en JSON",
+        "title": "Rapport de préparation GEO pour {{site}}",
+        "generated": "Rédigé le {{date}}",
+        "area": "Domaine",
+        "status": "Statut",
+        "note": "Note",
+        "owner": "Responsable : {{owner}}",
+        "effort": "Effort : {{effort}}"
+      }
     }
   }
 }

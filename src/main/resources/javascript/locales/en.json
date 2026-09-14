@@ -314,7 +314,8 @@
         "vanity": "Addresses",
         "freshness": "Freshness",
         "languages": "Languages",
-        "schema": "Structured data"
+        "schema": "Structured data",
+        "report": "Report"
       },
       "group": {
         "overview": "Overview",
@@ -667,6 +668,85 @@
       "rowsPerView": "Rows per view",
       "of": "of",
       "showing": "Showing {{from}}–{{to}} of {{total}}"
+    },
+    "report": {
+      "title": "The written report",
+      "intro": "Everything else on this dashboard is measured and says so. This tab asks a model to read those measurements and write what they add up to: where the site stands for AI crawlers, what to fix first, who can fix it, and in what order. It answers only when you ask, because each answer is paid for and takes a while.",
+      "notConfiguredTitle": "No provider configured",
+      "notConfigured": "Set AI_PROVIDER, AI_MODEL and AI_API_KEY in digital-factory-data/karaf/etc/org.jahia.se.modules.georeadiness.cfg to enable this tab. Nothing leaves the server until then.",
+      "provider": "Written by {{provider}} · {{model}}",
+      "privacy": "The provider receives this site's measurements: scores, failing check ids, page paths and titles, counts. Never page bodies, never the key.",
+      "generate": "Write the report",
+      "regenerate": "Write it again",
+      "generating": "Writing…",
+      "generatingHint": "Reading the measurements and writing. This can take up to a minute.",
+      "neverTitle": "No report yet",
+      "never": "Run a site scan first so there is something to read, then ask for the report. The sitemap, links, freshness and language panels feed it too.",
+      "errorTitle": "The report could not be written",
+      "errorGeneric": "The provider did not answer.",
+      "rateLimited": "Too many reports asked for in ten minutes. The limit protects the budget; try again shortly.",
+      "generatedAt": "Written {{date}}",
+      "otherLanguageTitle": "Written in another language",
+      "otherLanguage": "This report was written in {{have}}. Your interface is in {{want}}: write it again to get it in your language.",
+      "truncatedTitle": "Cut short",
+      "truncated": "The model ran out of room before finishing. The end of the report may be missing; raising AI_MAX_TOKENS gives it more.",
+      "summary": "Where the site stands",
+      "compliance": "Compliance by area",
+      "priorities": "What to do, in order",
+      "quickWins": "Quick wins",
+      "roadmap": "Roadmap",
+      "why": "Why:",
+      "how": "How:",
+      "pages": "Pages concerned",
+      "none": "Nothing to recommend: the measurements gave the model nothing to act on.",
+      "usage": "{{input}} tokens in, {{output}} out",
+      "disclaimer": "Written by a model from measurements this module took. It prioritises and explains; it does not measure anything itself, and it can be wrong. Check a recommendation against the panel it refers to before acting on it.",
+      "verdict": {
+        "compliant": "GEO compliant",
+        "partial": "Partly compliant",
+        "not_compliant": "Not compliant"
+      },
+      "status": {
+        "met": "Met",
+        "partial": "Partial",
+        "missing": "Missing"
+      },
+      "area": {
+        "reachability": "Can a crawler reach it",
+        "content": "Is what arrives usable",
+        "structured_data": "Structured data",
+        "freshness": "Freshness",
+        "languages": "Languages",
+        "site_files": "robots.txt and llms.txt",
+        "links": "Internal links",
+        "addresses": "Public addresses"
+      },
+      "owner": {
+        "editor": "an editor can do it",
+        "developer": "needs a developer",
+        "administrator": "needs an administrator"
+      },
+      "effort": {
+        "low": "low effort",
+        "medium": "medium effort",
+        "high": "high effort"
+      },
+      "phase": {
+        "now": "Now",
+        "next": "Next",
+        "later": "Later"
+      },
+      "export": {
+        "markdown": "Export as Markdown",
+        "json": "Export as JSON",
+        "title": "GEO readiness report for {{site}}",
+        "generated": "Written {{date}}",
+        "area": "Area",
+        "status": "Status",
+        "note": "Note",
+        "owner": "Owner: {{owner}}",
+        "effort": "Effort: {{effort}}"
+      }
     }
   }
 }

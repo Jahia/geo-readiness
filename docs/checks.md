@@ -354,6 +354,30 @@ Nothing is injected. The drawer shows the snippet for the page in front of you a
 it, ideally in the template for that type rather than on one page.
 
 
+## The written report
+
+Every section above is a measurement and says so. The report is the one place a model is asked
+for judgement, and it is asked on a digest of those measurements, never on page bodies: the last
+scan's score, failing check ids and their severity, the worst pages with their failing checks, the
+template roll-up, the sitemap, link, address, llms.txt and freshness findings as counts with a few
+examples, language coverage and schema coverage. One fact per line, ids rather than prose, and a
+hard size cap so a large site cannot run the prompt past the model's window.
+
+The answer is asked for as JSON in a fixed shape: a summary, a verdict, one compliance status per
+area (the dashboard's own eight areas), a ranked list of priorities each with a severity, an owner
+(editor, developer or administrator), an effort, why it matters and how to do it in this CMS, quick
+wins, and a now/next/later roadmap. The server parses it against that shape and nothing else
+reaches the browser: strings are clipped, enums are normalised to known values, lists are capped,
+and a page path survives only if the digest itself listed it. Everything is rendered as text.
+
+It answers only on a click, is metered per user, and is stored per language so the tab reads back
+instantly afterwards. The prose is written in the interface language, which may differ from the
+content language being measured; the tab says so when a stored report was written for another.
+Export produces Markdown built from the parsed shape, or the shape itself as JSON.
+
+Anthropic, OpenAI and DeepSeek are supported, through the same configuration keys page-audit uses.
+Without a provider the tab does not exist and nothing leaves the server.
+
 ## What the drawer says about where a page stands
 
 Three facts that live on the dashboard but are about one page, because a score with no reference

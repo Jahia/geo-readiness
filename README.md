@@ -71,7 +71,7 @@ outside them as the summary of all three.
 
 | Group | Panels |
 |---|---|
-| **Overview** | Site score |
+| **Overview** | Site score · Report *(when a provider is configured)* |
 | **Can a crawler reach it** | Invisible content · Internal links · Addresses |
 | **Is what arrives usable** | Structured data · Languages · Freshness |
 | **Site-level files** | Sitemap vs reality · robots.txt · llms.txt |
@@ -149,6 +149,16 @@ ranked, so a legal notice is not flagged next to a news article, and flagged onl
 item is past the threshold. Then every published page in the language being measured, oldest first,
 with its type, section, the date it last changed and how long ago, each row opening in jContent.
 
+**Report.** Everything else here is measured and says so. This tab asks a model to read those
+measurements and write what they add up to: where the site stands for AI crawlers, a compliance
+status per area, what to fix first with who can fix it and how much effort, quick wins, and a
+now/next/later roadmap. It appears only when a provider is configured, answers only on a click
+because each answer is paid for, and can be exported as Markdown or JSON. The provider receives a
+digest of the measurements - scores, failing check ids, page paths and titles, counts - never page
+bodies and never the key. What comes back is parsed into a fixed shape and rendered as text; a page
+reference survives only if the digest itself listed that page. Anthropic, OpenAI and DeepSeek are
+supported, through the same keys page-audit uses.
+
 ## Who can use it
 
 The dashboard requires the **publish** permission on the site, and the endpoints behind it require
@@ -220,6 +230,13 @@ redeploy.
 | `RATE_MAX_CALLS` / `RATE_WINDOW_MS` | 20 / 600000 | Per-user limit on the expensive actions. Reading a stored result is never limited. |
 | `CRAWLER_AGENTS` | *(blank)* | Override the agent list as `name|user-agent` pairs. Blank uses the built-in fifteen. |
 | `PUBLIC_BASE_URL` | *(blank)* | The base URL to fetch. Set this when the site's server name is not resolvable from inside the container. |
+| `AI_PROVIDER` | *(blank)* | `anthropic`, `openai` or `deepseek`. With `AI_MODEL` and `AI_API_KEY` set, the Report tab appears. Blank keeps it off and nothing leaves the server. |
+| `AI_MODEL` | *(blank)* | The model to ask. |
+| `AI_API_KEY` | *(blank)* | The provider key. Never logged, never sent to the browser. |
+| `AI_MAX_TOKENS` | 6000 | Output budget. A site-wide report is long; too low and the end is cut, which the tab says. |
+| `AI_BASE_URL` | *(blank)* | The provider's API base, for a proxy or a compatible gateway. Blank uses the provider's own. |
+| `AI_PROMPT_APPENDIX` | *(blank)* | Site-specific instructions appended to the report prompt. |
+| `AI_RATE_MAX_CALLS` | 5 | Report generations allowed per user per ten minutes. |
 
 The address a check fetches comes from this setting, or from the site's own server name when it is
 blank. A request can say how that host is reached, scheme and port, but only once it is already
@@ -247,6 +264,12 @@ declares no server name therefore has nothing to fetch until `PUBLIC_BASE_URL` s
   reports on that subtree until a full scan runs again.
 - **The full freshness list is cut at five thousand rows.** The counts and the groups above it
   still measure everything.
+- **The report is written by a model and can be wrong.** It prioritises and explains; it measures
+  nothing itself. Check a recommendation against the panel it refers to before acting on it. It
+  also costs money per answer, which is why it is never generated on its own.
+- **The report reads one language at a time**, the one the dashboard is showing, and its digest is
+  cut at fourteen thousand characters. On a very large site the counts and groups still reach the
+  model; the per-page examples are what gets trimmed.
 - **A scheduled scan runs as the account that saved it** and re-checks that account's permission on
   every run, so revoking the permission stops the schedule rather than merely hiding the screen.
 

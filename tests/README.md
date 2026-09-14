@@ -86,6 +86,7 @@ tests/
 │   │   ├── authorization.spec.ts        # the permission boundary, both directions
 │   │   ├── happy-path.spec.ts           # primary flow, through the endpoints and through jContent
 │   │   ├── rate-limit.spec.ts           # the 30-call window and its carve-out
+│   │   ├── report.spec.ts               # the written-report endpoint, around the paid call it never makes
 │   │   ├── request-validation.spec.ts   # malformed body, missing path, wrong content type
 │   │   └── scope-and-language.spec.ts   # path / scope / language boundaries
 │   ├── fixtures/graphql/hasPermission.graphql

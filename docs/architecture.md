@@ -77,6 +77,7 @@ JavaScript-only page is still caught, by the word-count check.
 | `/geo-readiness/crawler-check` | One page | No |
 | `/geo-readiness/site-scan` | One site | Only the scan record |
 | `/geo-readiness/site-files` | One site | **Yes**, robots.txt and llms.txt |
+| `/geo-readiness/report` | One site | Only the stored report |
 
 All three: authenticated callers only, `application/json` required so a cross-site form post cannot
 reach them, per-user rate limiting on the expensive actions, and generic errors that leak no
@@ -85,6 +86,20 @@ upstream detail.
 `site-scan` and `site-files` additionally require the permission the dashboard route declares in the
 front end, so the screen and the server state the same rule; `crawler-check` requires a read of the
 node in the editing workspace, which is the floor the drawer actually opens at.
+
+### `ai/`
+
+The provider layer for the written report, mirroring automatic-content-tags so a reader of one
+module recognises the other: `LlmProvider` (one chat completion), `LlmSettings` (credentials and
+model, `toString` masks the key), `Completion` (text, whether it was cut, token counts),
+`AnthropicProvider`, and `OpenAiProvider` and `DeepSeekProvider` over a shared
+`OpenAiCompatibleProvider`. DeepSeek's V4 models reason by default, which eats the output budget and
+loosens the JSON-only instruction, so that provider switches thinking off. `HttpJson` is the JDK
+client; the endpoints it reaches come from configuration, never from a request.
+
+`check/GeoReport` owns the rest: the digest built from the stored state, the prompt, the call, and
+the parse into a fixed shape where every string is clipped, every enum normalised, every list
+capped, and a page reference kept only if the digest listed that page.
 
 ### `scheduler/`
 
@@ -113,7 +128,8 @@ whether that account still holds the permission. A trigger nobody is entitled to
 
 One hidden `nt:unstructured` node per site, `geo-readiness`, carrying `jmix:nolive` so it never
 publishes. A child node per language holds the run record and results, and the language is checked
-against a pattern before it is used as that node's name.
+against a pattern before it is used as that node's name. The written report is stored there too,
+one per language, as the parsed shape rather than the model's raw answer.
 
 No CND ships. That is deliberate: a rejected content type does not merely fail, it breaks Content
 Editor across the instance until the module is removed. Nothing here needs a typed model.
