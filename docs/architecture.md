@@ -128,7 +128,8 @@ whether that account still holds the permission. A trigger nobody is entitled to
 
 One hidden `nt:unstructured` node per site, `geo-readiness`, carrying `jmix:nolive` so it never
 publishes. A child node per language holds the run record and results, and the language is checked
-against a pattern before it is used as that node's name.
+against a pattern before it is used as that node's name. The written report is stored there too,
+one per language, as the parsed shape rather than the model's raw answer.
 
 No CND ships. That is deliberate: a rejected content type does not merely fail, it breaks Content
 Editor across the instance until the module is removed. Nothing here needs a typed model.

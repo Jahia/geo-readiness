@@ -264,6 +264,12 @@ declares no server name therefore has nothing to fetch until `PUBLIC_BASE_URL` s
   reports on that subtree until a full scan runs again.
 - **The full freshness list is cut at five thousand rows.** The counts and the groups above it
   still measure everything.
+- **The report is written by a model and can be wrong.** It prioritises and explains; it measures
+  nothing itself. Check a recommendation against the panel it refers to before acting on it. It
+  also costs money per answer, which is why it is never generated on its own.
+- **The report reads one language at a time**, the one the dashboard is showing, and its digest is
+  cut at fourteen thousand characters. On a very large site the counts and groups still reach the
+  model; the per-page examples are what gets trimmed.
 - **A scheduled scan runs as the account that saved it** and re-checks that account's permission on
   every run, so revoking the permission stops the schedule rather than merely hiding the screen.
 
