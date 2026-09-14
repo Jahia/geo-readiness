@@ -114,63 +114,86 @@ public class GeoReportServlet extends HttpServlet {
             deny(resp, HttpServletResponse.SC_UNAUTHORIZED, AUTH_REQUIRED);
             return;
         }
+        Ask ask = read(req, resp);
+        if (ask == null) {
+            return;
+        }
+        String sitePath = resolveSite(ask.path, ask.language, resp);
+        if (sitePath == null) {
+            return;
+        }
+        run(ask, sitePath, user, req, resp);
+    }
+
+    /** What the caller asked for, or null once the refusal has been written. */
+    private Ask read(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String ctype = req.getContentType();
         if (ctype == null || !ctype.toLowerCase(Locale.ROOT).contains("application/json")) {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "json required");
-            return;
+            return null;
         }
         JSONObject body;
         try {
             body = new JSONObject(read(req.getInputStream(), MAX_BODY));
         } catch (IOException | JSONException e) {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "malformed body");
-            return;
+            return null;
         }
 
-        String action = body.optString("action", "read");
-        String path = body.optString("path", "");
-        String language = body.optString("language", "en");
-        String reportLanguage = body.optString("reportLanguage", language);
-        if (path.isEmpty() || !path.startsWith("/sites/")) {
+        Ask ask = new Ask(body);
+        if (ask.path.isEmpty() || !ask.path.startsWith("/sites/")) {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "path required");
-            return;
+            return null;
         }
         // Both become node names or prompt content; neither may be a path.
-        if (!SiteScope.isLanguage(language) || !SiteScope.isLanguage(reportLanguage)) {
+        if (!SiteScope.isLanguage(ask.language) || !SiteScope.isLanguage(ask.reportLanguage)) {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "language required");
-            return;
+            return null;
         }
+        return ask;
+    }
 
-        String sitePath = resolveSite(path, language, resp);
-        if (sitePath == null) {
-            return;
-        }
-
+    /** Reads the stored report, or asks for a new one. */
+    private void run(Ask ask, String sitePath, JahiaUser user, HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
         try {
-            if ("read".equals(action)) {
+            if ("read".equals(ask.action)) {
                 JSONObject out = new JSONObject();
-                JSONObject stored = ScanStore.readReport(sitePath, language);
+                JSONObject stored = ScanStore.readReport(sitePath, ask.language);
                 out.put("report", stored == null ? JSONObject.NULL : stored);
                 writeJson(resp, HttpServletResponse.SC_OK, out);
-                return;
-            }
-            if (!"generate".equals(action)) {
+            } else if ("generate".equals(ask.action)) {
+                generate(sitePath, ask.language, ask.reportLanguage, user, req, resp);
+            } else {
                 deny(resp, HttpServletResponse.SC_BAD_REQUEST, "unknown action");
-                return;
             }
-            generate(sitePath, language, reportLanguage, user, req, resp);
         } catch (IOException e) {
             // The provider's own words stay in the log. The browser learns that
             // the provider failed, and how, in a form that names no secret.
-            logger.warn("GEO report for {} [{}] failed: {}", sitePath, language, e.getMessage());
+            logger.warn("GEO report for {} [{}] failed: {}", sitePath, ask.language, e.getMessage());
             deny(resp, HttpServletResponse.SC_BAD_GATEWAY, "provider failed: " + safe(e.getMessage()));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             deny(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE, "interrupted");
         } catch (RepositoryException | RuntimeException e) {
-            logger.warn("GEO report {} failed for {}: {}", action, sitePath, e.getMessage());
+            logger.warn("GEO report {} failed for {}: {}", ask.action, sitePath, e.getMessage());
             logger.debug("GEO report failure", e);
             deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, OPERATION_FAILED);
+        }
+    }
+
+    /** The request body, read once. */
+    private static final class Ask {
+        private final String action;
+        private final String path;
+        private final String language;
+        private final String reportLanguage;
+
+        private Ask(JSONObject body) {
+            this.action = body.optString("action", "read");
+            this.path = body.optString("path", "");
+            this.language = body.optString("language", "en");
+            this.reportLanguage = body.optString("reportLanguage", this.language);
         }
     }
 
