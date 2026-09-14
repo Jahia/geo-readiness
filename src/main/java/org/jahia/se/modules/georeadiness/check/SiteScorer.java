@@ -42,6 +42,8 @@ public final class SiteScorer {
 
     /** Needs two fetches to mean anything, so it is not part of a site score. */
     private static final String MULTI_AGENT_ONLY = "sameContentForCrawlers";
+    /** The one agent a site scan fetches with: named once, used for the fetch, the rules and the report. */
+    private static final String SCAN_AGENT = "GPTBot";
 
     /** Written back this often. Often enough to look alive, rare enough not to hammer the repository. */
     private static final int PROGRESS_EVERY = 25;
@@ -312,13 +314,13 @@ public final class SiteScorer {
             // No point fetching a page a visitor cannot open. The score still
             // records it, and the critical guestReadable check does the talking.
             agent = new JSONObject();
-            agent.put("name", "GPTBot");
+            agent.put("name", SCAN_AGENT);
             agent.put("status", JSONObject.NULL);
         } else {
             // GEO-22. The link graph is built from the page we are already
             // fetching, so it costs nothing beyond this request.
             String from = PublishedMap.pathOf(url);
-            agent = PageFetch.probe(url, siteBase, "GPTBot", agentUa(), opts.fetchTimeoutMs, opts.maxBodyBytes,
+            agent = PageFetch.probe(url, siteBase, SCAN_AGENT, agentUa(), opts.fetchTimeoutMs, opts.maxBodyBytes,
                     html -> LinkGraph.addPage(links, from, html));
         }
 
@@ -342,7 +344,7 @@ public final class SiteScorer {
         report.put("visibility", visibility);
 
         int mismatches = 0;
-        RobotsRules.Verdict v = rules.evaluate("GPTBot", pathOf(url));
+        RobotsRules.Verdict v = rules.evaluate(SCAN_AGENT, pathOf(url));
         if (v.allowed && agent.optInt("status", 0) != 200 && !agent.isNull("status")) {
             mismatches++;
         } else if (!v.allowed && agent.optInt("status", 0) == 200) {
@@ -414,7 +416,7 @@ public final class SiteScorer {
 
     private static String agentUa() {
         for (AiCrawlers.Crawler c : AiCrawlers.all()) {
-            if ("GPTBot".equals(c.name)) {
+            if (SCAN_AGENT.equals(c.name)) {
                 return c.userAgent;
             }
         }
