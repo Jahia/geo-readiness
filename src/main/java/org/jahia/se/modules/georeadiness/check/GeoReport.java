@@ -39,6 +39,11 @@ public final class GeoReport {
     private static final String ADVISORY = "advisory";
     private static final String OWNER_EDITOR = "editor";
     private static final String EFFORT_MEDIUM = "medium";
+    /**
+     * Two things spelt the same: a compliance status, and the field naming a
+     * list of absent things in the stored measurements.
+     */
+    private static final String MISSING = "missing";
 
     /** The areas a finding can belong to, which are also the dashboard's own groups. */
     private static final String[] AREAS = {
@@ -46,7 +51,7 @@ public final class GeoReport {
             "links", "addresses"
     };
     private static final String[] SEVERITIES = {"critical", "important", ADVISORY};
-    private static final String[] STATUSES = {"met", PARTIAL, "missing"};
+    private static final String[] STATUSES = {"met", PARTIAL, MISSING};
     private static final String[] OWNERS = {OWNER_EDITOR, "developer", "administrator"};
     private static final String[] EFFORTS = {"low", EFFORT_MEDIUM, "high"};
     private static final String[] VERDICTS = {"compliant", PARTIAL, "not_compliant"};
@@ -59,7 +64,6 @@ public final class GeoReport {
     private static final String PATH = "path";
     private static final String PAGES = "pages";
     private static final String PERCENT = "percent";
-    private static final String MISSING = "missing";
     private static final String TITLE = "title";
     private static final String TOTAL = "total";
     private static final String AREA = "area";
