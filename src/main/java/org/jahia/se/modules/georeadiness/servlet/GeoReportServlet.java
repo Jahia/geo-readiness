@@ -91,10 +91,10 @@ public class GeoReportServlet extends HttpServlet {
             out.put("provider", enabled ? config.getAiProvider() : "");
             out.put("model", enabled ? config.getAiModel() : "");
             writeJson(resp, HttpServletResponse.SC_OK, out);
-        } catch (IOException e) {
-            // The client is gone or the socket broke. There is nothing left to
-            // answer with, and a servlet method that throws gives the container
-            // a stack trace instead of a response.
+        } catch (IOException | RuntimeException e) {
+            // Nothing may leave a servlet method: the container would answer with
+            // a stack trace instead of a response. A broken socket, or a JSON
+            // library that throws unchecked, both end here.
             logger.debug("could not write the report status", e);
         }
     }
@@ -103,7 +103,7 @@ public class GeoReportServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
         try {
             dispatch(req, resp);
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             logger.debug("could not write the report response", e);
         }
     }

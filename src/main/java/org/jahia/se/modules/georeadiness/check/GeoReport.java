@@ -53,8 +53,20 @@ public final class GeoReport {
 
     /** Digest vocabulary, likewise. */
     private static final String NOT_MEASURED = "not measured yet\n";
-    private static final String PATH = "path";
     private static final String INDENT = "  ";
+
+    /** Field names read out of the stored measurements, each named once. */
+    private static final String PATH = "path";
+    private static final String PAGES = "pages";
+    private static final String PERCENT = "percent";
+    private static final String MISSING = "missing";
+    private static final String TITLE = "title";
+    private static final String TOTAL = "total";
+    private static final String AREA = "area";
+    private static final String STATUS = "status";
+    private static final String URL = "url";
+    private static final String COUNT = "count";
+    private static final String OF = " of ";
 
     private static final int MAX_DIGEST_CHARS = 14_000;
     private static final int MAX_WORST_PAGES = 25;
@@ -208,13 +220,13 @@ public final class GeoReport {
             sb.append("no scan has run yet: no per-page findings are available\n");
             return;
         }
-        sb.append("score percent: ").append(agg.optInt("percent")).append("  pages scored: ")
-                .append(agg.optInt("scored")).append(" of ").append(agg.optInt("pages"))
+        sb.append("score percent: ").append(agg.optInt(PERCENT)).append("  pages scored: ")
+                .append(agg.optInt("scored")).append(OF).append(agg.optInt(PAGES))
                 .append("  unreadable pages: ").append(agg.optInt("unreadable"))
                 .append("  pages with a critical failure: ").append(agg.optInt("criticalPages")).append('\n');
         JSONObject prev = run.optJSONObject("previous");
-        if (prev != null && prev.has("percent")) {
-            sb.append("previous score percent: ").append(prev.optInt("percent")).append('\n');
+        if (prev != null && prev.has(PERCENT)) {
+            sb.append("previous score percent: ").append(prev.optInt(PERCENT)).append('\n');
         }
         appendFailCounts(sb, agg);
         appendSections(sb, agg.optJSONArray("sections"));
@@ -244,8 +256,8 @@ public final class GeoReport {
         sb.append("score by section:\n");
         for (int i = 0; i < sections.length(); i++) {
             JSONObject s = sections.getJSONObject(i);
-            sb.append(INDENT).append(s.optString("section")).append(": ").append(s.optInt("percent"))
-                    .append("% over ").append(s.optInt("pages")).append(" pages\n");
+            sb.append(INDENT).append(s.optString("section")).append(": ").append(s.optInt(PERCENT))
+                    .append("% over ").append(s.optInt(PAGES)).append(" pages\n");
         }
     }
 
@@ -258,12 +270,12 @@ public final class GeoReport {
         for (int i = 0; i < templates.length(); i++) {
             JSONObject tpl = templates.getJSONObject(i);
             sb.append(INDENT).append("template ").append(tpl.optString("template")).append(" (")
-                    .append(tpl.optInt("pages")).append(" pages)");
+                    .append(tpl.optInt(PAGES)).append(" pages)");
             JSONArray from = tpl.optJSONArray("fromPages");
             if (from != null) {
                 for (int j = 0; j < from.length(); j++) {
                     JSONObject f = from.getJSONObject(j);
-                    sb.append(j == 0 ? ": " : ", ").append(f.optString("check")).append(" x").append(f.optInt("pages"));
+                    sb.append(j == 0 ? ": " : ", ").append(f.optString("check")).append(" x").append(f.optInt(PAGES));
                 }
             }
             sb.append('\n');
@@ -276,12 +288,12 @@ public final class GeoReport {
             return;
         }
         sb.append("pages with findings (path | title | failing check ids), worst first, up to ")
-                .append(MAX_WORST_PAGES).append(" of ").append(failures.length()).append(":\n");
+                .append(MAX_WORST_PAGES).append(OF).append(failures.length()).append(":\n");
         for (int i = 0; i < Math.min(failures.length(), MAX_WORST_PAGES); i++) {
             JSONObject f = failures.getJSONObject(i);
             String path = f.optString(PATH);
             known.add(path);
-            sb.append(INDENT).append(path).append(" | ").append(f.optString("title")).append(" | ");
+            sb.append(INDENT).append(path).append(" | ").append(f.optString(TITLE)).append(" | ");
             JSONArray failed = f.optJSONArray("failed");
             sb.append(failed == null ? "" : failed.join(",").replace("\"", "")).append('\n');
         }
@@ -292,12 +304,12 @@ public final class GeoReport {
         if (sitemap == null) {
             sb.append("not checked yet\n");
         } else if (!sitemap.optBoolean("present")) {
-            sb.append("no sitemap.xml is served (").append(sitemap.optString("status")).append(")\n");
+            sb.append("no sitemap.xml is served (").append(sitemap.optString(STATUS)).append(")\n");
         } else {
             sb.append("entries: ").append(sitemap.optInt("entries")).append("  published pages: ")
                     .append(sitemap.optInt("published")).append("  agrees: ")
                     .append(sitemap.optBoolean("agrees")).append('\n');
-            counted(sb, "published pages missing from the sitemap", sitemap.optJSONArray("missing"), PATH);
+            counted(sb, "published pages missing from the sitemap", sitemap.optJSONArray(MISSING), PATH);
             counted(sb, "sitemap entries resolving to nothing", sitemap.optJSONArray("unknown"), "loc");
             counted(sb, "entries whose date contradicts the content", sitemap.optJSONArray("staleDate"), PATH);
             counted(sb, "entries whose page says noindex", sitemap.optJSONArray("noindexListed"), PATH);
@@ -311,7 +323,7 @@ public final class GeoReport {
             sb.append("not measured yet (built by the site scan)\n");
             return;
         }
-        sb.append("pages: ").append(links.optInt("pages")).append("  pages whose HTML was read: ")
+        sb.append("pages: ").append(links.optInt(PAGES)).append("  pages whose HTML was read: ")
                 .append(links.optInt("pagesRead")).append('\n');
         counted(sb, "orphan pages (no inbound link at all)", links.optJSONArray("orphans"), PATH);
         counted(sb, "weakly linked pages (menu only)", links.optJSONArray("weak"), PATH);
@@ -323,11 +335,11 @@ public final class GeoReport {
             sb.append(NOT_MEASURED);
             return;
         }
-        sb.append("vanity urls: ").append(vanity.optInt("total")).append("  agrees: ")
+        sb.append("vanity urls: ").append(vanity.optInt(TOTAL)).append("  agrees: ")
                 .append(vanity.optBoolean("agrees")).append('\n');
-        counted(sb, "aliases under a language the site does not serve", vanity.optJSONArray("unresolvable"), "url");
-        counted(sb, "pages live on several addresses", vanity.optJSONArray("duplicates"), "url");
-        counted(sb, "pages with aliases and no canonical", vanity.optJSONArray("canonical"), "url");
+        counted(sb, "aliases under a language the site does not serve", vanity.optJSONArray("unresolvable"), URL);
+        counted(sb, "pages live on several addresses", vanity.optJSONArray("duplicates"), URL);
+        counted(sb, "pages with aliases and no canonical", vanity.optJSONArray("canonical"), URL);
     }
 
     private static void appendLlms(StringBuilder sb, JSONObject llms) {
@@ -338,7 +350,7 @@ public final class GeoReport {
         }
         sb.append("served: ").append(llms.optBoolean("present")).append("  listed pages: ")
                 .append(llms.optInt("listed")).append("  stale: ").append(llms.optBoolean("stale")).append('\n');
-        counted(sb, "published pages the file does not mention", llms.optJSONArray("missing"), PATH);
+        counted(sb, "published pages the file does not mention", llms.optJSONArray(MISSING), PATH);
         counted(sb, "listed pages that changed since", llms.optJSONArray("outdated"), PATH);
     }
 
@@ -348,7 +360,7 @@ public final class GeoReport {
             sb.append(NOT_MEASURED);
             return;
         }
-        sb.append("dated items: ").append(fresh.optInt("total")).append("  undated: ")
+        sb.append("dated items: ").append(fresh.optInt(TOTAL)).append("  undated: ")
                 .append(fresh.optInt("undated")).append("  threshold days: ")
                 .append(fresh.optInt("staleDays")).append('\n');
         JSONArray dist = fresh.optJSONArray("distribution");
@@ -356,7 +368,7 @@ public final class GeoReport {
             sb.append("age distribution (bucket: items):");
             for (int i = 0; i < dist.length(); i++) {
                 JSONObject b = dist.getJSONObject(i);
-                sb.append(' ').append(b.optString("label")).append('=').append(b.optInt("count"));
+                sb.append(' ').append(b.optString("label")).append('=').append(b.optInt(COUNT));
             }
             sb.append('\n');
         }
@@ -369,7 +381,7 @@ public final class GeoReport {
         sb.append("\n== LANGUAGES ==\n");
         try {
             JSONObject langs = Languages.check(sitePath);
-            int total = langs.optInt("total");
+            int total = langs.optInt(TOTAL);
             sb.append("items in the site: ").append(total).append("  languages measured by a scan: ")
                     .append(langs.optInt("measured")).append("  not yet measured: ")
                     .append(langs.optInt("unmeasured")).append('\n');
@@ -378,11 +390,11 @@ public final class GeoReport {
                 for (int i = 0; i < rows.length(); i++) {
                     JSONObject l = rows.getJSONObject(i);
                     sb.append(INDENT).append(l.optString("language")).append(": translated ")
-                            .append(l.optInt("translated")).append(" of ").append(total)
+                            .append(l.optInt("translated")).append(OF).append(total)
                             .append(" (").append(l.optInt("coverage")).append("% coverage), published ")
                             .append(l.optInt("published"))
                             .append(", readiness score ")
-                            .append(l.optBoolean("scored") ? l.optInt("percent") + "%" : "not measured")
+                            .append(l.optBoolean("scored") ? l.optInt(PERCENT) + "%" : "not measured")
                             .append('\n');
                 }
             }
@@ -396,7 +408,7 @@ public final class GeoReport {
         sb.append("\n== STRUCTURED DATA (schema.org from the content model) ==\n");
         try {
             JSONObject schema = StructuredData.coverage(sitePath, language, base, overrides);
-            sb.append("items: ").append(schema.optInt("total")).append("  mapped: ")
+            sb.append("items: ").append(schema.optInt(TOTAL)).append("  mapped: ")
                     .append(schema.optInt("mappedItems")).append("  able to emit complete JSON-LD: ")
                     .append(schema.optInt("completeItems")).append('\n');
             JSONArray types = schema.optJSONArray("types");
@@ -404,9 +416,9 @@ public final class GeoReport {
                 sb.append("content types (type: items, mapped to, missing required properties):\n");
                 for (int i = 0; i < types.length(); i++) {
                     JSONObject t = types.getJSONObject(i);
-                    sb.append(INDENT).append(t.optString("nodeType")).append(": ").append(t.optInt("count"))
+                    sb.append(INDENT).append(t.optString("nodeType")).append(": ").append(t.optInt(COUNT))
                             .append(", ").append(t.optBoolean("mapped") ? t.optString("schemaType") : "NOT MAPPED");
-                    JSONArray missing = t.optJSONArray("missing");
+                    JSONArray missing = t.optJSONArray(MISSING);
                     if (missing != null && missing.length() > 0) {
                         sb.append(", missing ").append(missing.join(",").replace("\"", ""));
                     }
@@ -440,7 +452,7 @@ public final class GeoReport {
         sb.append(label).append(":\n");
         for (int i = 0; i < rows.length(); i++) {
             JSONObject g = rows.getJSONObject(i);
-            sb.append(INDENT).append(g.optString("name")).append(": ").append(g.optInt("count")).append(", ")
+            sb.append(INDENT).append(g.optString("name")).append(": ").append(g.optInt(COUNT)).append(", ")
                     .append(g.optInt("newest")).append(" days").append(g.optBoolean("stale") ? ", PAST THRESHOLD" : "")
                     .append('\n');
         }
@@ -476,65 +488,83 @@ public final class GeoReport {
         JSONObject out = new JSONObject();
         out.put("summary", clip(in.optString("summary", ""), SUMMARY));
         out.put("verdict", one(in.optString("verdict", PARTIAL), VERDICTS, PARTIAL));
-
-        JSONArray compliance = new JSONArray();
-        JSONArray cin = in.optJSONArray("compliance");
-        Set<String> seenAreas = new HashSet<>();
-        if (cin != null) {
-            for (int i = 0; i < cin.length() && compliance.length() < MAX_COMPLIANCE; i++) {
-                JSONObject c = cin.optJSONObject(i);
-                String area = c == null ? null : one(c.optString("area", ""), AREAS, null);
-                // One area, once: a model asked for eight sometimes offers nine.
-                if (area != null && seenAreas.add(area)) {
-                    JSONObject row = new JSONObject();
-                    row.put("area", area);
-                    row.put("status", one(c.optString("status", PARTIAL), STATUSES, PARTIAL));
-                    row.put("note", clip(c.optString("note", ""), SHORT * 2));
-                    compliance.put(row);
-                }
-            }
-        }
-        out.put("compliance", compliance);
-
-        JSONArray priorities = new JSONArray();
-        JSONArray pin = in.optJSONArray("priorities");
-        if (pin != null) {
-            for (int i = 0; i < pin.length() && priorities.length() < MAX_PRIORITIES; i++) {
-                JSONObject p = pin.optJSONObject(i);
-                if (p == null || p.optString("title", "").trim().isEmpty()) {
-                    continue;
-                }
-                JSONObject row = new JSONObject();
-                row.put("title", clip(p.optString("title"), SHORT));
-                row.put("severity", one(p.optString("severity", ADVISORY), SEVERITIES, ADVISORY));
-                row.put("area", one(p.optString("area", AREA_CONTENT), AREAS, AREA_CONTENT));
-                row.put("owner", one(p.optString("owner", OWNER_EDITOR), OWNERS, OWNER_EDITOR));
-                row.put("effort", one(p.optString("effort", EFFORT_MEDIUM), EFFORTS, EFFORT_MEDIUM));
-                row.put("why", clip(p.optString("why", ""), LONG));
-                row.put("how", clip(p.optString("how", ""), LONG));
-                JSONArray pages = new JSONArray();
-                JSONArray pgs = p.optJSONArray("pages");
-                if (pgs != null) {
-                    for (int j = 0; j < pgs.length() && pages.length() < MAX_PAGES_PER_ITEM; j++) {
-                        String path = pgs.optString(j, "").trim();
-                        if (knownPaths.contains(path)) {
-                            pages.put(path);
-                        }
-                    }
-                }
-                row.put("pages", pages);
-                priorities.put(row);
-            }
-        }
-        out.put("priorities", priorities);
-
+        out.put("compliance", parseCompliance(in.optJSONArray("compliance")));
+        out.put("priorities", parsePriorities(in.optJSONArray("priorities"), knownPaths));
         out.put("quickWins", strings(in.optJSONArray("quickWins"), MAX_LIST));
-        JSONObject roadmap = new JSONObject();
-        JSONObject rin = in.optJSONObject("roadmap");
-        for (String phase : new String[]{"now", "next", "later"}) {
-            roadmap.put(phase, strings(rin == null ? null : rin.optJSONArray(phase), MAX_LIST));
+        out.put("roadmap", parseRoadmap(in.optJSONObject("roadmap")));
+        return out;
+    }
+
+    /** One status per area, each area at most once. */
+    private static JSONArray parseCompliance(JSONArray in) {
+        JSONArray out = new JSONArray();
+        if (in == null) {
+            return out;
         }
-        out.put("roadmap", roadmap);
+        Set<String> seen = new HashSet<>();
+        for (int i = 0; i < in.length() && out.length() < MAX_COMPLIANCE; i++) {
+            JSONObject c = in.optJSONObject(i);
+            String area = c == null ? null : one(c.optString(AREA, ""), AREAS, null);
+            // A model asked for eight areas sometimes offers nine, or one twice.
+            if (area != null && seen.add(area)) {
+                JSONObject row = new JSONObject();
+                row.put(AREA, area);
+                row.put(STATUS, one(c.optString(STATUS, PARTIAL), STATUSES, PARTIAL));
+                row.put("note", clip(c.optString("note", ""), SHORT * 2));
+                out.put(row);
+            }
+        }
+        return out;
+    }
+
+    /** The ranked list, with only the page references the digest itself named. */
+    private static JSONArray parsePriorities(JSONArray in, Set<String> knownPaths) {
+        JSONArray out = new JSONArray();
+        if (in == null) {
+            return out;
+        }
+        for (int i = 0; i < in.length() && out.length() < MAX_PRIORITIES; i++) {
+            JSONObject p = in.optJSONObject(i);
+            if (p != null && !p.optString(TITLE, "").trim().isEmpty()) {
+                out.put(priority(p, knownPaths));
+            }
+        }
+        return out;
+    }
+
+    private static JSONObject priority(JSONObject p, Set<String> knownPaths) {
+        JSONObject row = new JSONObject();
+        row.put(TITLE, clip(p.optString(TITLE), SHORT));
+        row.put("severity", one(p.optString("severity", ADVISORY), SEVERITIES, ADVISORY));
+        row.put(AREA, one(p.optString(AREA, AREA_CONTENT), AREAS, AREA_CONTENT));
+        row.put("owner", one(p.optString("owner", OWNER_EDITOR), OWNERS, OWNER_EDITOR));
+        row.put("effort", one(p.optString("effort", EFFORT_MEDIUM), EFFORTS, EFFORT_MEDIUM));
+        row.put("why", clip(p.optString("why", ""), LONG));
+        row.put("how", clip(p.optString("how", ""), LONG));
+        row.put(PAGES, knownPages(p.optJSONArray(PAGES), knownPaths));
+        return row;
+    }
+
+    /** A citation is kept only when the digest listed that page. */
+    private static JSONArray knownPages(JSONArray in, Set<String> knownPaths) {
+        JSONArray out = new JSONArray();
+        if (in == null) {
+            return out;
+        }
+        for (int i = 0; i < in.length() && out.length() < MAX_PAGES_PER_ITEM; i++) {
+            String path = in.optString(i, "").trim();
+            if (knownPaths.contains(path)) {
+                out.put(path);
+            }
+        }
+        return out;
+    }
+
+    private static JSONObject parseRoadmap(JSONObject in) {
+        JSONObject out = new JSONObject();
+        for (String phase : new String[]{"now", "next", "later"}) {
+            out.put(phase, strings(in == null ? null : in.optJSONArray(phase), MAX_LIST));
+        }
         return out;
     }
 

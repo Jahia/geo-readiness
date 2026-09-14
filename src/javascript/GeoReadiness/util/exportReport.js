@@ -78,8 +78,9 @@ function priorities(report, t) {
     }
 
     const blocks = rows.flatMap((p, i) => {
+        const severity = t(`score.severity.${p.severity}`);
         const facts = joinDot([
-            `**${t(`score.severity.${p.severity}`)}**`,
+            `**${severity}**`,
             t(`report.area.${p.area}`),
             t('report.export.owner', {owner: t(`report.owner.${p.owner}`)}),
             t('report.export.effort', {effort: t(`report.effort.${p.effort}`)})
@@ -130,12 +131,10 @@ function roadmap(report, t) {
         return [];
     }
 
-    const blocks = filled.flatMap(phase => [
-        `### ${t(`report.phase.${phase}`)}`,
-        '',
-        ...phases[phase].map(bullet),
-        ''
-    ]);
+    const blocks = filled.flatMap(phase => {
+        const heading = t(`report.phase.${phase}`);
+        return [`### ${heading}`, '', ...phases[phase].map(bullet), ''];
+    });
     return [`## ${t('report.roadmap')}`, '', ...blocks];
 }
 
@@ -168,7 +167,7 @@ export function downloadText(filename, content, mime) {
     a.rel = 'noopener';
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 

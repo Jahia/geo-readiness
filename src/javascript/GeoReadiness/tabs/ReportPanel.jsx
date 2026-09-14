@@ -40,6 +40,9 @@ export const ReportPanel = ({path, language, reportLanguage, siteKey, siteName})
                     setPhase('idle');
                 }
             } catch (e) {
+                // Either call failing means the tab cannot offer anything, so it
+                // renders as unconfigured. The reason still belongs in the console.
+                console.warn('geo-readiness: the report status could not be read', e);
                 if (alive) {
                     setStatus({enabled: false});
                     setPhase('idle');
@@ -83,6 +86,12 @@ export const ReportPanel = ({path, language, reportLanguage, siteKey, siteName})
     }
 
     const generating = phase === 'generating';
+    let generateLabel = t('report.generate');
+    if (generating) {
+        generateLabel = t('report.generating');
+    } else if (report) {
+        generateLabel = t('report.regenerate');
+    }
 
     return (
         <div>
@@ -112,9 +121,7 @@ export const ReportPanel = ({path, language, reportLanguage, siteKey, siteName})
                             size="big"
                             color="accent"
                             isDisabled={generating}
-                            label={generating ?
-                                t('report.generating') :
-                                (report ? t('report.regenerate') : t('report.generate'))}
+                            label={generateLabel}
                             onClick={generate}
                         />
                         {report && !generating && (
