@@ -18,7 +18,8 @@
 export const ENDPOINTS = {
     crawlerCheck: '/modules/geo-readiness/crawler-check',
     siteScan: '/modules/geo-readiness/site-scan',
-    siteFiles: '/modules/geo-readiness/site-files'
+    siteFiles: '/modules/geo-readiness/site-files',
+    report: '/modules/geo-readiness/report'
 } as const;
 
 /**

@@ -78,6 +78,8 @@ public final class ScanStore {
     private static final String STALE_DAYS = "geoStaleDays";
     /** GEO-23: node type to schema.org type, chosen by whoever defined the types. */
     private static final String SCHEMA_MAP = "geoSchemaMap";
+    /** The written report, as the provider answered it after parsing. One per language. */
+    private static final String REPORT = "geoReport";
 
     private ScanStore() {
     }
@@ -187,6 +189,31 @@ public final class ScanStore {
                     }
                     return out;
                 });
+    }
+
+    /** Stores the written report beside the measurements it was written from. */
+    public static void saveReport(String sitePath, String language, JSONObject report) throws RepositoryException {
+        inStore(sitePath, (store, session) -> {
+            JCRNodeWrapper l = language(store, language);
+            l.setProperty(REPORT, report.toString());
+            session.save();
+            return null;
+        });
+    }
+
+    /** The stored report, or null when none was generated for this language. */
+    public static JSONObject readReport(String sitePath, String language) throws RepositoryException {
+        return inStore(sitePath, (StoreWork<JSONObject>) (store, session) -> {
+            if (!store.hasNode(language)) {
+                return null;
+            }
+            JCRNodeWrapper l = store.getNode(language);
+            if (!l.hasProperty(REPORT)) {
+                return null;
+            }
+            Object stored = json(l, REPORT);
+            return stored instanceof JSONObject ? (JSONObject) stored : null;
+        });
     }
 
     public static void saveConfig(String sitePath, String cron, boolean enabled, String scope, String baseUrl,

@@ -57,6 +57,39 @@ public class GeoReadinessConfigService {
         return config.publicBaseUrl;
     }
 
+    /** anthropic, openai or deepseek. Blank disables the written report. */
+    public String getAiProvider() {
+        return config.aiProvider;
+    }
+
+    public String getAiModel() {
+        return config.aiModel;
+    }
+
+    /** Never logged, never sent to the browser. */
+    public String getAiApiKey() {
+        return config.aiApiKey;
+    }
+
+    public int getAiMaxTokens() {
+        return config.aiMaxTokens;
+    }
+
+    /** Blank means the provider's own endpoint. Set for a proxy or a compatible gateway. */
+    public String getAiBaseUrl() {
+        return config.aiBaseUrl;
+    }
+
+    /** Site-specific instructions appended to the report prompt. */
+    public String getAiPromptAppendix() {
+        return config.aiPromptAppendix;
+    }
+
+    /** Report generations allowed per user per ten minutes. Each one is paid for. */
+    public int getAiRateMaxCalls() {
+        return config.aiRateMaxCalls;
+    }
+
     // Immutable snapshot. One volatile read gives a fully consistent view.
     private static final class Snapshot {
 
@@ -66,19 +99,34 @@ public class GeoReadinessConfigService {
         final long rateWindowMs;
         final String crawlerAgents;
         final String publicBaseUrl;
+        final String aiProvider;
+        final String aiModel;
+        final String aiApiKey;
+        final int aiMaxTokens;
+        final String aiBaseUrl;
+        final String aiPromptAppendix;
+        final int aiRateMaxCalls;
 
         private Snapshot(int fetchTimeoutMs, int maxBodyBytes, int rateMaxCalls, long rateWindowMs,
-                String crawlerAgents, String publicBaseUrl) {
+                String crawlerAgents, String publicBaseUrl, String aiProvider, String aiModel, String aiApiKey,
+                int aiMaxTokens, String aiBaseUrl, String aiPromptAppendix, int aiRateMaxCalls) {
             this.fetchTimeoutMs = fetchTimeoutMs;
             this.maxBodyBytes = maxBodyBytes;
             this.rateMaxCalls = rateMaxCalls;
             this.rateWindowMs = rateWindowMs;
             this.crawlerAgents = crawlerAgents;
             this.publicBaseUrl = publicBaseUrl;
+            this.aiProvider = aiProvider;
+            this.aiModel = aiModel;
+            this.aiApiKey = aiApiKey;
+            this.aiMaxTokens = aiMaxTokens;
+            this.aiBaseUrl = aiBaseUrl;
+            this.aiPromptAppendix = aiPromptAppendix;
+            this.aiRateMaxCalls = aiRateMaxCalls;
         }
 
         static Snapshot defaults() {
-            return new Snapshot(8000, 1_500_000, 20, 600_000L, "", "");
+            return new Snapshot(8000, 1_500_000, 20, 600_000L, "", "", "", "", "", 6000, "", "", 5);
         }
 
         static Snapshot from(Map<String, Object> p) {
@@ -88,7 +136,14 @@ public class GeoReadinessConfigService {
                     intVal(p, "RATE_MAX_CALLS", 20),
                     longVal(p, "RATE_WINDOW_MS", 600_000L),
                     str(p, "CRAWLER_AGENTS", ""),
-                    str(p, "PUBLIC_BASE_URL", ""));
+                    str(p, "PUBLIC_BASE_URL", ""),
+                    str(p, "AI_PROVIDER", ""),
+                    str(p, "AI_MODEL", ""),
+                    str(p, "AI_API_KEY", ""),
+                    intVal(p, "AI_MAX_TOKENS", 6000),
+                    str(p, "AI_BASE_URL", ""),
+                    str(p, "AI_PROMPT_APPENDIX", ""),
+                    intVal(p, "AI_RATE_MAX_CALLS", 5));
         }
 
         private static String str(Map<String, Object> m, String key, String def) {

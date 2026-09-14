@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {useSelector} from 'react-redux';
 import {useTranslation} from 'react-i18next';
 import {useSiteInfo} from '@jahia/data-helper';
@@ -13,6 +13,8 @@ import {VanityPanel} from '../tabs/VanityPanel';
 import {FreshnessPanel} from '../tabs/FreshnessPanel';
 import {LanguagesPanel} from '../tabs/LanguagesPanel';
 import {SchemaPanel} from '../tabs/SchemaPanel';
+import {ReportPanel} from '../tabs/ReportPanel';
+import {fetchReportStatus} from '../api/geoReport';
 import {languageLabel} from '../util/languageFlag';
 import styles from './GeoDashboard.module.css';
 
@@ -28,6 +30,7 @@ const NS = 'geo-readiness';
  */
 const GROUPS = [
     {id: 'overview', tabs: ['score']},
+    // 'report' joins overview when a provider is configured; see below.
     {id: 'reach', tabs: ['visibility', 'links', 'vanity']},
     {id: 'usable', tabs: ['schema', 'languages', 'freshness']},
     {id: 'files', tabs: ['sitemap', 'robots', 'llms']}
@@ -51,6 +54,23 @@ export const GeoDashboard = () => {
     const uilang = useSelector(state => state.uilang);
     const [group, setGroup] = useState(GROUPS[0].id);
     const [tab, setTab] = useState(GROUPS[0].tabs[0]);
+    const [reportEnabled, setReportEnabled] = useState(false);
+
+    // The written report needs a configured provider. Asked once; the answer
+    // never carries the key, only whether there is one.
+    useEffect(() => {
+        let alive = true;
+        fetchReportStatus()
+            .then(s => alive && setReportEnabled(Boolean(s && s.enabled)))
+            .catch(() => alive && setReportEnabled(false));
+        return () => {
+            alive = false;
+        };
+    }, []);
+
+    const groups = useMemo(() => GROUPS.map(g => (
+        g.id === 'overview' && reportEnabled ? {...g, tabs: [...g.tabs, 'report']} : g
+    )), [reportEnabled]);
 
     const {siteInfo} = useSiteInfo({
         siteKey,
@@ -75,7 +95,7 @@ export const GeoDashboard = () => {
     // Any path inside the site resolves to the site node server-side, and the
     // site node itself is the most honest thing to send from a site-level page.
     const sitePath = `/sites/${siteKey}`;
-    const activeGroup = GROUPS.find(g => g.id === group) || GROUPS[0];
+    const activeGroup = groups.find(g => g.id === group) || groups[0];
 
     return (
         <LayoutContent
@@ -86,7 +106,7 @@ export const GeoDashboard = () => {
                     title={t('dashboard.title', {site: siteInfo.displayName, language: label})}
                     toolbarLeft={
                         <Tab>
-                            {GROUPS.map(g => (
+                            {groups.map(g => (
                                 <TabItem
                                     key={g.id}
                                     label={t(`dashboard.group.${g.id}`)}
@@ -124,6 +144,15 @@ export const GeoDashboard = () => {
                 )}
 
                 {tab === 'score' && <SiteScorePanel path={sitePath} language={language}/>}
+                {tab === 'report' && (
+                    <ReportPanel
+                        path={sitePath}
+                        language={language}
+                        reportLanguage={uilang || language}
+                        siteKey={siteKey}
+                        siteName={siteInfo.displayName}
+                    />
+                )}
                 {tab === 'languages' && <LanguagesPanel path={sitePath} language={language}/>}
                 {tab === 'sitemap' && <SitemapPanel path={sitePath} language={language}/>}
                 {tab === 'links' && <LinksPanel path={sitePath} language={language}/>}
