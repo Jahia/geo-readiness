@@ -101,7 +101,7 @@ public final class SiteScorer {
         for (int i = 0; i < paths.size(); i++) {
             String path = paths.get(i);
             try {
-                JSONObject one = scorePage(sitePath, path, language, rules, siteFiles, opts, links, canonicals);
+                JSONObject one = scorePage(sitePath, path, language, rules, siteFiles, opts, links, canonicals, siteBase);
                 if (one == null) {
                     continue;
                 }
@@ -286,7 +286,7 @@ public final class SiteScorer {
 
     private static JSONObject scorePage(String sitePath, String path, String language,
             RobotsRules rules, JSONObject siteFiles, Options opts, LinkGraph.Accumulator links,
-            Map<String, String> canonicals) throws RepositoryException {
+            Map<String, String> canonicals, String siteBase) throws RepositoryException {
         JSONObject visibility = GuestVisibility.forPage(path, language);
         if (!visibility.optBoolean("published", false)) {
             return null;
@@ -318,7 +318,7 @@ public final class SiteScorer {
             // GEO-22. The link graph is built from the page we are already
             // fetching, so it costs nothing beyond this request.
             String from = PublishedMap.pathOf(url);
-            agent = PageFetch.probe(url, "GPTBot", agentUa(), opts.fetchTimeoutMs, opts.maxBodyBytes,
+            agent = PageFetch.probe(url, siteBase, "GPTBot", agentUa(), opts.fetchTimeoutMs, opts.maxBodyBytes,
                     html -> LinkGraph.addPage(links, from, html));
         }
 

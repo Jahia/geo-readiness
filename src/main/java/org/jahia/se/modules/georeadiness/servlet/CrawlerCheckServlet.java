@@ -241,6 +241,8 @@ public class CrawlerCheckServlet extends HttpServlet {
         // Fetched a few at a time, but consumed strictly in order: the control
         // must stay first so controlWords is taken from it.
         Map<String, String> toFetch = agents();
+        // Captured by the fetch lambdas, so it has to be effectively final.
+        final String origin = base;
         List<String> names = new ArrayList<>(toFetch.keySet());
         List<JSONObject> probed = new ArrayList<>(names.size());
         ExecutorService pool = Executors.newFixedThreadPool(Math.min(FETCH_CONCURRENCY, Math.max(1, names.size())));
@@ -250,7 +252,7 @@ public class CrawlerCheckServlet extends HttpServlet {
                 String ua = toFetch.get(name);
                 final String n = name;
                 futures.add(pool.submit((Callable<JSONObject>) () ->
-                        PageFetch.probe(publicUrl, n, ua, config.getFetchTimeoutMs(), config.getMaxBodyBytes())));
+                        PageFetch.probe(publicUrl, origin, n, ua, config.getFetchTimeoutMs(), config.getMaxBodyBytes())));
             }
             for (int i = 0; i < futures.size(); i++) {
                 try {

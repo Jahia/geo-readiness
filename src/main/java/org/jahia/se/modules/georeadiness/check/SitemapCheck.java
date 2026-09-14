@@ -65,7 +65,7 @@ public final class SitemapCheck {
         out.put("language", language);
 
         String base = baseUrl.replaceAll("/+$", "");
-        SiteFilesChecker.Fetched index = SiteFilesChecker.fetch(base + "/sitemap.xml", timeoutMs, maxBytes);
+        SiteFilesChecker.Fetched index = SiteFilesChecker.fetch(base + "/sitemap.xml", base, timeoutMs, maxBytes);
         boolean answered = index.status != null && index.status == 200 && index.body != null;
         // "200 and contains a tag" is not good enough. Anything answering that
         // address with an HTML page - a proxy's catch-all, a vanity URL, a
@@ -273,10 +273,7 @@ public final class SitemapCheck {
             }
             // A sitemap index names its children, and the file is fetched
             // content: only a child on the site's own origin is followed.
-            if (!FetchGuard.isWithin(loc.group(1), base)) {
-                continue;
-            }
-            SiteFilesChecker.Fetched child = SiteFilesChecker.fetch(loc.group(1), timeoutMs, maxBytes);
+            SiteFilesChecker.Fetched child = SiteFilesChecker.fetch(loc.group(1), base, timeoutMs, maxBytes);
             if (child.status != null && child.status == 200 && child.body != null) {
                 collect(child.body, base, into, timeoutMs, maxBytes, depth + 1);
             }
