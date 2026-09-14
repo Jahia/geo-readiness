@@ -6,19 +6,6 @@ aligned with the Jahia module version.
 
 ## [Unreleased]
 
-### Added
-
-- **A written report, when a provider is configured.** A new Report tab under Overview asks a
-  model to read what the dashboard measured and write what it adds up to: where the site stands
-  for AI crawlers, a compliance status per area, what to fix first with who can fix it and the
-  effort, quick wins, and a now/next/later roadmap. It appears only when `AI_PROVIDER`, `AI_MODEL`
-  and `AI_API_KEY` are set, answers only on a click because each answer is paid for, is metered per
-  user, and is stored per language so it reads back instantly. Anthropic, OpenAI and DeepSeek,
-  through the same keys page-audit uses. The provider receives a digest of the measurements, never
-  page bodies and never the key; the answer is parsed into a fixed shape and rendered as text, and a
-  page reference survives only if the digest listed that page.
-- **Export.** The report as Markdown built from the parsed shape, or as JSON.
-
 ## [1.2.0] - 2026-09-13
 
 Freshness stops being a picture you have to decode and becomes a report you can act on, the

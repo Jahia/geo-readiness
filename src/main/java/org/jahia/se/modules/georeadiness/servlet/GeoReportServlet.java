@@ -9,7 +9,9 @@ import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.usermanager.JahiaUser;
 import org.jahia.services.usermanager.JahiaUserManagerService;
+import org.json.JSONException;
 import org.json.JSONObject;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -17,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.jcr.AccessDeniedException;
 import javax.jcr.PathNotFoundException;
+import javax.jcr.RepositoryException;
 import javax.servlet.Servlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -56,41 +59,59 @@ public class GeoReportServlet extends HttpServlet {
     private static final Logger logger = LoggerFactory.getLogger(GeoReportServlet.class);
 
     private static final int MAX_BODY = 16_000;
+    /** HttpServletResponse has no constant for it. */
+    private static final int TOO_MANY_REQUESTS = 429;
+    private static final String AUTH_REQUIRED = "authentication required";
+    private static final String OPERATION_FAILED = "operation failed";
     private static final long RATE_WINDOW_MS = 600_000L;
 
     private final Map<String, Deque<Long>> callWindows = new ConcurrentHashMap<>();
 
-    @Reference
-    private GeoReadinessConfigService config;
+    /**
+     * Injected through the constructor rather than into the field, so a servlet
+     * the container shares between threads holds nothing mutable.
+     */
+    private final transient GeoReadinessConfigService config;
 
-    /** DS instantiates this. */
-    public GeoReportServlet() {
-    }
-
-    /** Test seam. */
-    GeoReportServlet(GeoReadinessConfigService config) {
+    @Activate
+    public GeoReportServlet(@Reference GeoReadinessConfigService config) {
         this.config = config;
     }
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        if (guest()) {
-            deny(resp, HttpServletResponse.SC_UNAUTHORIZED, "authentication required");
-            return;
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
+        try {
+            if (guest()) {
+                deny(resp, HttpServletResponse.SC_UNAUTHORIZED, AUTH_REQUIRED);
+                return;
+            }
+            JSONObject out = new JSONObject();
+            boolean enabled = GeoReport.enabled(config);
+            out.put("enabled", enabled);
+            out.put("provider", enabled ? config.getAiProvider() : "");
+            out.put("model", enabled ? config.getAiModel() : "");
+            writeJson(resp, HttpServletResponse.SC_OK, out);
+        } catch (IOException e) {
+            // The client is gone or the socket broke. There is nothing left to
+            // answer with, and a servlet method that throws gives the container
+            // a stack trace instead of a response.
+            logger.debug("could not write the report status", e);
         }
-        JSONObject out = new JSONObject();
-        boolean enabled = GeoReport.enabled(config);
-        out.put("enabled", enabled);
-        out.put("provider", enabled ? config.getAiProvider() : "");
-        out.put("model", enabled ? config.getAiModel() : "");
-        writeJson(resp, HttpServletResponse.SC_OK, out);
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
+        try {
+            dispatch(req, resp);
+        } catch (IOException e) {
+            logger.debug("could not write the report response", e);
+        }
+    }
+
+    private void dispatch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         JahiaUser user = currentUser();
         if (user == null || JahiaUserManagerService.GUEST_USERNAME.equals(user.getName())) {
-            deny(resp, HttpServletResponse.SC_UNAUTHORIZED, "authentication required");
+            deny(resp, HttpServletResponse.SC_UNAUTHORIZED, AUTH_REQUIRED);
             return;
         }
         String ctype = req.getContentType();
@@ -101,7 +122,7 @@ public class GeoReportServlet extends HttpServlet {
         JSONObject body;
         try {
             body = new JSONObject(read(req.getInputStream(), MAX_BODY));
-        } catch (Exception e) {
+        } catch (IOException | JSONException e) {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "malformed body");
             return;
         }
@@ -120,15 +141,8 @@ public class GeoReportServlet extends HttpServlet {
             return;
         }
 
-        String sitePath;
-        try {
-            sitePath = SiteScope.require(path, language, SiteScope.DASHBOARD);
-        } catch (PathNotFoundException | AccessDeniedException e) {
-            deny(resp, HttpServletResponse.SC_FORBIDDEN, "cannot read node");
-            return;
-        } catch (Exception e) {
-            logger.warn("report gate failed for {}: {}", path, e.getMessage());
-            deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "operation failed");
+        String sitePath = resolveSite(path, language, resp);
+        if (sitePath == null) {
             return;
         }
 
@@ -144,19 +158,7 @@ public class GeoReportServlet extends HttpServlet {
                 deny(resp, HttpServletResponse.SC_BAD_REQUEST, "unknown action");
                 return;
             }
-            if (!GeoReport.enabled(config)) {
-                deny(resp, HttpServletResponse.SC_CONFLICT, "no provider configured");
-                return;
-            }
-            if (!rateLimitOk(user.getUserKey())) {
-                deny(resp, 429, "rate limit");
-                return;
-            }
-            String base = baseUrlFor(sitePath, language, req);
-            JSONObject report = GeoReport.generate(sitePath, language, reportLanguage, base, config);
-            JSONObject out = new JSONObject();
-            out.put("report", report);
-            writeJson(resp, HttpServletResponse.SC_OK, out);
+            generate(sitePath, language, reportLanguage, user, req, resp);
         } catch (IOException e) {
             // The provider's own words stay in the log. The browser learns that
             // the provider failed, and how, in a form that names no secret.
@@ -165,14 +167,46 @@ public class GeoReportServlet extends HttpServlet {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             deny(resp, HttpServletResponse.SC_SERVICE_UNAVAILABLE, "interrupted");
-        } catch (Exception e) {
+        } catch (RepositoryException | RuntimeException e) {
             logger.warn("GEO report {} failed for {}: {}", action, sitePath, e.getMessage());
             logger.debug("GEO report failure", e);
-            deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "operation failed");
+            deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, OPERATION_FAILED);
         }
     }
 
-    private String baseUrlFor(String sitePath, String language, HttpServletRequest req) throws Exception {
+    /** The site the caller may act on, or null once the refusal has been written. */
+    private String resolveSite(String path, String language, HttpServletResponse resp) throws IOException {
+        try {
+            return SiteScope.require(path, language, SiteScope.DASHBOARD);
+        } catch (PathNotFoundException | AccessDeniedException e) {
+            deny(resp, HttpServletResponse.SC_FORBIDDEN, "cannot read node");
+        } catch (RepositoryException e) {
+            logger.warn("report gate failed for {}: {}", path, e.getMessage());
+            deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, OPERATION_FAILED);
+        }
+        return null;
+    }
+
+    /** The paid path: a provider must exist and the caller must be within their budget. */
+    private void generate(String sitePath, String language, String reportLanguage, JahiaUser user,
+            HttpServletRequest req, HttpServletResponse resp)
+            throws IOException, InterruptedException, RepositoryException {
+        if (!GeoReport.enabled(config)) {
+            deny(resp, HttpServletResponse.SC_CONFLICT, "no provider configured");
+            return;
+        }
+        if (!rateLimitOk(user.getUserKey())) {
+            deny(resp, TOO_MANY_REQUESTS, "rate limit");
+            return;
+        }
+        String base = baseUrlFor(sitePath, language, req);
+        JSONObject report = GeoReport.generate(sitePath, language, reportLanguage, base, config);
+        JSONObject out = new JSONObject();
+        out.put("report", report);
+        writeJson(resp, HttpServletResponse.SC_OK, out);
+    }
+
+    private String baseUrlFor(String sitePath, String language, HttpServletRequest req) throws RepositoryException {
         String configured = config.getPublicBaseUrl();
         if (configured != null && !configured.trim().isEmpty()) {
             return configured.trim();

@@ -16,9 +16,21 @@ public final class LlmSettings {
     public LlmSettings(String provider, String apiKey, String baseUrl, String model, int maxTokens) {
         this.provider = provider;
         this.apiKey = apiKey;
-        this.baseUrl = baseUrl == null ? "" : baseUrl.replaceAll("/+$", "");
+        this.baseUrl = trimTrailingSlashes(baseUrl);
         this.model = model;
         this.maxTokens = maxTokens;
+    }
+
+    /** Trailing slashes removed by walking the end, so no pattern can backtrack over a long url. */
+    private static String trimTrailingSlashes(String url) {
+        if (url == null) {
+            return "";
+        }
+        int end = url.length();
+        while (end > 0 && url.charAt(end - 1) == '/') {
+            end--;
+        }
+        return url.substring(0, end);
     }
 
     public String provider() {

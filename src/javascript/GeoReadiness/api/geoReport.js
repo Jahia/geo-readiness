@@ -26,12 +26,9 @@ async function post(body) {
         body: JSON.stringify(body)
     });
     if (!res.ok) {
-        let detail = '';
-        try {
-            detail = (await res.json()).error || '';
-        } catch (e) {
-            // the body was not JSON; the status is the message
-        }
+        // A refusal carries {"error": "..."}; anything else (a proxy page, an
+        // empty body) leaves the status as the only thing worth reporting.
+        const detail = await res.json().then(body => body.error || '', () => '');
 
         const err = new Error(detail || 'report');
         err.code = res.status;

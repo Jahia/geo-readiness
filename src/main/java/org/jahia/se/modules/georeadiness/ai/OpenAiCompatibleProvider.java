@@ -13,6 +13,9 @@ import java.util.Collections;
  */
 public abstract class OpenAiCompatibleProvider implements LlmProvider {
 
+    private static final String ROLE = "role";
+    private static final String CONTENT = "content";
+
     /** OpenAI renamed {@code max_tokens}; DeepSeek did not. */
     protected abstract String maxTokensField();
 
@@ -25,8 +28,8 @@ public abstract class OpenAiCompatibleProvider implements LlmProvider {
     public Completion complete(String system, String user, LlmSettings settings)
             throws IOException, InterruptedException {
         JSONArray messages = new JSONArray()
-                .put(new JSONObject().put("role", "system").put("content", system))
-                .put(new JSONObject().put("role", "user").put("content", user));
+                .put(new JSONObject().put(ROLE, "system").put(CONTENT, system))
+                .put(new JSONObject().put(ROLE, "user").put(CONTENT, user));
         JSONObject body = new JSONObject()
                 .put("model", settings.model())
                 .put(maxTokensField(), settings.maxTokens())
@@ -42,7 +45,7 @@ public abstract class OpenAiCompatibleProvider implements LlmProvider {
         }
         JSONObject choice = choices.getJSONObject(0);
         JSONObject message = choice.optJSONObject("message");
-        String content = message == null ? "" : message.optString("content", "");
+        String content = message == null ? "" : message.optString(CONTENT, "");
         if (content.trim().isEmpty() && message != null && message.has("reasoning_content")) {
             // The model spent the whole budget thinking and said nothing. Naming
             // the cause is what lets an administrator fix it from the config.

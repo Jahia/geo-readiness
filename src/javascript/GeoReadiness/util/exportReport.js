@@ -7,108 +7,155 @@
  */
 
 const AREAS = ['reachability', 'content', 'structured_data', 'freshness', 'languages', 'site_files', 'links', 'addresses'];
+const PHASES = ['now', 'next', 'later'];
 
-const line = (parts, sep = ' ') => parts.filter(Boolean).join(sep);
+const joinDot = parts => parts.filter(Boolean).join(' · ');
 
 /** Markdown for the whole report. `site` is the display name, `t` the translator. */
 export function reportToMarkdown(report, {site, t}) {
-    const out = [];
-    out.push(`# ${t('report.export.title', {site})}`);
-    out.push('');
-    out.push(line([
-        t('report.export.generated', {date: (report.generatedAt || '').replace('T', ' ').replace(/\.\d+Z$/, ' UTC')}),
-        report.provider && report.model ? `${report.provider} · ${report.model}` : null,
-        t(`report.verdict.${report.verdict || 'partial'}`)
-    ], ' · '));
-    out.push('');
-
-    if (report.summary) {
-        out.push(`## ${t('report.summary')}`);
-        out.push('');
-        out.push(report.summary);
-        out.push('');
-    }
-
-    const compliance = report.compliance || [];
-    if (compliance.length > 0) {
-        out.push(`## ${t('report.compliance')}`);
-        out.push('');
-        out.push(`| ${t('report.export.area')} | ${t('report.export.status')} | ${t('report.export.note')} |`);
-        out.push('|---|---|---|');
-        AREAS.forEach(area => {
-            const row = compliance.find(c => c.area === area);
-            if (row) {
-                out.push(`| ${t(`report.area.${area}`)} | ${t(`report.status.${row.status}`)} | ${cell(row.note)} |`);
-            }
-        });
-        out.push('');
-    }
-
-    const priorities = report.priorities || [];
-    if (priorities.length > 0) {
-        out.push(`## ${t('report.priorities')}`);
-        out.push('');
-        priorities.forEach((p, i) => {
-            out.push(`### ${i + 1}. ${p.title}`);
-            out.push('');
-            out.push(line([
-                `**${t(`score.severity.${p.severity}`)}**`,
-                t(`report.area.${p.area}`),
-                t('report.export.owner', {owner: t(`report.owner.${p.owner}`)}),
-                t('report.export.effort', {effort: t(`report.effort.${p.effort}`)})
-            ], ' · '));
-            out.push('');
-            if (p.why) {
-                out.push(`**${t('report.why')}** ${p.why}`);
-                out.push('');
-            }
-
-            if (p.how) {
-                out.push(`**${t('report.how')}** ${p.how}`);
-                out.push('');
-            }
-
-            if ((p.pages || []).length > 0) {
-                out.push(`**${t('report.pages')}**`);
-                p.pages.forEach(path => out.push(`- \`${path}\``));
-                out.push('');
-            }
-        });
-    }
-
-    const wins = report.quickWins || [];
-    if (wins.length > 0) {
-        out.push(`## ${t('report.quickWins')}`);
-        out.push('');
-        wins.forEach(w => out.push(`- ${w}`));
-        out.push('');
-    }
-
-    const roadmap = report.roadmap || {};
-    if (['now', 'next', 'later'].some(k => (roadmap[k] || []).length > 0)) {
-        out.push(`## ${t('report.roadmap')}`);
-        out.push('');
-        ['now', 'next', 'later'].forEach(k => {
-            const items = roadmap[k] || [];
-            if (items.length > 0) {
-                out.push(`### ${t(`report.phase.${k}`)}`);
-                out.push('');
-                items.forEach(x => out.push(`- ${x}`));
-                out.push('');
-            }
-        });
-    }
-
-    out.push('---');
-    out.push('');
-    out.push(`_${t('report.disclaimer')}_`);
-    out.push('');
-    return out.join('\n');
+    return [
+        ...heading(report, site, t),
+        ...summary(report, t),
+        ...complianceTable(report, t),
+        ...priorities(report, t),
+        ...quickWins(report, t),
+        ...roadmap(report, t),
+        '---',
+        '',
+        `_${t('report.disclaimer')}_`,
+        ''
+    ].join('\n');
 }
 
-/** A table cell: pipes and newlines would break the row. */
+function heading(report, site, t) {
+    const when = String(report.generatedAt || '').replace('T', ' ').replace(/\.\d+Z$/, ' UTC');
+    const subtitle = joinDot([
+        t('report.export.generated', {date: when}),
+        report.provider && report.model ? `${report.provider} · ${report.model}` : '',
+        t(`report.verdict.${report.verdict || 'partial'}`)
+    ]);
+    return [`# ${t('report.export.title', {site})}`, '', subtitle, ''];
+}
+
+function summary(report, t) {
+    if (!report.summary) {
+        return [];
+    }
+
+    return [`## ${t('report.summary')}`, '', report.summary, ''];
+}
+
+function complianceTable(report, t) {
+    const rows = report.compliance || [];
+    if (rows.length === 0) {
+        return [];
+    }
+
+    const header = [t('report.export.area'), t('report.export.status'), t('report.export.note')];
+    const body = AREAS
+        .map(area => ({area, row: rows.find(c => c.area === area)}))
+        .filter(entry => entry.row)
+        .map(({area, row}) => tableRow([
+            t(`report.area.${area}`),
+            t(`report.status.${row.status}`),
+            cell(row.note)
+        ]));
+
+    return [
+        `## ${t('report.compliance')}`,
+        '',
+        tableRow(header),
+        '|---|---|---|',
+        ...body,
+        ''
+    ];
+}
+
+function priorities(report, t) {
+    const rows = report.priorities || [];
+    if (rows.length === 0) {
+        return [];
+    }
+
+    const blocks = rows.flatMap((p, i) => {
+        const facts = joinDot([
+            `**${t(`score.severity.${p.severity}`)}**`,
+            t(`report.area.${p.area}`),
+            t('report.export.owner', {owner: t(`report.owner.${p.owner}`)}),
+            t('report.export.effort', {effort: t(`report.effort.${p.effort}`)})
+        ]);
+        return [
+            `### ${i + 1}. ${p.title}`,
+            '',
+            facts,
+            '',
+            ...prose(t('report.why'), p.why),
+            ...prose(t('report.how'), p.how),
+            ...pageList(p.pages, t)
+        ];
+    });
+
+    return [`## ${t('report.priorities')}`, '', ...blocks];
+}
+
+function prose(label, text) {
+    if (!text) {
+        return [];
+    }
+
+    return [`**${label}** ${text}`, ''];
+}
+
+function pageList(pages, t) {
+    if (!pages || pages.length === 0) {
+        return [];
+    }
+
+    return [`**${t('report.pages')}**`, ...pages.map(path => `- \`${path}\``), ''];
+}
+
+function quickWins(report, t) {
+    const wins = report.quickWins || [];
+    if (wins.length === 0) {
+        return [];
+    }
+
+    return [`## ${t('report.quickWins')}`, '', ...wins.map(bullet), ''];
+}
+
+function roadmap(report, t) {
+    const phases = report.roadmap || {};
+    const filled = PHASES.filter(phase => (phases[phase] || []).length > 0);
+    if (filled.length === 0) {
+        return [];
+    }
+
+    const blocks = filled.flatMap(phase => [
+        `### ${t(`report.phase.${phase}`)}`,
+        '',
+        ...phases[phase].map(bullet),
+        ''
+    ]);
+    return [`## ${t('report.roadmap')}`, '', ...blocks];
+}
+
+const bullet = text => `- ${text}`;
+
+const tableRow = values => `| ${values.join(' | ')} |`;
+
+/**
+ * A table cell. A pipe would end the column and a newline would end the row, so
+ * both are neutralised: the pipe escaped, the line breaks folded into spaces.
+ * Folded by splitting rather than by a regex, because a pattern of optional
+ * whitespace either side of a newline backtracks badly on a long note.
+ */
 function cell(text) {
-    return String(text || '').replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ');
+    return String(text || '')
+        .replaceAll('|', String.raw`\|`)
+        .split(/\r?\n/)
+        .map(part => part.trim())
+        .filter(Boolean)
+        .join(' ');
 }
 
 /** Hands the browser a file. Object URLs are revoked once the click has fired. */
