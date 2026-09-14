@@ -25,5 +25,9 @@ Added a per-language readiness score so a site owner can see which locales AI cr
 - Write the note per `.github/instructions/changelog.instructions.md`: one past-tense sentence
   under 120 characters, outcomes rather than internals, no class or method names.
 
-`.version` holds the last released version. It is machine-maintained after the first
-chachalog release; it is seeded here at `1.1.0`, the version of the most recent GitHub release.
+`.version` holds the last released version, and is maintained by the release pull request
+chachalog opens.
+
+This guide lives in `.github/` rather than in `.chachalog/`, because chachalog treats **every**
+markdown file in that folder as a fragment: a README kept there is consumed and deleted by the
+first release that runs.
