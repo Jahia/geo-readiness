@@ -1,3 +1,5 @@
+// How to write a fragment: .github/changelog-fragments.md
+// Every *.md in this folder is a fragment and is consumed by the release PR.
 /// @ts-check
 /// <reference types="@chachalog/types" />
 import fs from "node:fs";
