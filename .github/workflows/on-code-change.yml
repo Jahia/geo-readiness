@@ -64,7 +64,15 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 is required, not a preference. Sonar decides which lines
+      # are "new" from git blame, and actions/checkout defaults to a shallow
+      # clone of depth 1 - one commit, so no blame, so every line of every
+      # changed file is reported as new. A PR touching one line of a 400-line
+      # component inherits all 400 lines' worth of pre-existing findings, and
+      # with the gate's new-code threshold at zero it can never pass.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: jahia/jahia-modules-action/sonar-analysis@v2
         with:
           primary_release_branch: main

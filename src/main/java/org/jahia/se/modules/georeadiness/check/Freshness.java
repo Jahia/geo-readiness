@@ -43,6 +43,17 @@ public final class Freshness {
      * was cut rather than growing without limit.
      */
     private static final int MAX_ITEMS = 5000;
+
+    /**
+     * An item's age for ordering: undated counts as the oldest there is.
+     *
+     * Undated items are stored with days = -1, which is the smallest value, so
+     * sorting on the raw number put them last - and the MAX_ITEMS cap then kept
+     * the first 5000, dropping exactly the pages nobody knows the age of.
+     */
+    private static int age(int days) {
+        return days < 0 ? Integer.MAX_VALUE : days;
+    }
     private static final int[] BUCKET_DAYS = {30, 90, 180, 365};
     private static final String[] BUCKET_LABELS = {"month", "quarter", "halfYear", "year", "older"};
 
@@ -102,8 +113,7 @@ public final class Freshness {
         // date at all were exactly the ones dropped. Treat -1 as the oldest.
         items.sort((a, b) -> a.days == b.days
                 ? a.path.compareTo(b.path)
-                : Integer.compare(b.days < 0 ? Integer.MAX_VALUE : b.days,
-                        a.days < 0 ? Integer.MAX_VALUE : a.days));
+                : Integer.compare(age(b.days), age(a.days)));
 
         out.put("total", dated);
         out.put("undated", undated);

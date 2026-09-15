@@ -64,6 +64,9 @@ public final class ScanStore {
     // Run state, per language.
     private static final String STATUS = "geoStatus";
     private static final String STARTED = "geoStartedAt";
+
+    /** The key the run block reports its message under, as opposed to MESSAGE, the stored property. */
+    private static final String RUN_MESSAGE = "message";
     private static final String FINISHED = "geoFinishedAt";
     private static final String DONE_COUNT = "geoPagesDone";
     private static final String TOTAL_COUNT = "geoPagesTotal";
@@ -122,15 +125,15 @@ public final class ScanStore {
                 // and there is no admin action in the UI to clear it.
                 if (STATUS_RUNNING.equals(status) && isAbandoned(l)) {
                     status = STATUS_FAILED;
-                    run.put("message", "interrupted");
+                    run.put(RUN_MESSAGE, "interrupted");
                 }
                 run.put("status", status);
                 run.put("startedAt", date(l, STARTED));
                 run.put("finishedAt", date(l, FINISHED));
                 run.put("pagesDone", num(l, DONE_COUNT));
                 run.put("pagesTotal", num(l, TOTAL_COUNT));
-                if (!run.has("message")) {
-                    run.put("message", str(l, MESSAGE, ""));
+                if (!run.has(RUN_MESSAGE)) {
+                    run.put(RUN_MESSAGE, str(l, MESSAGE, ""));
                 }
                 run.put("aggregate", json(l, AGGREGATE));
                 run.put("previous", json(l, PREVIOUS));

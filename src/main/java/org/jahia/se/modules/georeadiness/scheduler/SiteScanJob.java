@@ -84,7 +84,6 @@ public class SiteScanJob extends BackgroundJob {
             // let theirs finish; the next trigger will pick it up. Marking the
             // run failed here would destroy the state of a run still in flight.
             logger.info("GEO scan of {} [{}] skipped: {}", sitePath, language, e.getMessage());
-            return;
         } catch (Exception e) {
             // The run record is how the dashboard learns this failed. Losing it
             // would leave the UI saying "running" for ever.

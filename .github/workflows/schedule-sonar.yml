@@ -23,9 +23,13 @@ jobs:
         username: ${{ secrets.GH_PACKAGES_USERNAME }}
         password: ${{ secrets.GH_PACKAGES_TOKEN }}
     steps:
+      # Full history for the same reason as the PR job: this analysis is the
+      # baseline every PR is measured against, so its own blame data has to be
+      # real too.
       - uses: actions/checkout@v4
         with:
           ref: ${{ matrix.supported_branches }}
+          fetch-depth: 0
       - uses: jahia/jahia-modules-action/build@v2
         with:
           nexus_username: ${{ secrets.NEXUS_USERNAME }}
