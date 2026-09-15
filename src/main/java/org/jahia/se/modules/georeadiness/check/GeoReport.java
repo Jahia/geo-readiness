@@ -521,16 +521,27 @@ public final class GeoReport {
         return out;
     }
 
-    /** The ranked list, with only the page references the digest itself named. */
+    /**
+     * The ranked list, with only the page references the digest itself named.
+     *
+     * One entry per area and title: a model asked for priorities can return the
+     * same advice twice, and a list that repeats itself reads as two things to
+     * do. The first wins, because the order is the ranking.
+     */
     private static JSONArray parsePriorities(JSONArray in, Set<String> knownPaths) {
         JSONArray out = new JSONArray();
         if (in == null) {
             return out;
         }
+        Set<String> seen = new HashSet<>();
         for (int i = 0; i < in.length() && out.length() < MAX_PRIORITIES; i++) {
             JSONObject p = in.optJSONObject(i);
-            if (p != null && !p.optString(TITLE, "").trim().isEmpty()) {
-                out.put(priority(p, knownPaths));
+            if (p == null || p.optString(TITLE, "").trim().isEmpty()) {
+                continue;
+            }
+            JSONObject row = priority(p, knownPaths);
+            if (seen.add(row.optString(AREA) + '\u0000' + row.optString(TITLE))) {
+                out.put(row);
             }
         }
         return out;
