@@ -391,39 +391,43 @@ class RobotsRulesTest {
             assertThat(RobotsRules.matches(pattern, path)).isEqualTo(expected);
         }
 
-        // SUSPECT (RobotsRules.java:189-219, specifically 215-217): when the
-        // pattern has NO '*' at all, the '$' anchor branch checks
-        // path.endsWith(lastPart) instead of idx == path.length(). Since the
-        // start-match and end-match are checked independently (not tied to the
-        // same occurrence), a plain, non-wildcarded "$"-anchored pattern matches
-        // any path that merely starts AND ends with that literal text, not only
-        // a path that equals it exactly. Pinning the current (surprising) output.
+        // WAS SUSPECT, NOW FIXED. These two pinned the '$' anchor getting it
+        // wrong in opposite directions: a wildcard-free pattern checked its
+        // start and end independently, and a trailing '*$' demanded the path
+        // stop at the literal prefix. Both are corrected in RobotsRules.matches,
+        // and these now state the intended meaning rather than the defect.
         @Test
-        @DisplayName("SUSPECT: a wildcard-free '$' anchor matches a longer path that both starts and ends with the pattern text")
-        void matches_dollarAnchorWithoutWildcard_matchesLongerPathWithSameStartAndEnd() {
-            // Naively one would expect only the exact path "/foo" to match "/foo$".
+        @DisplayName("a wildcard-free '$' anchor means the path exactly, nothing longer")
+        void matches_dollarAnchorWithoutWildcard_meansExactlyThatPath() {
             assertThat(RobotsRules.matches("/foo$", "/foo")).isTrue();
-            assertThat(RobotsRules.matches("/foo$", "/foo/bar/foo")).isTrue();
-            // A path that starts but does not also end with the literal text still
-            // correctly fails, showing the check is not a no-op.
+            // Used to be true: startsWith("/foo") and endsWith("/foo") were asked
+            // separately, so a path that did both matched a pattern meaning one.
+            assertThat(RobotsRules.matches("/foo$", "/foo/bar/foo")).isFalse();
             assertThat(RobotsRules.matches("/foo$", "/foo/bar")).isFalse();
+            assertThat(RobotsRules.matches("/foo$", "/foobar")).isFalse();
         }
 
-        // SUSPECT (RobotsRules.java:195-206, 215-216): when the pattern ends in
-        // "*$" (a wildcard immediately followed by the end anchor), splitting on
-        // '*' produces a trailing empty part, and idx is never advanced past the
-        // literal prefix (there is no further non-empty part to advance it), so
-        // the idx == path.length() check effectively demands the path be EXACTLY
-        // the literal prefix. The trailing '*' - which should mean "then anything
-        // until the end" - is silently neutered: it does not accept any extra
-        // trailing characters at all.
         @Test
-        @DisplayName("SUSPECT: a trailing '*$' pattern fails to match any path longer than its literal prefix")
-        void matches_trailingWildcardThenDollarAnchor_rejectsLongerPaths() {
-            // Naively "abc*$" reads like "starts with abc, then anything" - one
-            // would expect this to match "abcdef" and "abc" both.
+        @DisplayName("a trailing '*$' means 'then anything, to the end'")
+        void matches_trailingWildcardThenDollarAnchor_acceptsLongerPaths() {
             assertThat(RobotsRules.matches("abc*$", "abc")).isTrue();
-            assertThat(RobotsRules.matches("abc*$", "abcdef")).isFalse();
+            // Used to be false: the empty final part took the "ends exactly here"
+            // branch, so the '*' rejected precisely what it should admit.
+            assertThat(RobotsRules.matches("abc*$", "abcdef")).isTrue();
+            assertThat(RobotsRules.matches("abc*$", "ab")).isFalse();
+            assertThat(RobotsRules.matches("abc*$", "xabc")).isFalse();
+        }
+
+        @Test
+        @DisplayName("an anchored literal after a wildcard is matched at the END, not at its first occurrence")
+        void matches_anchoredLiteralAfterWildcard_looksAtTheEnd() {
+            // The regression the fix has to avoid: a greedy forward scan finds
+            // the 'b' at index 3, which is not the one the anchor is about.
+            assertThat(RobotsRules.matches("/a*b$", "/axbyb")).isTrue();
+            assertThat(RobotsRules.matches("/a*b$", "/axbyc")).isFalse();
+            // The common real-world form keeps working.
+            assertThat(RobotsRules.matches("/*.pdf$", "/report.pdf")).isTrue();
+            assertThat(RobotsRules.matches("/*.pdf$", "/report.pdf.html")).isFalse();
         }
     }
 

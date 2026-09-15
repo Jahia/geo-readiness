@@ -185,7 +185,28 @@ public final class RobotsRules {
         return new Verdict(best.allow, group, (best.allow ? "Allow: " : "Disallow: ") + best.pattern, named);
     }
 
-    /** Prefix match with '*' as any-run and '$' as end-anchor. */
+    /**
+     * Prefix match with '*' as any-run and '$' as end-anchor.
+     *
+     * The '$' half was wrong in two OPPOSITE directions, because it decided what
+     * to do from the last part of the split and had both branches the wrong way
+     * round:
+     *
+     *   '/foo$'  has no '*', so the last part is the whole pattern. It checked
+     *            startsWith at the front and endsWith at the back INDEPENDENTLY,
+     *            never tying them to one occurrence - so '/foo/bar/foo' matched
+     *            a pattern that means exactly '/foo'.
+     *   'abc*$'  splits to ["abc", ""], and the empty last part took the "ends
+     *            exactly here" branch - so the trailing '*', which reads as
+     *            "then anything", rejected every path longer than 'abc'.
+     *
+     * An empty last part means the pattern ended with '*': anything may follow,
+     * up to the end. A non-empty one has to sit AT the end - and there
+     * specifically, which is why it is held back from the forward scan rather
+     * than matched greedily with the rest. Taking the first occurrence would
+     * reject '/a*b$' against '/axbyb', where the 'b' the scan reaches first is
+     * not the one the anchor is about.
+     */
     static boolean matches(String pattern, String path) {
         String p = pattern;
         boolean anchored = p.endsWith("$");
@@ -193,8 +214,10 @@ public final class RobotsRules {
             p = p.substring(0, p.length() - 1);
         }
         String[] parts = p.split("\\*", -1);
+        // Anchored: the final literal belongs to endsThere, not to this scan.
+        int scanned = anchored ? parts.length - 1 : parts.length;
         int idx = 0;
-        for (int i = 0; i < parts.length; i++) {
+        for (int i = 0; i < scanned; i++) {
             String part = parts[i];
             if (part.isEmpty()) {
                 continue;
@@ -212,9 +235,27 @@ public final class RobotsRules {
                 idx = found + part.length();
             }
         }
-        if (anchored) {
-            return parts[parts.length - 1].isEmpty() ? idx == path.length() : path.endsWith(parts[parts.length - 1]);
+        return !anchored || endsThere(parts, idx, path);
+    }
+
+    /**
+     * The '$' half: what the pattern's final part has to do at the end of the
+     * path, given the forward scan reached {@code idx}.
+     */
+    private static boolean endsThere(String[] parts, int idx, String path) {
+        String last = parts[parts.length - 1];
+        if (last.isEmpty()) {
+            // The pattern ended with '*', so anything runs to the end. A lone
+            // '$' is the degenerate case: it anchors the empty path and nothing
+            // else.
+            return parts.length > 1 ? idx <= path.length() : path.isEmpty();
         }
-        return true;
+        if (parts.length == 1) {
+            // No wildcard anywhere, so the anchor makes the pattern the whole path.
+            return path.equals(last);
+        }
+        int at = path.length() - last.length();
+        // Must sit at the very end, and not overlap what the scan already took.
+        return at >= idx && path.startsWith(last, at);
     }
 }
