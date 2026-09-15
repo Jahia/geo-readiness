@@ -71,6 +71,28 @@ jobs:
           # The action defaults to Java 11; sonar-maven-plugin 5.x needs a Java 17 runtime.
           java_version: '17'
 
-  # Integration tests are not wired yet. A tests/ Cypress suite exists, but the reusable
-  # workflow also needs tests/docker-compose.yml and a provisioning manifest, and neither is
-  # in the repository. The ready-to-paste job is in .github/MIGRATION-NOTES.md section 2.5.
+  # The tests/ Cypress suite, 127 assertions over the three servlets and the
+  # jContent dashboard. It ran green against a real instance before this job was
+  # added; until then nothing had ever executed it, and seven faults had
+  # accumulated in the harness unnoticed.
+  #
+  # jahia_image is the one the sibling harnesses use. The tag `jahia/jahia-dev`
+  # that tests/.env.example carried is not published and fails the pull.
+  #
+  # instance_type is ubuntu-latest because the action defaults to `self-hosted`,
+  # which this repository's other jobs do not use. Change it if this repo is
+  # entitled to the self-hosted pool.
+  integration-tests:
+    name: Integration Tests
+    needs: build
+    secrets: inherit
+    uses: Jahia/jahia-modules-action/.github/workflows/reusable-integration-tests.yml@v2
+    with:
+      module_id: geo-readiness
+      module_branch: ${{ github.ref }}
+      jahia_image: ghcr.io/jahia/jahia-ee-dev:8-SNAPSHOT
+      provisioning_manifest: provisioning-manifest-build.yml
+      artifact_prefix: geo-readiness
+      should_skip_testrail: true
+      pagerduty_skip_notification: true
+      instance_type: ubuntu-latest

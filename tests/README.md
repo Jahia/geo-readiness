@@ -284,7 +284,13 @@ which by logging in as the contributor by hand and opening Additional > SEO.
 
 Nothing outside `tests/` was touched. Apply these at the repository root.
 
-### 1. Wire the integration-tests job (required — otherwise the suite never runs in CI)
+### 1. Wire the integration-tests job — DONE
+
+The job is in `.github/workflows/on-code-change.yml`, and `.github/MIGRATION-NOTES.md` §2.5 has
+been marked superseded. The rest of this section is kept because it explains the shape the action
+expects, which is worth knowing if the job ever needs changing.
+
+
 
 `.github/MIGRATION-NOTES.md` §2.5 holds a ready-to-paste job and says it was not added because
 `tests/docker-compose.yml` and `tests/provisioning-manifest-build.yml` did not exist. **They now do**,
