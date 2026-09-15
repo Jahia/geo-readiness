@@ -1,5 +1,23 @@
 # geo-readiness Changelog
 
+## 1.3.1
+
+* The dashboard and the drawer now meet WCAG 2.2 AAA on contrast, carry real headings, and announce a running scan to a screen reader. The charts stopped making every data mark a tab stop — a full failure matrix was upwards of three hundred of them — and instead carry their numbers as text inside the table and list structures they already had, so assistive tech reads the figures and the keyboard passes through in one stop. The drawer is a real `<dialog>`, and every control that had no accessible name has one.
+
+* The public base url now takes its host from the repository rather than from the request that matched it. The two were equal under a case-insensitive comparison but not identical, so a `Host:` header could choose the casing of a base url that the scan servlet then persisted in `geoBaseUrl` and reused on every later scheduled scan.
+
+* The runtime configuration is swapped through an AtomicReference, so the operation that replaces it reads as the atomic one it always had to be.
+
+* Fixed crawler and site scans so repeated checks remain reliable and sitemap comparisons no longer follow links to other sites.
+
+* Closed an SSRF where the request's Host header chose the port this module connected to, gated the one endpoint that had no permission check, stopped a browsing node deleting every site's scan schedule from the cluster, and fixed six places where the code did the opposite of its own comment - including a config marker typo that silently reset the administrator's settings on every redeploy.
+
+* Gave the four servlets one base class instead of four copies of the same seven helpers, which fixed two defects that were living in the drift between them: three of the module's four JSON endpoints were served without `X-Content-Type-Options: nosniff` while echoing content read from the site being checked, and three of them silently truncated an oversized request body so it came back as "malformed body" instead of being refused for what it was.
+
+* Nothing escapes a servlet method any more, the servlets hold no mutable shared state, an interrupted crawler check no longer swallows the interrupt, and the language pattern is bounded so a long input cannot overflow the matcher's stack.
+
+* The module has unit tests for the first time: JUnit 5, AssertJ and JaCoCo, with 189 characterisation tests pinning the scoring engine, the robots.txt matcher, the llms.txt freshness comparison and the two security guards. They exist so the decomposition that follows cannot change a score silently — the existing Cypress suite asserts that a scan happened and that the UI reads "n of m checks passed", never which n or which m.
+
 ## 1.3.0
 
 * Added an optional AI-written GEO report with prioritised recommendations and Markdown or JSON export.
