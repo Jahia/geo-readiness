@@ -157,7 +157,7 @@ ticked — that tick is the trigger. Leave the old `v*` tags alone; do not retag
   no diff, and commits nothing. It also only runs at all when the commit message carries
   `[ci sign]` (or `force_signature: true`, which `on-release.yml` sets). Net effect: harmless.
   It is kept in the workflows because it is the Jahia baseline and because the module's own
-  `groupId` is `org.jahia.se.modules`, which is **not** subject to the runtime signature check
+  `groupId` is `org.jahia.community`, which is **not** subject to the runtime signature check
   that uninstalls unsigned `org.jahia.modules` bundles.
 
   If a real signature is ever wanted, add the property the action rewrites:
@@ -334,10 +334,12 @@ Also required, at repository level:
 - **No workflow was executed.** Nothing here has had a live run; the first PR is the real test.
 - **Secret availability.** Whether each org secret above is shared with this private repo could
   not be read (secret values and access lists are not readable with the token in use).
-- **Nexus permissions for `org.jahia.se.modules`.** `publish` deploys to `jahia-snapshots` and
-  the release stages to `staging-repository`. Whether the CI Nexus account may write that
-  groupId — most Jahia modules are `org.jahia.modules` — was not confirmed. If the first merge to
-  `main` fails on a 401/403 in the `Publish module` job, this is why.
+- **Nexus permissions for `org.jahia.community`.** `publish` deploys to `jahia-snapshots` and
+  the release stages to `staging-repository`. The groupId is the shared community namespace and
+  already holds 49 artifacts on `devtools.jahia.com` — `graphql-extension-provisioning` among them,
+  released through this same shared CI — so the account can write it. Not observed for this
+  repository specifically: if a merge to `main` fails on a 401/403 in the `Publish module` job,
+  this is where to look.
 - **`release-publication` staging match.** It selects the staging repository whose description
   matches `<module_id>:<version>`, i.e. `geo-readiness:1.2.0`. That description is produced by
   the Nexus staging plugin from the artifactId; it should match, but it was not observed.
