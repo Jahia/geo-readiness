@@ -38,7 +38,7 @@ public final class FetchGuard {
     /** PUBLIC_BASE_URL, see {@link #trustBase}. Blank until the config service says otherwise. */
     private static volatile String trustedBase = "";
 
-    /** Settled once: neither the container's connectors nor site.url.port move while it runs. */
+    /** Settled once the connectors are known: neither they nor site.url.port move afterwards. */
     private static volatile Set<Integer> allowedPorts;
 
     private FetchGuard() {
@@ -190,9 +190,16 @@ public final class FetchGuard {
             // Nothing configured, or no settings bean here. The connectors answer.
             logger.debug("no site url port override", e);
         }
-        ports.addAll(connectorPorts());
+        Set<Integer> connectors = connectorPorts();
+        ports.addAll(connectors);
         known = Collections.unmodifiableSet(ports);
-        allowedPorts = known;
+        // Remembered only once the container has actually named its connectors.
+        // A first fetch that happens to run before they are registered would
+        // otherwise cache a list missing the very port this Jahia serves on, and
+        // every fetch for the rest of the run would be refused.
+        if (!connectors.isEmpty()) {
+            allowedPorts = known;
+        }
         return known;
     }
 
