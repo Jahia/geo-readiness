@@ -431,7 +431,7 @@ public class CrawlerCheckServlet extends HttpServlet {
             // The JSON-LD is derived from this page's own content, so it stays
             // available; the overrides it can be tuned with are stored scan data
             // and are only read for a caller entitled to that.
-            out.put("schema", schemaFor(path, language, req, resp, pageTitle, storedScanAllowed));
+            out.put("schema", schemaFor(path, language, req, pageTitle, storedScanAllowed));
         } catch (Exception e) {
             logger.debug("structured data unavailable for {}", path, e);
         }
@@ -564,7 +564,7 @@ public class CrawlerCheckServlet extends HttpServlet {
      * makes structured data worse than none when it is broken.
      */
     private JSONObject schemaFor(String path, String language, HttpServletRequest req,
-            HttpServletResponse resp, String pageTitle, boolean withStoredOverrides) throws Exception {
+            String pageTitle, boolean withStoredOverrides) throws RepositoryException {
         JCRSessionWrapper live = JCRSessionFactory.getInstance()
                 .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
         JCRNodeWrapper node = live.getNode(path);

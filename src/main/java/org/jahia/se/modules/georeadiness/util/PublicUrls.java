@@ -39,6 +39,8 @@ public final class PublicUrls {
      */
     public static final String LOCAL_FALLBACK = "http://localhost:8080";
 
+    private static final String HTTPS = "https";
+
     private PublicUrls() {
     }
 
@@ -194,7 +196,7 @@ public final class PublicUrls {
                 int port = jahiaPort(req);
                 String scheme = scheme(req, port);
                 boolean defaultPort = ("http".equals(scheme) && port == 80)
-                        || ("https".equals(scheme) && port == 443);
+                        || (HTTPS.equals(scheme) && port == 443);
                 b = scheme + "://" + req.getServerName() + (defaultPort ? "" : ":" + port);
             } else {
                 b = "https://" + server;
@@ -235,7 +237,10 @@ public final class PublicUrls {
             logger.debug("no site url port override, using the local port", e);
         }
         int local = req.getLocalPort();
-        return local > 0 ? local : (req.isSecure() ? 443 : 80);
+        if (local > 0) {
+            return local;
+        }
+        return req.isSecure() ? 443 : 80;
     }
 
     /**
@@ -249,12 +254,12 @@ public final class PublicUrls {
      */
     private static String scheme(HttpServletRequest req, int port) {
         if (port == 443) {
-            return "https";
+            return HTTPS;
         }
         if (port == 80) {
             return "http";
         }
-        return req.isSecure() ? "https" : "http";
+        return req.isSecure() ? HTTPS : "http";
     }
 
     /** True when {@code host} is one of the names this site answers to. */
