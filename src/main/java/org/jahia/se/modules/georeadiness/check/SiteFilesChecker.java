@@ -1,6 +1,7 @@
 package org.jahia.se.modules.georeadiness.check;
 
 import org.json.JSONArray;
+import org.jahia.se.modules.georeadiness.util.FetchGuard;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
@@ -40,11 +41,11 @@ public final class SiteFilesChecker {
         JSONObject out = new JSONObject();
         out.put("baseUrl", baseUrl);
 
-        Fetched robotsFetch = fetch(baseUrl + "/robots.txt", timeoutMs, maxBytes);
+        Fetched robotsFetch = fetch(baseUrl + "/robots.txt", baseUrl, timeoutMs, maxBytes);
         out.put("robots", robots(robotsFetch, pagePath));
 
-        out.put("llms", llms(fetch(baseUrl + "/llms.txt", timeoutMs, maxBytes), true));
-        out.put("llmsFull", llms(fetch(baseUrl + "/llms-full.txt", timeoutMs, maxBytes), false));
+        out.put("llms", llms(fetch(baseUrl + "/llms.txt", baseUrl, timeoutMs, maxBytes), true));
+        out.put("llmsFull", llms(fetch(baseUrl + "/llms-full.txt", baseUrl, timeoutMs, maxBytes), false));
         return out;
     }
 
@@ -147,22 +148,18 @@ public final class SiteFilesChecker {
         return n;
     }
 
-    public static Fetched fetch(String url, int timeoutMs, int maxBytes) {
+    public static Fetched fetch(String url, String base, int timeoutMs, int maxBytes) {
         Fetched f = new Fetched();
         HttpURLConnection c = null;
         try {
-            c = (HttpURLConnection) new URL(url).openConnection();
-            c.setRequestMethod("GET");
-            c.setInstanceFollowRedirects(false);
-            c.setConnectTimeout(timeoutMs);
-            c.setReadTimeout(timeoutMs);
             // Ask as a plain crawler would, not as a browser.
-            c.setRequestProperty("User-Agent", "Mozilla/5.0 (compatible; JahiaGeoReadiness/1.0)");
+            c = FetchGuard.open(url, base, timeoutMs, "Mozilla/5.0 (compatible; JahiaGeoReadiness/1.0)");
             c.setRequestProperty("Accept", "text/plain,text/markdown,*/*;q=0.8");
             f.status = c.getResponseCode();
             f.contentType = c.getContentType();
-            InputStream in = f.status >= 400 ? c.getErrorStream() : c.getInputStream();
-            f.body = in == null ? "" : read(in, maxBytes);
+            try (InputStream in = f.status >= 400 ? c.getErrorStream() : c.getInputStream()) {
+                f.body = in == null ? "" : read(in, maxBytes);
+            }
         } catch (Exception e) {
             f.error = e.getClass().getSimpleName();
         } finally {

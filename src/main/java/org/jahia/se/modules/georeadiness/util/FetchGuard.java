@@ -1,6 +1,7 @@
 package org.jahia.se.modules.georeadiness.util;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Locale;
@@ -46,6 +47,26 @@ public final class FetchGuard {
         } catch (IOException e) {
             return false;
         }
+    }
+
+    /**
+     * The one place a connection to a checked site is opened.
+     *
+     * The url is validated against {@code base} and the VALIDATED value is what
+     * gets opened, so the address that was checked and the address that is
+     * fetched cannot differ. Redirects are never followed: a 30x is a finding
+     * about the site, and following one would leave the origin behind.
+     */
+    public static HttpURLConnection open(String url, String base, int timeoutMs, String userAgent)
+            throws IOException {
+        URL target = require(url, base);
+        HttpURLConnection c = (HttpURLConnection) target.openConnection();
+        c.setRequestMethod("GET");
+        c.setInstanceFollowRedirects(false);
+        c.setConnectTimeout(timeoutMs);
+        c.setReadTimeout(timeoutMs);
+        c.setRequestProperty("User-Agent", userAgent);
+        return c;
     }
 
     private static URL parse(String url) throws IOException {

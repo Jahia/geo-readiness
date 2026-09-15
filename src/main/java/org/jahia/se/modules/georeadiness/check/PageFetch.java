@@ -1,6 +1,7 @@
 package org.jahia.se.modules.georeadiness.check;
 
 import org.json.JSONArray;
+import org.jahia.se.modules.georeadiness.util.FetchGuard;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,8 +60,8 @@ public final class PageFetch {
     private PageFetch() {
     }
 
-    public static JSONObject probe(String url, String name, String ua, int timeoutMs, int maxBytes) {
-        return probe(url, name, ua, timeoutMs, maxBytes, null);
+    public static JSONObject probe(String url, String base, String name, String ua, int timeoutMs, int maxBytes) {
+        return probe(url, base, name, ua, timeoutMs, maxBytes, null);
     }
 
     /**
@@ -71,19 +72,14 @@ public final class PageFetch {
      * copy of every page into the drawer's response, sixteen times over, to
      * serve one caller.
      */
-    public static JSONObject probe(String url, String name, String ua, int timeoutMs, int maxBytes,
+    public static JSONObject probe(String url, String base, String name, String ua, int timeoutMs, int maxBytes,
             java.util.function.Consumer<String> bodySink) {
         JSONObject r = new JSONObject();
         r.put("name", name);
         long t0 = System.currentTimeMillis();
         HttpURLConnection c = null;
         try {
-            c = (HttpURLConnection) new URL(url).openConnection();
-            c.setRequestMethod("GET");
-            c.setInstanceFollowRedirects(false);
-            c.setConnectTimeout(timeoutMs);
-            c.setReadTimeout(timeoutMs);
-            c.setRequestProperty("User-Agent", ua);
+            c = FetchGuard.open(url, base, timeoutMs, ua);
             c.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
             c.setRequestProperty("Accept-Language", "en");
             int status = c.getResponseCode();
@@ -92,8 +88,7 @@ public final class PageFetch {
             if (location != null) {
                 r.put("location", location);
             }
-            InputStream in = status >= 400 ? c.getErrorStream() : c.getInputStream();
-            String html = in == null ? "" : read(in, maxBytes);
+            String html = body(c, status, maxBytes);
             r.put("bytes", html.length());
             r.put("ms", System.currentTimeMillis() - t0);
             if (!html.isEmpty()) {
@@ -115,6 +110,13 @@ public final class PageFetch {
             }
         }
         return r;
+    }
+
+    /** The response body, with the stream closed whichever stream it came from. */
+    private static String body(HttpURLConnection c, int status, int maxBytes) throws IOException {
+        try (InputStream in = status >= 400 ? c.getErrorStream() : c.getInputStream()) {
+            return in == null ? "" : read(in, maxBytes);
+        }
     }
 
     public static JSONObject analyse(String html) {
