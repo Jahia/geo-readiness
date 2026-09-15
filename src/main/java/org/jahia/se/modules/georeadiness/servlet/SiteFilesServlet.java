@@ -27,9 +27,7 @@ import javax.servlet.Servlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -63,7 +61,7 @@ import java.util.Map;
                 "service.vendor=Jahia Solutions Group SA"
         },
         immediate = true)
-public class SiteFilesServlet extends HttpServlet {
+public class SiteFilesServlet extends GeoServlet {
 
     private static final Logger logger = LoggerFactory.getLogger(SiteFilesServlet.class);
 
@@ -164,6 +162,10 @@ public class SiteFilesServlet extends HttpServlet {
             }
         } catch (javax.jcr.AccessDeniedException e) {
             deny(resp, HttpServletResponse.SC_FORBIDDEN, "not allowed");
+        } catch (IllegalArgumentException e) {
+            // A refusal the caller can fix, not a server fault: say so with 400
+            // and the reason, rather than folding it into "operation failed".
+            deny(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
         } catch (Exception e) {
             logger.warn("site-files {} failed for {}: {}", action, path, e.getMessage());
             logger.debug("site-files failure", e);
@@ -281,9 +283,11 @@ public class SiteFilesServlet extends HttpServlet {
     private JSONObject applySiteFile(String path, String language, String content, String mixin, String prop)
             throws Exception {
         if (content == null || content.trim().isEmpty()) {
-            JSONObject err = new JSONObject();
-            err.put("error", "empty content");
-            return err;
+            // Answered 200 with an error object until now, which is the one
+            // refusal in this module that did not carry a matching status. The
+            // frontend's shared call() helper only checks res.ok, so an empty
+            // write was reported to the user as a success.
+            throw new IllegalArgumentException("empty content");
         }
         JCRSessionWrapper edit = JCRSessionFactory.getInstance()
                 .getCurrentUserSession("default", Locale.forLanguageTag(language));
@@ -307,41 +311,5 @@ public class SiteFilesServlet extends HttpServlet {
         out.put("sitePath", site.getPath());
         out.put("bytes", content.getBytes(StandardCharsets.UTF_8).length);
         return out;
-    }
-
-    private static JahiaUser currentUser() {
-        try {
-            return JCRSessionFactory.getInstance().getCurrentUser();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static String read(InputStream in, int max) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        int n;
-        int total = 0;
-        while ((n = in.read(buf)) != -1) {
-            total += n;
-            out.write(buf, 0, n);
-            if (total >= max) {
-                break;
-            }
-        }
-        return new String(out.toByteArray(), StandardCharsets.UTF_8);
-    }
-
-    private static void deny(HttpServletResponse resp, int code, String msg) throws IOException {
-        JSONObject o = new JSONObject();
-        o.put("error", msg);
-        writeJson(resp, code, o);
-    }
-
-    private static void writeJson(HttpServletResponse resp, int code, JSONObject body) throws IOException {
-        resp.setStatus(code);
-        resp.setContentType("application/json;charset=UTF-8");
-        resp.setHeader("Cache-Control", "no-store");
-        resp.getWriter().write(body.toString());
     }
 }

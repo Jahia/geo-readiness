@@ -22,7 +22,6 @@ import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.usermanager.JahiaUser;
-import org.jahia.services.usermanager.JahiaUserManagerService;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.osgi.service.component.annotations.Activate;
@@ -36,27 +35,18 @@ import javax.servlet.Servlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * GEO-16, the crawler access check.
@@ -86,7 +76,7 @@ import java.util.stream.Collectors;
                 "service.vendor=Jahia Solutions Group SA"
         },
         immediate = true)
-public class CrawlerCheckServlet extends HttpServlet {
+public class CrawlerCheckServlet extends GeoServlet {
 
     private static final Logger logger = LoggerFactory.getLogger(CrawlerCheckServlet.class);
 
@@ -106,10 +96,30 @@ public class CrawlerCheckServlet extends HttpServlet {
      */
     private static final int FETCH_CONCURRENCY = 3;
 
+    /** A path and a language. Anything larger is not this endpoint's request. */
+    private static final int MAX_BODY = 64_000;
+
+    /**
+     * How much of robots.txt the UI is shown. A readable excerpt, not the whole
+     * file in every cache entry.
+     */
+    private static final int MAX_RAW_ROBOTS = 4000;
+
+    /** The fetched body of robots.txt or llms.txt, as the site-files check returns it. */
+    private static final String RAW_BODY = "rawBody";
+    /** The per-agent results array, the report's own key for it. */
+    private static final String AGENTS = "agents";
+
+    /** Set by the site-files check when the file was actually served. */
+    private static final String PRESENT = "present";
+
+    /** robots.txt allows this agent, but something on the way refused it. */
+    private static final String BLOCKED_BUT_ALLOWED = "blockedButAllowed";
+    /** robots.txt disallows this agent, and it read the page anyway. */
+    private static final String REACHABLE_BUT_DISALLOWED = "reachableButDisallowed";
+
     private static final Pattern H1 = Pattern.compile("(?is)<h1[^>]*>(.*?)</h1>");
     private static final Pattern H2 = Pattern.compile("(?is)<h2[\\s>]");
-
-    private final Map<String, Deque<Long>> callWindows = new ConcurrentHashMap<>();
 
     /**
      * Injected through the constructor rather than into the field, so a servlet
@@ -131,7 +141,7 @@ public class CrawlerCheckServlet extends HttpServlet {
             }
             JSONObject out = new JSONObject();
             out.put("enabled", true);
-            out.put("agents", new JSONArray(agents().keySet()));
+            out.put(AGENTS, new JSONArray(agents().keySet()));
             writeJson(resp, HttpServletResponse.SC_OK, out);
         } catch (IOException | RuntimeException e) {
             // Nothing may leave a servlet method: the container would answer with
@@ -150,193 +160,121 @@ public class CrawlerCheckServlet extends HttpServlet {
         }
     }
 
+    /**
+     * The POST, as a sequence of steps that can each refuse it.
+     *
+     * Everything here used to be one method, which Sonar scored at a cognitive
+     * complexity of 74 against a threshold of 15 - and the number was fair: the
+     * refusals, the fetching and the report building were interleaved, so
+     * nothing could be read or changed on its own.
+     *
+     * The convention that makes the split safe is worth stating, because getting
+     * it wrong writes TWO responses to one request: a helper either ANSWERS the
+     * request and says so by returning null or false, or it returns a value and
+     * stays silent. Every call below is therefore a single "if ... return".
+     */
     private void dispatch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        JahiaUser user = currentUser();
-        if (user == null || JahiaUserManagerService.GUEST_USERNAME.equals(user.getName())) {
-            deny(resp, HttpServletResponse.SC_UNAUTHORIZED, "authentication required");
+        JahiaUser user = requireUser(resp);
+        if (user == null) {
             return;
         }
-        // CSRF: same-origin JSON only. A form post or a cross-site request cannot set these.
-        String ctype = req.getContentType();
-        if (ctype == null || !ctype.toLowerCase().contains("application/json")) {
-            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "json required");
+        // The content type is checked before the rate limit and the body is read
+        // after it, so a flood of malformed bodies still spends the caller's
+        // budget rather than being refused for free. jsonBody re-checks the
+        // content type; that is cheap and keeps it safe to call on its own.
+        if (!isJsonRequest(req, resp)) {
             return;
         }
-        if (!rateLimitOk(user.getUserKey())) {
+        if (!rateLimitOk(user.getUserKey(), config.getRateWindowMs(), config.getRateMaxCalls())) {
             deny(resp, 429, "rate limit");
             return;
         }
-
-        JSONObject body;
-        try {
-            body = new JSONObject(read(req.getInputStream(), 64_000));
-        } catch (Exception e) {
-            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "malformed body");
+        JSONObject body = jsonBody(req, resp, MAX_BODY);
+        if (body == null) {
             return;
         }
         String path = body.optString("path", "");
         String language = body.optString("language", "en");
-        if (path.isEmpty() || !path.startsWith("/sites/")) {
-            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "path required");
+        if (!isWellFormed(path, language, resp) || !mayEditNode(path, language, resp)) {
             return;
         }
+        String publicUrl = publishedUrlOf(path, language, req, resp);
+        if (publicUrl == null) {
+            return;
+        }
+        writeJson(resp, HttpServletResponse.SC_OK, report(path, language, publicUrl, req));
+    }
 
-        if (!SiteScope.isLanguage(language)) {
-            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "language required");
-            return;
-        }
-        // The drawer opens on a node the caller has selected in jContent, so the
-        // floor is "edits this content", not "can read the published page". Read
-        // it in the editing workspace first and let that decide.
+    /**
+     * True when the caller can open this node in the editing workspace.
+     *
+     * The drawer opens on a node the caller has selected in jContent, so the
+     * floor is "edits this content", not "can read the published page". Reading
+     * it in default with their own session is what decides that.
+     */
+    private boolean mayEditNode(String path, String language, HttpServletResponse resp) throws IOException {
         try {
             JCRSessionFactory.getInstance()
                     .getCurrentUserSession("default", Locale.forLanguageTag(language))
                     .getNode(path);
+            return true;
         } catch (javax.jcr.PathNotFoundException | javax.jcr.AccessDeniedException e) {
             deny(resp, HttpServletResponse.SC_FORBIDDEN, "cannot read node");
-            return;
+            return false;
         } catch (RepositoryException e) {
             logger.warn("Could not resolve {} in default: {}", path, e.getMessage());
             deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "operation failed");
-            return;
+            return false;
         }
+    }
 
-        // The node must exist in LIVE and the caller must be able to read it.
-        // Absent from live means never published, which is a real answer, not an error.
-        String publicUrl;
+    /**
+     * The url a visitor would use, or null when the request has been answered.
+     *
+     * The node must exist in LIVE and the caller must be able to read it. Absent
+     * from live means never published, which is a real answer rather than an
+     * error - so that case answers 200 with published:false and returns null
+     * like any other "already answered".
+     */
+    private String publishedUrlOf(String path, String language, HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
         try {
             JCRSessionWrapper live = JCRSessionFactory.getInstance()
-                    .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
+                    .getCurrentUserSession("live", Locale.forLanguageTag(language));
             JCRNodeWrapper node = live.getNode(path);
-            publicUrl = publicUrlFor(node, req, resp);
+            return publicUrlFor(node, req, resp);
         } catch (javax.jcr.PathNotFoundException e) {
             JSONObject out = new JSONObject();
             out.put("published", false);
             writeJson(resp, HttpServletResponse.SC_OK, out);
-            return;
+            return null;
         } catch (Exception e) {
             logger.warn("Could not resolve {} in live: {}", path, e.getMessage());
             deny(resp, HttpServletResponse.SC_FORBIDDEN, "cannot read node");
-            return;
+            return null;
         }
+    }
 
+    /**
+     * The report itself, for a page already established as published and
+     * readable. Every step from here on adds to the object; none of them refuse.
+     */
+    private JSONObject report(String path, String language, String publicUrl, HttpServletRequest req) {
         JSONObject out = new JSONObject();
         out.put("published", true);
         out.put("url", publicUrl);
         out.put("checkedAt", System.currentTimeMillis());
 
-        // Split the tested url so robots.txt can be fetched from the site root and
-        // evaluated against this page's own path.
-        String base;
-        String pagePath;
-        try {
-            URL u = new URL(publicUrl);
-            base = u.getProtocol() + "://" + u.getHost() + (u.getPort() == -1 ? "" : ":" + u.getPort());
-            // robots.txt rules can target the query string too, e.g. "Disallow: /*?reply=",
-            // so the path we evaluate must carry it. Dropping the query silently
-            // under-reports disallows.
-            String q = u.getQuery();
-            pagePath = (u.getPath() == null || u.getPath().isEmpty() ? "/" : u.getPath())
-                    + (q == null || q.isEmpty() ? "" : "?" + q);
-        } catch (Exception e) {
-            base = publicUrl;
-            pagePath = "/";
-        }
+        Target target = Target.of(publicUrl);
 
         // robots.txt states the policy. The per-agent fetches below show the reality.
-        JSONObject siteFiles = SiteFilesChecker.check(base, pagePath,
+        JSONObject siteFiles = SiteFilesChecker.check(target.base, target.pagePath,
                 config.getFetchTimeoutMs(), config.getMaxBodyBytes());
-        JSONObject robotsJson = siteFiles.optJSONObject("robots");
-        RobotsRules rules = (robotsJson != null && robotsJson.optBoolean("present", false))
-                ? RobotsRules.parse(robotsJson.optString("rawBody", ""))
-                : RobotsRules.empty();
-        if (robotsJson != null && robotsJson.has("rawBody")) {
-            // Keep a readable excerpt for the UI, not the whole file in every cache entry.
-            String raw = robotsJson.getString("rawBody");
-            robotsJson.put("rawBody", raw.length() > 4000 ? raw.substring(0, 4000) : raw);
-        }
-
-        JSONArray results = new JSONArray();
-        int controlWords = -1;
-        int blocked = 0;
-        int blockedButAllowed = 0;
-        int reachableButDisallowed = 0;
-
-        // Fetched a few at a time, but consumed strictly in order: the control
-        // must stay first so controlWords is taken from it.
-        Map<String, String> toFetch = agents();
-        // Captured by the fetch lambdas, so it has to be effectively final.
-        final String origin = base;
-        List<String> names = new ArrayList<>(toFetch.keySet());
-        List<JSONObject> probed = new ArrayList<>(names.size());
-        ExecutorService pool = Executors.newFixedThreadPool(Math.min(FETCH_CONCURRENCY, Math.max(1, names.size())));
-        try {
-            List<Future<JSONObject>> futures = new ArrayList<>(names.size());
-            for (String name : names) {
-                String ua = toFetch.get(name);
-                final String n = name;
-                futures.add(pool.submit((Callable<JSONObject>) () ->
-                        PageFetch.probe(publicUrl, origin, n, ua, config.getFetchTimeoutMs(), config.getMaxBodyBytes())));
-            }
-            for (int i = 0; i < futures.size(); i++) {
-                try {
-                    probed.add(futures.get(i).get());
-                } catch (Exception e) {
-                    if (e instanceof InterruptedException) {
-                        // get() cleared the flag on the way out. Restore it, or
-                        // nothing downstream can tell the request was cancelled.
-                        Thread.currentThread().interrupt();
-                    }
-                    // One agent failing must not lose the other fifteen.
-                    JSONObject r = new JSONObject();
-                    r.put("name", names.get(i));
-                    r.put("status", JSONObject.NULL);
-                    r.put("ms", 0);
-                    r.put("bytes", 0);
-                    r.put("error", "FetchFailed");
-                    probed.add(r);
-                }
-            }
-        } finally {
-            pool.shutdownNow();
-        }
-
-        Map<String, String> tokens = AiCrawlers.robotsTokens();
-        for (JSONObject r : probed) {
-            int status = r.optInt("status", 0);
-            if (controlWords < 0 && status == 200) {
-                controlWords = r.optJSONObject("html") != null ? r.getJSONObject("html").optInt("words", 0) : 0;
-            }
-            if (status != 200) {
-                blocked++;
-            }
-
-            // Cross-check policy against reality. This is the part that tells an
-            // editor which team owns the fix.
-            String token = tokens.get(r.optString("name", ""));
-            if (token != null) {
-                RobotsRules.Verdict v = rules.evaluate(token, pagePath);
-                r.put("robotsAllowed", v.allowed);
-                r.put("robotsNamed", v.namedExplicitly);
-                r.put("robotsRule", v.matchedRule == null ? JSONObject.NULL : v.matchedRule);
-                if (v.allowed && status != 200 && status != 0) {
-                    r.put("mismatch", "blockedButAllowed");
-                    blockedButAllowed++;
-                } else if (!v.allowed && status == 200) {
-                    r.put("mismatch", "reachableButDisallowed");
-                    reachableButDisallowed++;
-                }
-            }
-            results.put(r);
-        }
-
-        out.put("agents", results);
+        RobotsRules rules = rulesOf(siteFiles);
         out.put("siteFiles", siteFiles);
-        out.put("blockedCount", blocked);
-        out.put("blockedButAllowedCount", blockedButAllowed);
-        out.put("reachableButDisallowedCount", reachableButDisallowed);
-        out.put("controlWords", Math.max(controlWords, 0));
-        
+
+        tally(out, probeAgents(publicUrl, target.base), rules, target.pagePath);
+
         // GEO-19 for this one page. A crawler served a login form gets a cheerful
         // 200, so the fetch above cannot tell the difference. The repository can.
         try {
@@ -349,73 +287,269 @@ public class CrawlerCheckServlet extends HttpServlet {
         JSONObject score = GeoScore.compute(out);
         out.put("score", score);
 
+        boolean storedScanAllowed = mayReadStoredScan(path, language);
+        if (storedScanAllowed) {
+            addStoredScanFields(out, path, language, score);
+        }
+        addSchema(out, path, language, req, storedScanAllowed);
+        return out;
+    }
+
+    /**
+     * A tested url split the way the two halves of the check need it: robots.txt
+     * is fetched from the site root, and evaluated against this page's own path.
+     */
+    private static final class Target {
+        private final String base;
+        private final String pagePath;
+
+        private Target(String base, String pagePath) {
+            this.base = base;
+            this.pagePath = pagePath;
+        }
+
+        static Target of(String publicUrl) {
+            try {
+                URL u = new URL(publicUrl);
+                String base = u.getProtocol() + "://" + u.getHost()
+                        + (u.getPort() == -1 ? "" : ":" + u.getPort());
+                // robots.txt rules can target the query string too, e.g.
+                // "Disallow: /*?reply=", so the path we evaluate must carry it.
+                // Dropping the query silently under-reports disallows.
+                String q = u.getQuery();
+                String pagePath = (u.getPath() == null || u.getPath().isEmpty() ? "/" : u.getPath())
+                        + (q == null || q.isEmpty() ? "" : "?" + q);
+                return new Target(base, pagePath);
+            } catch (Exception e) {
+                return new Target(publicUrl, "/");
+            }
+        }
+    }
+
+    /**
+     * The rules robots.txt states, and - as a side effect the caller depends on -
+     * a rawBody trimmed to an excerpt, so the whole file does not end up in every
+     * cache entry.
+     */
+    private static RobotsRules rulesOf(JSONObject siteFiles) {
+        JSONObject robotsJson = siteFiles.optJSONObject("robots");
+        if (robotsJson == null) {
+            return RobotsRules.empty();
+        }
+        RobotsRules rules = robotsJson.optBoolean(PRESENT, false)
+                ? RobotsRules.parse(robotsJson.optString(RAW_BODY, ""))
+                : RobotsRules.empty();
+        if (robotsJson.has(RAW_BODY)) {
+            String raw = robotsJson.getString(RAW_BODY);
+            robotsJson.put(RAW_BODY, raw.length() > MAX_RAW_ROBOTS ? raw.substring(0, MAX_RAW_ROBOTS) : raw);
+        }
+        return rules;
+    }
+
+    /**
+     * One probe per bot user agent.
+     *
+     * Fetched a few at a time, but returned strictly in submission order: the
+     * control agent must stay first, because it is where controlWords comes from.
+     */
+    private List<JSONObject> probeAgents(String publicUrl, String origin) {
+        Map<String, String> toFetch = agents();
+        List<String> names = new ArrayList<>(toFetch.keySet());
+        List<JSONObject> probed = new ArrayList<>(names.size());
+        ExecutorService pool = Executors.newFixedThreadPool(
+                Math.min(FETCH_CONCURRENCY, Math.max(1, names.size())));
+        try {
+            List<Future<JSONObject>> futures = new ArrayList<>(names.size());
+            for (String name : names) {
+                String ua = toFetch.get(name);
+                futures.add(pool.submit((Callable<JSONObject>) () -> PageFetch.probe(
+                        publicUrl, origin, name, ua,
+                        config.getFetchTimeoutMs(), config.getMaxBodyBytes())));
+            }
+            for (int i = 0; i < futures.size(); i++) {
+                probed.add(resultOf(futures.get(i), names.get(i)));
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+        return probed;
+    }
+
+    /** One agent's result, or a synthetic failure: one agent must not lose the rest. */
+    private static JSONObject resultOf(Future<JSONObject> future, String name) {
+        try {
+            return future.get();
+        } catch (Exception e) {
+            if (e instanceof InterruptedException) {
+                // get() cleared the flag on the way out. Restore it, or nothing
+                // downstream can tell the request was cancelled.
+                Thread.currentThread().interrupt();
+            }
+            JSONObject r = new JSONObject();
+            r.put("name", name);
+            r.put("status", JSONObject.NULL);
+            r.put("ms", 0);
+            r.put("bytes", 0);
+            r.put("error", "FetchFailed");
+            return r;
+        }
+    }
+
+    /**
+     * Counts the probes into the report, cross-checking each against the policy.
+     *
+     * The cross-check is the part that tells an editor which team owns the fix:
+     * a page robots.txt allows but the firewall blocks is an infrastructure
+     * problem, and one it disallows but every bot can read is a content problem.
+     */
+    private static void tally(JSONObject out, List<JSONObject> probed, RobotsRules rules, String pagePath) {
+        Map<String, String> tokens = AiCrawlers.robotsTokens();
+        JSONArray results = new JSONArray();
+        int controlWords = -1;
+        int blocked = 0;
+        int blockedButAllowed = 0;
+        int reachableButDisallowed = 0;
+
+        for (JSONObject r : probed) {
+            int status = r.optInt("status", 0);
+            if (controlWords < 0 && status == 200) {
+                controlWords = wordsOf(r);
+            }
+            if (status != 200) {
+                blocked++;
+            }
+            String mismatch = crossCheck(r, rules, tokens.get(r.optString("name", "")), pagePath, status);
+            if (BLOCKED_BUT_ALLOWED.equals(mismatch)) {
+                blockedButAllowed++;
+            } else if (REACHABLE_BUT_DISALLOWED.equals(mismatch)) {
+                reachableButDisallowed++;
+            }
+            results.put(r);
+        }
+
+        out.put(AGENTS, results);
+        out.put("blockedCount", blocked);
+        out.put("blockedButAllowedCount", blockedButAllowed);
+        out.put("reachableButDisallowedCount", reachableButDisallowed);
+        out.put("controlWords", Math.max(controlWords, 0));
+    }
+
+    /**
+     * Writes what robots.txt says about this agent onto its result, and names the
+     * contradiction if there is one. Null when the agent carries no robots token,
+     * so there is no policy to contradict.
+     */
+    private static String crossCheck(JSONObject r, RobotsRules rules, String token, String pagePath, int status) {
+        if (token == null) {
+            return null;
+        }
+        RobotsRules.Verdict v = rules.evaluate(token, pagePath);
+        r.put("robotsAllowed", v.allowed);
+        r.put("robotsNamed", v.namedExplicitly);
+        r.put("robotsRule", v.matchedRule == null ? JSONObject.NULL : v.matchedRule);
+        String mismatch = mismatchOf(v.allowed, status);
+        if (mismatch != null) {
+            r.put("mismatch", mismatch);
+        }
+        return mismatch;
+    }
+
+    /** Policy against reality: the two ways they can disagree, or null when they do not. */
+    private static String mismatchOf(boolean allowed, int status) {
+        // status 0 is "the fetch never completed", which contradicts nothing.
+        if (allowed && status != 200 && status != 0) {
+            return BLOCKED_BUT_ALLOWED;
+        }
+        if (!allowed && status == 200) {
+            return REACHABLE_BUT_DISALLOWED;
+        }
+        return null;
+    }
+
+    private static int wordsOf(JSONObject r) {
+        JSONObject html = r.optJSONObject("html");
+        return html == null ? 0 : html.optInt("words", 0);
+    }
+
+    /**
+     * The site-wide fields, for a caller entitled to them.
+     *
+     * These come out of the stored scan, which ScanStore reads under a system
+     * session and says so: "Reading them is gated at the servlet instead". This
+     * servlet was the one that did not gate it. Read access to a single page
+     * therefore returned the site score, every section's score, the per-template
+     * failure counts, the sitemap and link state and the language coverage of a
+     * site the caller holds no dashboard permission on - the same data the
+     * dashboard servlets all require "publish" for.
+     *
+     * The per-page check stays open to any editor who can open the drawer,
+     * because that is what the drawer is for. These are simply left out when the
+     * caller is not entitled to them: the UI already renders without them, and a
+     * page check that fails outright would be a worse answer than one that says
+     * less.
+     *
+     * Each is attempted on its own. One unavailable field must not cost the
+     * others, so every block logs at debug and moves on.
+     */
+    private void addStoredScanFields(JSONObject out, String path, String language, JSONObject score) {
         // GEO-18. If the last site scan says this page's template fails the same
         // checks everywhere, say so: it stops an author trying to fix something
         // that is not theirs to fix. Silent when no scan has run.
-        try {
-            out.put("templateRollup", rollupFor(path, language, score));
-        } catch (Exception e) {
-            logger.debug("template rollup unavailable for {}", path, e);
-        }
-
+        put(out, "templateRollup", path, () -> rollupFor(path, language, score));
         // GEO-21, one line for this page, read from the last scan rather than by
         // fetching a sitemap the drawer has no business downloading.
-        try {
-            out.put("sitemap", sitemapFor(path, language));
-        } catch (Exception e) {
-            logger.debug("sitemap state unavailable for {}", path, e);
-        }
-
+        put(out, "sitemap", path, () -> sitemapFor(path, language));
         // GEO-22, likewise from the last scan: the graph needs every page on the
         // site, which is not something a drawer can work out for one page.
-        try {
-            JSONObject links = linksFor(path, language);
-            if (links != null) {
-                out.put("links", links);
-            }
-        } catch (Exception e) {
-            logger.debug("link counts unavailable for {}", path, e);
-        }
-
+        put(out, "links", path, () -> linksFor(path, language));
         // GEO-25, from the last scan: which addresses a page answers on is a
         // site-wide question, not one the drawer can answer for a single page.
+        put(out, "vanity", path, () -> vanityFor(path, language));
+        // GEO-20, one line while editing: the languages this page is missing are
+        // something the author in front of it can act on today.
+        put(out, "languages", path, () -> languagesFor(path, language));
+        // Where this page stands against the site and its section, and whether it
+        // is in llms.txt. Both read from the last scan.
+        put(out, "context", path, () -> contextFor(path, language));
+    }
+
+    /**
+     * Adds one optional field, or logs why it is missing.
+     *
+     * A null result is left out rather than written as JSON null: linksFor and
+     * vanityFor both return null for "the scan holds nothing about this page",
+     * and the UI reads an absent key, not a null one.
+     */
+    private static void put(JSONObject out, String key, String path, Callable<JSONObject> value) {
         try {
-            JSONObject vanity = vanityFor(path, language);
-            if (vanity != null) {
-                out.put("vanity", vanity);
+            JSONObject v = value.call();
+            if (v != null) {
+                out.put(key, v);
             }
         } catch (Exception e) {
-            logger.debug("vanity state unavailable for {}", path, e);
+            logger.debug("{} unavailable for {}", key, path, e);
         }
+    }
 
-        // GEO-20, one line while editing: the languages this page is missing
-        // are something the author in front of it can act on today.
+    /**
+     * GEO-23. Generated, shown, and copied by a human - never written into the
+     * page from here.
+     *
+     * The JSON-LD is derived from this page's own content, so it stays available
+     * whoever asks; the overrides it can be tuned with are stored scan data and
+     * are only read for a caller entitled to that.
+     */
+    private void addSchema(JSONObject out, String path, String language, HttpServletRequest req,
+            boolean withStoredOverrides) {
         try {
-            out.put("languages", languagesFor(path, language));
-        } catch (Exception e) {
-            logger.debug("language coverage unavailable for {}", path, e);
-        }
-
-        // Where this page stands against the site and its section, and whether
-        // it is in llms.txt. Both read from the last scan.
-        try {
-            out.put("context", contextFor(path, language));
-        } catch (Exception e) {
-            logger.debug("page context unavailable for {}", path, e);
-        }
-
-        // GEO-23. Generated, shown, and copied by a human - never written into
-        // the page from here.
-        try {
-            JSONObject firstAgent = out.optJSONArray("agents") == null
-                    ? null : out.getJSONArray("agents").optJSONObject(0);
+            JSONObject firstAgent = out.optJSONArray(AGENTS) == null
+                    ? null : out.getJSONArray(AGENTS).optJSONObject(0);
             JSONObject html = firstAgent == null ? null : firstAgent.optJSONObject("html");
             String pageTitle = html == null ? null : html.optString("title", null);
-            out.put("schema", schemaFor(path, language, req, resp, pageTitle));
+            out.put("schema", schemaFor(path, language, req, pageTitle, withStoredOverrides));
         } catch (Exception e) {
             logger.debug("structured data unavailable for {}", path, e);
         }
-        writeJson(resp, HttpServletResponse.SC_OK, out);
     }
 
 
@@ -423,6 +557,29 @@ public class CrawlerCheckServlet extends HttpServlet {
 
 
 
+
+    /**
+     * True when the caller may be shown what the stored scan holds about this
+     * page's site.
+     *
+     * The same gate the dashboard servlets use, SiteScanServlet, SiteFilesServlet
+     * and GeoReportServlet alike: SiteScope.DASHBOARD on the site the path
+     * resolves to, decided in the caller's own session. Anything else - no
+     * permission, no such node, or a repository that cannot answer - omits the
+     * data, because "could not establish the permission" is not "has it".
+     */
+    private static boolean mayReadStoredScan(String path, String language) {
+        try {
+            SiteScope.require(path, language, SiteScope.DASHBOARD);
+            return true;
+        } catch (javax.jcr.PathNotFoundException | javax.jcr.AccessDeniedException e) {
+            logger.debug("no dashboard permission on {}, leaving the stored scan out", path, e);
+            return false;
+        } catch (RepositoryException e) {
+            logger.warn("Could not check the dashboard permission on {}: {}", path, e.getMessage());
+            return false;
+        }
+    }
 
     /** What the stored scan knows about this page's template, or an empty object. */
     private JSONObject rollupFor(String path, String language, JSONObject score) throws Exception {
@@ -472,7 +629,7 @@ public class CrawlerCheckServlet extends HttpServlet {
             return out;
         }
 
-        out.put("present", sitemap.optBoolean("present", false));
+        out.put(PRESENT, sitemap.optBoolean(PRESENT, false));
         out.put("missing", SitemapCheck.isMissing(sitemap, path, language));
         out.put("noindexListed", SitemapCheck.isNoindexListed(sitemap, path, language));
         String stale = SitemapCheck.staleDetail(sitemap, path, language);
@@ -521,12 +678,17 @@ public class CrawlerCheckServlet extends HttpServlet {
      * makes structured data worse than none when it is broken.
      */
     private JSONObject schemaFor(String path, String language, HttpServletRequest req,
-            HttpServletResponse resp, String pageTitle) throws Exception {
+            String pageTitle, boolean withStoredOverrides) throws RepositoryException {
         JCRSessionWrapper live = JCRSessionFactory.getInstance()
                 .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
         JCRNodeWrapper node = live.getNode(path);
         String sitePath = node.getResolveSite().getPath();
-        JSONObject overrides = ScanStore.read(sitePath, language).optJSONObject("schemaMap");
+        // The overrides are the one part of this that is site configuration read
+        // from the stored scan, so they follow the same permission as the rest
+        // of it. Without them the generator falls back to the defaults, which is
+        // what it does on a site that has never been scanned.
+        JSONObject overrides = withStoredOverrides
+                ? ScanStore.read(sitePath, language).optJSONObject("schemaMap") : null;
         String base = org.jahia.se.modules.georeadiness.util.PublicUrls
                 .base(node, req, config.getPublicBaseUrl());
         return StructuredData.forNode(path, language, base, overrides, pageTitle);
@@ -601,60 +763,5 @@ public class CrawlerCheckServlet extends HttpServlet {
             }
         }
         return m.isEmpty() ? DEFAULT_AGENTS : m;
-    }
-
-    private boolean rateLimitOk(String userKey) {
-        long now = System.currentTimeMillis();
-        Deque<Long> w = callWindows.computeIfAbsent(userKey, k -> new ArrayDeque<>());
-        synchronized (w) {
-            while (!w.isEmpty() && now - w.peekFirst() > config.getRateWindowMs()) {
-                w.pollFirst();
-            }
-            if (w.size() >= config.getRateMaxCalls()) {
-                return false;
-            }
-            w.addLast(now);
-            return true;
-        }
-    }
-
-    private static JahiaUser currentUser() {
-        try {
-            return JCRSessionFactory.getInstance().getCurrentUser();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static boolean isGuest() {
-        JahiaUser u = currentUser();
-        return u == null || JahiaUserManagerService.GUEST_USERNAME.equals(u.getName());
-    }
-
-    private static String read(InputStream in, int max) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        int n, total = 0;
-        while ((n = in.read(buf)) != -1) {
-            total += n;
-            out.write(buf, 0, n);
-            if (total >= max) {
-                break;
-            }
-        }
-        return new String(out.toByteArray(), StandardCharsets.UTF_8);
-    }
-
-    private static void deny(HttpServletResponse resp, int code, String msg) throws IOException {
-        JSONObject o = new JSONObject();
-        o.put("error", msg);
-        writeJson(resp, code, o);
-    }
-
-    private static void writeJson(HttpServletResponse resp, int code, JSONObject body) throws IOException {
-        resp.setStatus(code);
-        resp.setContentType("application/json;charset=UTF-8");
-        resp.setHeader("Cache-Control", "no-store");
-        resp.getWriter().write(body.toString());
     }
 }

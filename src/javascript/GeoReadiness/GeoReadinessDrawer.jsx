@@ -257,8 +257,26 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                     </Tab>
                 )}
 
+                {/*
+                  * An unpublished page has no public URL, so there is nothing to
+                  * fetch and every tab below is gated on `published`. The tab bar
+                  * is gated too, which used to leave the drawer completely blank:
+                  * `tab` starts at 'score', ScoreTab was suppressed, and the one
+                  * component that explains why - CrawlerTab - was unreachable
+                  * because the bar that switches to it had just been hidden. The
+                  * editor ran a check, waited, and got an empty panel.
+                  *
+                  * Say it here instead, outside the tab system, so the answer does
+                  * not depend on which tab happens to be selected.
+                  */}
+                {report && !report.published && (
+                    <Banner variant="info" title={t('crawler.verdict.unpublishedTitle')}>
+                        {t('crawler.verdict.unpublished')} {t('error.notPublished')}
+                    </Banner>
+                )}
+
                 {report && report.published && tab === 'score' && <ScoreTab report={report}/>}
-                {report && tab === 'crawler' && <CrawlerTab report={report}/>}
+                {report && report.published && tab === 'crawler' && <CrawlerTab report={report}/>}
                 {report && report.published && tab === 'files' && <SiteFilesTab report={report}/>}
                 {report && report.published && tab === 'schema' && <SchemaTab report={report}/>}
             </div>

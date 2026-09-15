@@ -1,5 +1,6 @@
 package org.jahia.se.modules.georeadiness.scheduler;
 
+import org.jahia.se.modules.georeadiness.check.ScanInProgressException;
 import org.jahia.se.modules.georeadiness.check.ScanStore;
 import org.jahia.se.modules.georeadiness.check.SiteScorer;
 import org.jahia.se.modules.georeadiness.util.SiteScope;
@@ -78,6 +79,11 @@ public class SiteScanJob extends BackgroundJob {
             SiteScorer.scan(sitePath, language, opts);
             logger.info("GEO scan of {} [{}] finished in {}ms", sitePath, language,
                     System.currentTimeMillis() - t0);
+        } catch (ScanInProgressException e) {
+            // An editor is scanning this site by hand right now. Step aside and
+            // let theirs finish; the next trigger will pick it up. Marking the
+            // run failed here would destroy the state of a run still in flight.
+            logger.info("GEO scan of {} [{}] skipped: {}", sitePath, language, e.getMessage());
         } catch (Exception e) {
             // The run record is how the dashboard learns this failed. Losing it
             // would leave the UI saying "running" for ever.

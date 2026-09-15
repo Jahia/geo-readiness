@@ -31,6 +31,16 @@ public final class PublicUrls {
 
     private static final Logger logger = LoggerFactory.getLogger(PublicUrls.class);
 
+    /**
+     * Where a site that names no server is assumed to live: a stock local
+     * Jahia. A constant rather than a literal because {@link FetchGuard} has to
+     * recognise it - it is the one private address this module reaches without
+     * anybody configuring it, and nothing a caller sends can steer a base here.
+     */
+    public static final String LOCAL_FALLBACK = "http://localhost:8080";
+
+    private static final String HTTPS = "https";
+
     private PublicUrls() {
     }
 
@@ -160,37 +170,116 @@ public final class PublicUrls {
      * Scheme, host and port only. The context path is already part of the rewritten path.
      *
      * Priority: the configured base when set. Otherwise, when the editor is already
-     * on the site's own host, reuse the request's scheme and port verbatim, which
-     * keeps local setups such as http://luxe.local.com:8080 working. Otherwise,
-     * when the site has a real server name that differs from the request host
-     * (edit host versus public host), assume https on the default port.
+     * on the site's own host, that host with the scheme and port THIS Jahia answers
+     * on - see {@link #jahiaPort} - which keeps local setups such as
+     * http://luxe.local.com:8080 working. Otherwise, when the site has a real server
+     * name that differs from the request host (edit host versus public host), assume
+     * https on the default port.
      */
     public static String base(JCRNodeWrapper node, HttpServletRequest req, String configuredBase)
             throws javax.jcr.RepositoryException {
-        String b = configuredBase;
-        if (b == null || b.trim().isEmpty()) {
-            JCRSiteNode site = node.getResolveSite();
-            String server = site == null ? null : site.getServerName();
-            boolean hasHost = server != null && !server.isEmpty() && !"localhost".equalsIgnoreCase(server);
-            if (!hasHost) {
-                // The site does not say where it lives, so neither can we. The
-                // request cannot answer it either: its Host header is written by
-                // whoever sent it. PUBLIC_BASE_URL is the way to say it.
-                return "http://localhost:8080";
-            }
-            // The host is the site's own, always. A request may say how that host
-            // is reached - scheme and port, which differ between an edit host and
-            // a public one - but only once it is already addressing that host.
-            if (req != null && servedBy(site, req.getServerName())) {
-                int port = req.getServerPort();
-                boolean defaultPort = ("http".equals(req.getScheme()) && port == 80)
-                        || ("https".equals(req.getScheme()) && port == 443);
-                b = req.getScheme() + "://" + req.getServerName() + (defaultPort ? "" : ":" + port);
-            } else {
-                b = "https://" + server;
-            }
-        }
+        String b = configuredBase == null || configuredBase.trim().isEmpty()
+                ? derived(node, req)
+                : configuredBase;
         return b.replaceAll("/+$", "");
+    }
+
+    /**
+     * Where the site lives when nothing has been configured, worked out from the
+     * repository and from this container - never from the request's Host header.
+     */
+    private static String derived(JCRNodeWrapper node, HttpServletRequest req)
+            throws javax.jcr.RepositoryException {
+        JCRSiteNode site = node.getResolveSite();
+        String server = site == null ? null : site.getServerName();
+        if (server == null || server.isEmpty() || "localhost".equalsIgnoreCase(server)) {
+            // The site does not say where it lives, so neither can we. The
+            // request cannot answer it either: its Host header is written by
+            // whoever sent it. PUBLIC_BASE_URL is the way to say it.
+            return LOCAL_FALLBACK;
+        }
+        // The host is the site's own, always: the request only gets to say WHICH
+        // of the site's names is in use, never a name of its own. The scheme and
+        // the port are not taken from it at all, see jahiaPort.
+        if (req == null || !servedBy(site, req.getServerName())) {
+            // A real server name that differs from the request host: an edit host
+            // against a public host. Assume https on the default port.
+            return "https://" + server;
+        }
+        return onThisJahia(req);
+    }
+
+    /**
+     * The site's own host, at the scheme and port THIS Jahia answers on, which
+     * keeps local setups such as http://luxe.local.com:8080 working.
+     */
+    private static String onThisJahia(HttpServletRequest req) {
+        int port = jahiaPort(req);
+        String scheme = scheme(req, port);
+        return scheme + "://" + req.getServerName() + (isDefaultPort(scheme, port) ? "" : ":" + port);
+    }
+
+    /** True when the port is the one the scheme implies, so a url need not name it. */
+    private static boolean isDefaultPort(String scheme, int port) {
+        return ("http".equals(scheme) && port == 80)
+                || (HTTPS.equals(scheme) && port == 443);
+    }
+
+    /**
+     * The port this Jahia answers on, which is emphatically NOT
+     * {@code req.getServerPort()}.
+     *
+     * Per the servlet spec that method returns the part after ':' in the Host
+     * header, which the caller writes. {@link #servedBy} checks the host name
+     * and nothing checked the port, so {@code Host: www.acme.com:6379} produced
+     * the base {@code http://www.acme.com:6379} and every fetch this module
+     * makes off that base - sixteen crawler agents plus robots.txt and the two
+     * llms files - went to that port, reporting status, timing, byte count and
+     * the exception class per agent. That is an authenticated port scanner with
+     * response reflection, and the scan servlet persisted the value in
+     * geoBaseUrl so later scheduled scans kept using it.
+     *
+     * Both answers here come from the server: Jahia's own site.url.port, which
+     * exists for a front port that differs from the connector's (a proxy
+     * terminating TLS), then the local port of the socket the request arrived
+     * on, which no header can move. A deployment whose public port is neither
+     * of those sets PUBLIC_BASE_URL, which is what it is for.
+     */
+    private static int jahiaPort(HttpServletRequest req) {
+        try {
+            org.jahia.settings.SettingsBean settings = org.jahia.settings.SettingsBean.getInstance();
+            int override = settings == null ? 0 : settings.getSiteURLPortOverride();
+            if (override > 0) {
+                return override;
+            }
+        } catch (Exception e) {
+            // Not configured, or no settings bean in this context. The socket answers.
+            logger.debug("no site url port override, using the local port", e);
+        }
+        int local = req.getLocalPort();
+        if (local > 0) {
+            return local;
+        }
+        return req.isSecure() ? 443 : 80;
+    }
+
+    /**
+     * http or https for {@code port}, from the connection rather than from the
+     * request line: {@code isSecure()} is the connector's own answer, adjusted
+     * by Tomcat only for a proxy it has been configured to trust.
+     *
+     * A well-known port overrides it, because site.url.port is precisely the
+     * setting used when the connector is plain http behind a TLS proxy, and
+     * {@code http://host:443} would be a base nothing answers on.
+     */
+    private static String scheme(HttpServletRequest req, int port) {
+        if (port == 443) {
+            return HTTPS;
+        }
+        if (port == 80) {
+            return "http";
+        }
+        return req.isSecure() ? HTTPS : "http";
     }
 
     /** True when {@code host} is one of the names this site answers to. */

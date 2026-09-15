@@ -54,6 +54,17 @@ public class ScanLifecycle {
 
     @Deactivate
     protected void deactivate() {
+        // Guarded exactly as activate() is, and for a sharper reason. The
+        // scheduler is Jahia's persistent, cluster-shared Quartz store, so
+        // unscheduleAll() deletes the triggers for EVERY site from the whole
+        // cluster - and an unguarded browsing node did that on every restart,
+        // bundle refresh and rolling deploy. It then could not put them back,
+        // because activate() returns early on a node that is not the processing
+        // server. Every site's nightly scan stopped, silently, until somebody
+        // re-saved the schedule by hand.
+        if (!SettingsBean.getInstance().isProcessingServer()) {
+            return;
+        }
         ScanScheduler.unscheduleAll();
     }
 

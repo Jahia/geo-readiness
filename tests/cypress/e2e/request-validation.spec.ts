@@ -189,20 +189,21 @@ describe('geo-readiness endpoints — request validation', () => {
     });
 
     describe('applying an empty site file', () => {
-        it('answers 200 with an error field rather than writing nothing', () => {
-            // Documenting the endpoint as it behaves, not as it ought to: the
-            // empty-content guard returns an error object with a 200 status.
-            // See tests/README.md — this is reported as a finding, and the
-            // assertion is written so that fixing it fails here loudly rather
-            // than drifting.
+        it('refuses with 400 and does not write', () => {
+            // This used to assert 200-with-an-error-body, deliberately pinning the
+            // defect so that fixing it would fail here rather than drift. It has
+            // now been fixed: the empty-content guard refuses with a status like
+            // every other refusal in the module, which matters because the
+            // frontend's shared call() helper only checks res.ok and reported the
+            // old 200 to the user as a successful write.
             geoPost(ENDPOINTS.siteFiles, {
                 action: 'applyRobots',
                 path: fixture.sitePath,
                 language: 'en',
                 content: '   '
             }).then(response => {
-                expect(response.status, 'the current contract answers 200').to.eq(200);
-                expect(response.body.error, 'empty content is refused in the body').to.eq('empty content');
+                expect(response.status, 'an empty write is a refusal, not a result').to.eq(400);
+                expect(response.body.error, 'and it says why').to.eq('empty content');
                 expect(response.body.written, 'nothing was written').to.be.undefined;
             });
         });

@@ -24,7 +24,7 @@ module for this pattern. Read that module's `.agents/README.md` too, most of its
 - The pom declares **no dependencies**. The parent provides jahia-impl, servlet API, org.json,
   OSGi annotations and slf4j. Adding a dependency means embedding it, which needs
   `Embed-Dependency` in the bundle plugin.
-- The `.cfg` first line must be exactly `# default configuration - won't be overriden`. Without
+- The `.cfg` first line must be exactly `# default configuration - won't be overridden`. Without
   it, every redeploy resets operator edits.
 
 ## Why the check is server side, not in the browser
