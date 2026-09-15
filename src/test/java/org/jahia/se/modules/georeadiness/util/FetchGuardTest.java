@@ -40,18 +40,18 @@ class FetchGuardTest {
         void require_sameSchemeHostAndPort_isAccepted(String url, String base) throws Exception {
             URL result = FetchGuard.require(url, base);
 
-            assertThat(result.toString()).isEqualTo(url);
+            assertThat(result).hasToString(url);
             assertThat(FetchGuard.isWithin(url, base)).isTrue();
         }
 
         @Test
-        void require_hostComparison_isCaseInsensitive() throws Exception {
+        void require_hostComparison_isCaseInsensitive() {
             assertThat(FetchGuard.isWithin("http://A.Com/x", "http://a.com/y")).isTrue();
             assertThat(FetchGuard.isWithin("http://a.com/x", "http://A.COM/y")).isTrue();
         }
 
         @Test
-        void require_schemeComparison_isCaseInsensitive() throws Exception {
+        void require_schemeComparison_isCaseInsensitive() {
             // java.net.URL itself lowercases the parsed protocol, so an upper- or
             // mixed-case scheme in the input never survives to FetchGuard's own
             // comparison - pinned here regardless of which layer normalises it.
@@ -89,13 +89,13 @@ class FetchGuardTest {
     class DefaultPorts {
 
         @Test
-        void require_httpImplicitPortAndExplicitPort80_areSameOrigin() throws Exception {
+        void require_httpImplicitPortAndExplicitPort80_areSameOrigin() {
             assertThat(FetchGuard.isWithin("http://a.com/x", "http://a.com:80/y")).isTrue();
             assertThat(FetchGuard.isWithin("http://a.com:80/x", "http://a.com/y")).isTrue();
         }
 
         @Test
-        void require_httpsImplicitPortAndExplicitPort443_areSameOrigin() throws Exception {
+        void require_httpsImplicitPortAndExplicitPort443_areSameOrigin() {
             assertThat(FetchGuard.isWithin("https://a.com/x", "https://a.com:443/y")).isTrue();
             assertThat(FetchGuard.isWithin("https://a.com:443/x", "https://a.com/y")).isTrue();
         }
@@ -205,12 +205,12 @@ class FetchGuardTest {
         void require_urlWithSurroundingWhitespace_isTrimmedBeforeParsing() throws Exception {
             URL result = FetchGuard.require("  http://a.com/x  ", "http://a.com/y");
 
-            assertThat(result.toString()).isEqualTo("http://a.com/x");
+            assertThat(result).hasToString("http://a.com/x");
             assertThat(FetchGuard.isWithin("  http://a.com/x  ", "http://a.com/y")).isTrue();
         }
 
         @Test
-        void require_baseWithSurroundingWhitespace_isTrimmedBeforeParsing() throws Exception {
+        void require_baseWithSurroundingWhitespace_isTrimmedBeforeParsing() {
             assertThat(FetchGuard.isWithin("http://a.com/x", "  http://a.com/y  ")).isTrue();
         }
     }

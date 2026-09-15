@@ -6,11 +6,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -56,27 +56,21 @@ class LlmsFreshnessTest {
         return sb.toString();
     }
 
-    /** Cases where `served` is missing/blank; kept at top level since @Nested classes are non-static. */
-    private static Stream<org.junit.jupiter.params.provider.Arguments> notPresentCases() {
-        String someGenerated = link("Home", "/index.html");
-        return Stream.of(
-                org.junit.jupiter.params.provider.Arguments.of("served is null", null, someGenerated),
-                org.junit.jupiter.params.provider.Arguments.of("served is empty string", "", someGenerated),
-                org.junit.jupiter.params.provider.Arguments.of("served is whitespace only", "   \n\t", someGenerated)
-        );
-    }
-
     // ------------------------------------------------------- absent / empty inputs
 
     @Nested
     @DisplayName("served or generated missing short-circuits before any comparison")
     class AbsentOrEmptyInputs {
 
-        @ParameterizedTest(name = "{0}")
-        @MethodSource("org.jahia.se.modules.georeadiness.check.LlmsFreshnessTest#notPresentCases")
+        @ParameterizedTest(name = "served = [{0}]")
+        @NullAndEmptySource
+        @ValueSource(strings = {"   ", "\t", "\n", " \n\t "})
         @DisplayName("present is false and outdated is false, no other keys are emitted")
-        void servedMissingOrBlank_reportsNotPresent(String label, String served, String generated) {
-            JSONObject out = LlmsFreshness.check(served, generated, null, SITE);
+        void servedMissingOrBlank_reportsNotPresent(String served) {
+            // A factory method referenced by name would read as dead code to any
+            // analysis that does not follow the @MethodSource string, so the cases
+            // are given inline instead. Broader than the three it replaces, too.
+            JSONObject out = LlmsFreshness.check(served, link("Home", "/index.html"), null, SITE);
 
             assertThat(out.get("present")).isInstanceOf(Boolean.class);
             assertThat(out.getBoolean("present")).isFalse();
