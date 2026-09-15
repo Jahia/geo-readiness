@@ -109,6 +109,8 @@ export const GeoDashboard = () => {
                             {groups.map(g => (
                                 <TabItem
                                     key={g.id}
+                                    id={`geo-dash-group-${g.id}`}
+                                    aria-controls={`geo-dash-panel-${g.tabs[0]}`}
                                     label={t(`dashboard.group.${g.id}`)}
                                     isSelected={group === g.id}
                                     onClick={() => {
@@ -134,6 +136,8 @@ export const GeoDashboard = () => {
                             {activeGroup.tabs.map(id => (
                                 <TabItem
                                     key={id}
+                                    id={`geo-dash-tab-${id}`}
+                                    aria-controls={`geo-dash-panel-${id}`}
                                     label={t(`dashboard.tab.${id}`)}
                                     isSelected={tab === id}
                                     onClick={() => setTab(id)}
@@ -143,25 +147,41 @@ export const GeoDashboard = () => {
                     </div>
                 )}
 
-                {tab === 'score' && <SiteScorePanel path={sitePath} language={language}/>}
-                {tab === 'report' && (
-                    <ReportPanel
-                        path={sitePath}
-                        language={language}
-                        reportLanguage={uilang || language}
-                        siteKey={siteKey}
-                        siteName={siteInfo.displayName}
-                    />
-                )}
-                {tab === 'languages' && <LanguagesPanel path={sitePath} language={language}/>}
-                {tab === 'sitemap' && <SitemapPanel path={sitePath} language={language}/>}
-                {tab === 'links' && <LinksPanel path={sitePath} language={language}/>}
-                {tab === 'vanity' && <VanityPanel path={sitePath} language={language}/>}
-                {tab === 'freshness' && <FreshnessPanel path={sitePath} language={language}/>}
-                {tab === 'schema' && <SchemaPanel path={sitePath} language={language}/>}
-                {tab === 'robots' && <RobotsControlPanel path={sitePath} language={language}/>}
-                {tab === 'llms' && <LlmsGeneratorPanel path={sitePath} language={language}/>}
-                {tab === 'visibility' && <VisibilityPanel path={sitePath} language={language}/>}
+                {/*
+                  * Moonstone's Tab/TabItem already speak role="tablist" /
+                  * role="tab" / aria-selected; the panel underneath was a
+                  * bare conditionally-rendered component with no matching
+                  * role="tabpanel", so the relationship stopped at the tabs.
+                  * Labelled by whichever tab level actually controls this
+                  * panel: the sub-tab when one is showing, otherwise the
+                  * group tab (a group with one tab skips the sub-tab row).
+                  */}
+                <div
+                    role="tabpanel"
+                    id={`geo-dash-panel-${tab}`}
+                    aria-labelledby={activeGroup.tabs.length > 1 ? `geo-dash-tab-${tab}` : `geo-dash-group-${group}`}
+                    tabIndex={0}
+                >
+                    {tab === 'score' && <SiteScorePanel path={sitePath} language={language}/>}
+                    {tab === 'report' && (
+                        <ReportPanel
+                            path={sitePath}
+                            language={language}
+                            reportLanguage={uilang || language}
+                            siteKey={siteKey}
+                            siteName={siteInfo.displayName}
+                        />
+                    )}
+                    {tab === 'languages' && <LanguagesPanel path={sitePath} language={language}/>}
+                    {tab === 'sitemap' && <SitemapPanel path={sitePath} language={language}/>}
+                    {tab === 'links' && <LinksPanel path={sitePath} language={language}/>}
+                    {tab === 'vanity' && <VanityPanel path={sitePath} language={language}/>}
+                    {tab === 'freshness' && <FreshnessPanel path={sitePath} language={language}/>}
+                    {tab === 'schema' && <SchemaPanel path={sitePath} language={language}/>}
+                    {tab === 'robots' && <RobotsControlPanel path={sitePath} language={language}/>}
+                    {tab === 'llms' && <LlmsGeneratorPanel path={sitePath} language={language}/>}
+                    {tab === 'visibility' && <VisibilityPanel path={sitePath} language={language}/>}
+                </div>
             </div>
         </LayoutContent>
     );

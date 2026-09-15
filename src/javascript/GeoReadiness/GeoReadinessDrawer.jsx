@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Badge, Banner, Button, Close, Tab, TabItem, Typography} from '@jahia/moonstone';
@@ -65,6 +65,74 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     const [phase, setPhase] = useState('idle');
     const [tab, setTab] = useState('score');
     const [error, setError] = useState(null);
+    const drawerRef = useRef(null);
+    const previouslyFocused = useRef(null);
+
+    // A portal into document.body has no natural place in the page's own
+    // focus order. Without this, opening the drawer leaves keyboard focus on
+    // the trigger underneath - now visually hidden behind a fixed, 820px
+    // panel - and closing it drops focus back to <body>, forgetting where
+    // the user came from.
+    useEffect(() => {
+        if (isOpen) {
+            previouslyFocused.current = document.activeElement;
+            if (drawerRef.current) {
+                drawerRef.current.focus();
+            }
+        } else if (previouslyFocused.current && typeof previouslyFocused.current.focus === 'function') {
+            previouslyFocused.current.focus();
+            previouslyFocused.current = null;
+        }
+    }, [isOpen]);
+
+    // Escape to close, and a minimal Tab trap: neither existed, so keyboard
+    // focus could walk out of the drawer into the page it now covers.
+    const onKeyDown = useCallback(e => {
+        if (e.key === 'Escape') {
+            onClose();
+            return;
+        }
+
+        if (e.key !== 'Tab' || !drawerRef.current) {
+            return;
+        }
+
+        const focusable = drawerRef.current.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) {
+            return;
+        }
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }, [onClose]);
+
+    // Bound to the node rather than declared as an onKeyDown prop.
+    //
+    // A <dialog> carries an implicit `dialog` role, which is non-interactive -
+    // and a key listener on a non-interactive element is exactly the mistake
+    // that rule exists to catch, because it usually means a div is impersonating
+    // a control. Here the keys are the dialog's OWN behaviour: Escape closes it
+    // and Tab is trapped inside it. A modal dialog gets both from the browser;
+    // this one is deliberately non-modal (see the element below) so it has to
+    // implement them. Binding on the element says that, and keeps the markup
+    // free of a handler that would read as the mistake.
+    useEffect(() => {
+        const node = drawerRef.current;
+        if (!isOpen || !node) {
+            return undefined;
+        }
+        node.addEventListener('keydown', onKeyDown);
+        return () => node.removeEventListener('keydown', onKeyDown);
+    }, [isOpen, onKeyDown]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -103,10 +171,27 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     }
 
     return (
-        <aside className={styles.drawer} aria-label={t('drawer.title')}>
+        // A real <dialog> rather than an <aside role="dialog">. Rendered with
+        // the `open` attribute and NOT via showModal(): showModal() promotes the
+        // node to the browser's top layer, which would take it out of
+        // jContent's stacking context and break the panel's placement. With
+        // `open` it stays in normal flow and keeps its own positioning, while
+        // the element itself carries the dialog semantics.
+        //
+        // aria-modal and the focus trap stay explicit for the same reason -
+        // they are ours to enforce, not the browser's, when the dialog is
+        // non-modal.
+        <dialog
+            ref={drawerRef}
+            open
+            className={styles.drawer}
+            aria-label={t('drawer.title')}
+            aria-modal="true"
+            tabIndex={-1}
+        >
             <header className={styles.header}>
                 <div>
-                    <Typography variant="heading" className={styles.title}>{t('drawer.title')}</Typography>
+                    <Typography variant="heading" component="h2" className={styles.title}>{t('drawer.title')}</Typography>
                     <Typography variant="caption" className={styles.subtitle}>{t('drawer.subtitle')}</Typography>
                 </div>
                 <Button variant="ghost" icon={<Close/>} label={t('drawer.close')} onClick={onClose}/>
@@ -127,7 +212,8 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                 )}
             </div>
 
-            {error && <div className={styles.error}>{error}</div>}
+            {/* role="alert" carries an implicit assertive live region, so a failed check is announced without a second attribute. */}
+            {error && <div className={styles.error} role="alert">{error}</div>}
 
             <div className={styles.body}>
                 {phase === 'idle' && !report && (
@@ -248,6 +334,8 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                         ].map(item => (
                             <TabItem
                                 key={item.id}
+                                id={`geo-drawer-tab-${item.id}`}
+                                aria-controls={`geo-drawer-panel-${item.id}`}
                                 label={item.label}
                                 isSelected={tab === item.id}
                                 icon={item.count > 0 ? <Badge label={String(item.count)} color="warning"/> : undefined}
@@ -275,12 +363,21 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                     </Banner>
                 )}
 
-                {report && report.published && tab === 'score' && <ScoreTab report={report}/>}
-                {report && report.published && tab === 'crawler' && <CrawlerTab report={report}/>}
-                {report && report.published && tab === 'files' && <SiteFilesTab report={report}/>}
-                {report && report.published && tab === 'schema' && <SchemaTab report={report}/>}
+                {report && report.published && (
+                    <div
+                        role="tabpanel"
+                        id={`geo-drawer-panel-${tab}`}
+                        aria-labelledby={`geo-drawer-tab-${tab}`}
+                        tabIndex={0}
+                    >
+                        {tab === 'score' && <ScoreTab report={report}/>}
+                        {tab === 'crawler' && <CrawlerTab report={report}/>}
+                        {tab === 'files' && <SiteFilesTab report={report}/>}
+                        {tab === 'schema' && <SchemaTab report={report}/>}
+                    </div>
+                )}
             </div>
-        </aside>
+        </dialog>
     );
 };
 

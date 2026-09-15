@@ -294,7 +294,9 @@
       },
       "checkColumn": "Check",
       "severityLabel": "Severity",
-      "fromTemplate": "Comes from the template “{{template}}”, which renders {{count}} pages. Fixing it there fixes all of them."
+      "fromTemplate": "Comes from the template “{{template}}”, which renders {{count}} pages. Fixing it there fixes all of them.",
+      "passed": "Passed",
+      "failed": "Failed"
     },
     "diff": {
       "identical": "No change. The file would be written exactly as it is now.",
@@ -425,6 +427,13 @@
         "friday": "Friday",
         "saturday": "Saturday",
         "sunday": "Sunday"
+      },
+      "aria": {
+        "frequency": "Frequency",
+        "dayOfWeek": "Day of week",
+        "dayOfMonth": "Day of month",
+        "hour": "Hour",
+        "minute": "Minute"
       }
     },
     "sitemap": {

@@ -94,7 +94,7 @@ export const SchemaTab = ({report}) => {
 
             <pre className={styles.snippet}>{snippet}</pre>
 
-            <Typography variant="subheading" className={styles.panelSub}>
+            <Typography variant="subheading" component="h3" className={styles.panelSub}>
                 {t('schema.sources')}
             </Typography>
             <ul className={styles.checkList}>

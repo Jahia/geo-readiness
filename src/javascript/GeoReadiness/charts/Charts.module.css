@@ -14,8 +14,23 @@
     --geo-warn: var(--moon-color-warning, #ffbb00);
     --geo-bad: var(--moon-color-danger, #f44053);
     --geo-ink2: var(--moon-color-gray_dark, #293136);
-    --geo-ink3: var(--moon-color-gray, #7a7f88);
+    /*
+     * Not var(--moon-color-gray): that token is #7a7f88, which measures 4.03:1
+     * on white and fails even the AA floor for the small text every one of
+     * these labels is set in, let alone the team's AAA target. Hardcoded
+     * rather than a fallback because the token, where it resolves, IS that
+     * failing value - a fallback would never fire. 8.45:1 on white.
+     */
+    --geo-ink3: #4d4d4d;
     --geo-surface: var(--moon-color-light, #fdfdfd);
+    /*
+     * A dedicated focus color, not --geo-series3: that token is
+     * --moon-color-accent_light (#63d1ff), which sits at 1.74:1 on white and
+     * is the only focus cue .track and .cell have. --geo-series1 is already
+     * proven readable (used for bars/text) and clears the 3:1 non-text
+     * minimum with room to spare (5.19:1 on white).
+     */
+    --geo-focus: var(--geo-series1);
 
     position: relative;
     margin: 0.25rem 0 0.75rem;
@@ -78,13 +93,38 @@
     outline: none;
 }
 
+/*
+ * The painted line is 1.4rem (22.4px) tall - under the 44px AAA target size
+ * (SC 2.5.5). A pseudo-element outside the box, rather than padding, so the
+ * hit area grows without pushing the row's own layout or the visible mark's
+ * thickness: a click anywhere in ::after still lands on .track, since a
+ * pseudo-element has no box of its own to steal the event.
+ */
+.track::after {
+    content: '';
+    position: absolute;
+    inset: -0.675rem 0;
+}
+
 .track:focus-visible {
-    box-shadow: 0 0 0 2px var(--geo-series3);
+    /* --geo-focus, not --geo-series3: see the token comment above .chart. */
+    box-shadow: 0 0 0 2px var(--geo-focus);
 }
 
 .trackThin {
     height: 1.05rem;
     margin-top: 0.1rem;
+}
+
+/*
+ * PairedBars rows sit closer together than BarList's, so growing this hit
+ * area to the same 44px as .track would overlap the row above and below.
+ * A smaller, still-real enlargement (to ~34px) is the honest trade-off here;
+ * see the accessibility report for why 44px is not reachable without
+ * loosening .row's padding, which is out of scope for this pass.
+ */
+.trackThin::after {
+    inset: -0.5rem 0;
 }
 
 .track::before {
@@ -300,7 +340,7 @@
 
 .matrixCol {
     height: 7.5rem;
-    width: 1.35rem;
+    width: 1.75rem;
     padding: 0 0 0.25rem;
     vertical-align: bottom;
     font-weight: 400;
@@ -334,7 +374,12 @@
 }
 
 .matrixLink {
-    color: var(--moon-color-accent_dark, #0072b1);
+    /*
+     * Hardcoded, not --moon-color-accent_dark (#0072b1): that value measures
+     * 5.19:1 on white, which passes AA but not the team's AAA target. #004d70
+     * is the same hue, darkened to 9.14:1.
+     */
+    color: #004d70;
     text-decoration: none;
 }
 
@@ -353,13 +398,20 @@
 
 .matrixCell {
     padding: 0;
-    width: 1.35rem;
+    width: 1.75rem;
 }
 
+/*
+ * 1.1rem (17.6px) grew to 1.5rem (24px): the AA/AAA-shared floor (SC 2.5.8).
+ * The full AAA 44px target (SC 2.5.5) is not reachable here without turning
+ * the matrix into something that no longer fits a check-heavy site on one
+ * screen - every column would need to be roughly double its neighbour's
+ * reading width. Documented as a known, deliberate gap rather than closed.
+ */
 .cell {
     display: block;
-    width: 1.1rem;
-    height: 1.1rem;
+    width: 1.5rem;
+    height: 1.5rem;
     margin: 0 auto;
     border-radius: 3px;
     outline: none;
@@ -368,7 +420,8 @@
 .cell:hover,
 .cell:focus-visible {
     filter: brightness(1.12);
-    box-shadow: 0 0 0 2px var(--geo-surface), 0 0 0 3px var(--geo-series3);
+    /* --geo-focus, not --geo-series3: see the token comment above .chart. */
+    box-shadow: 0 0 0 2px var(--geo-surface), 0 0 0 3px var(--geo-focus);
 }
 
 .matrixTotal .tipValue {
@@ -439,4 +492,38 @@
     color: var(--geo-ink3);
     text-align: center;
     line-height: 1.2;
+}
+
+/*
+ * Width/height transitions read as motion sickness triggers to vestibular
+ * disorders (SC 2.3.3). None of these are needed to understand the chart -
+ * the bar is a value, not an animation - so they are removed rather than
+ * slowed down.
+ */
+@media (prefers-reduced-motion: reduce) {
+    .bar,
+    .meterFill,
+    .histFill {
+        transition: none;
+    }
+}
+
+/*
+ * Present to assistive tech, absent from the page.
+ *
+ * The clip-path/1px-box form rather than display:none or visibility:hidden,
+ * which remove the text from the accessibility tree along with the picture.
+ * white-space:nowrap stops a clipped value being wrapped into nothing.
+ */
+.srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
 }

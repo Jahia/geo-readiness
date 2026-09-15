@@ -94,11 +94,18 @@ export const CronBuilder = ({value, onChange}) => {
 
     return (
         <div className={styles.cronRow}>
+            {/*
+              * Each of these dropdowns is named only by a caption span
+              * ("every", "at", "on") that is not a <label>, so a screen
+              * reader announces "combobox" with no idea which field it is.
+              * aria-label names the field itself rather than the caption.
+              */}
             <Typography variant="caption">{t('cron.every')}</Typography>
             <Dropdown
                 size="small"
                 value={state.freq}
                 data={frequencies}
+                aria-label={t('cron.aria.frequency')}
                 onChange={(e, item) => update({freq: pick(e, item)})}
             />
 
@@ -109,6 +116,7 @@ export const CronBuilder = ({value, onChange}) => {
                         size="small"
                         value={state.day}
                         data={days}
+                        aria-label={t('cron.aria.dayOfWeek')}
                         onChange={(e, item) => update({day: pick(e, item)})}
                     />
                 </>
@@ -121,6 +129,7 @@ export const CronBuilder = ({value, onChange}) => {
                         size="small"
                         value={state.dayOfMonth}
                         data={DAYS_OF_MONTH}
+                        aria-label={t('cron.aria.dayOfMonth')}
                         onChange={(e, item) => update({dayOfMonth: pick(e, item)})}
                     />
                 </>
@@ -131,6 +140,7 @@ export const CronBuilder = ({value, onChange}) => {
                 size="small"
                 value={state.hour}
                 data={HOURS}
+                aria-label={t('cron.aria.hour')}
                 onChange={(e, item) => update({hour: pick(e, item)})}
             />
             <Typography variant="caption">:</Typography>
@@ -138,6 +148,7 @@ export const CronBuilder = ({value, onChange}) => {
                 size="small"
                 value={state.minute}
                 data={MINUTES}
+                aria-label={t('cron.aria.minute')}
                 onChange={(e, item) => update({minute: pick(e, item)})}
             />
             <Typography variant="caption" className={styles.cronNote}>

@@ -5,9 +5,14 @@
     line-height: 1.45;
     margin-bottom: 12px;
 }
-.good { background: #dff0ea; color: #0e6a51; }
-.warn { background: #fbefd9; color: #8a5605; }
-.bad  { background: #fae6e4; color: #a5312a; }
+/*
+ * Darkened from the original tones, which passed AA but not the team's AAA
+ * floor of 7:1: .good was 5.56:1, .warn 5.40:1, .bad 5.69:1. New ratios on
+ * the same backgrounds: .good 7.33:1, .warn 7.58:1, .bad 7.13:1.
+ */
+.good { background: #dff0ea; color: #0b5643; }
+.warn { background: #fbefd9; color: #654700; }
+.bad  { background: #fae6e4; color: #8c2921; }
 
 .url { display: block; margin-bottom: 14px; word-break: break-all; }
 
@@ -18,9 +23,14 @@
     border-radius: 3px;
     white-space: nowrap;
 }
-.on    { background: #e1f1f9; color: #0086bf; }
-.off   { background: #f0f2f5; color: #8a97a3; text-decoration: line-through; }
-.plain { background: #f0f2f5; color: #5c6b7a; }
+/*
+ * .on was #0086bf at 3.52:1 on this background - fails even AA. .off was
+ * #8a97a3 at 2.66:1. .plain was #5c6b7a at 4.87:1 - passes AA, not AAA.
+ * New ratios: .on 7.90:1, .off 8.45:1, .plain 7.37:1.
+ */
+.on    { background: #e1f1f9; color: #004d70; }
+.off   { background: #f0f2f5; color: #3d4750; text-decoration: line-through; }
+.plain { background: #f0f2f5; color: #44505a; }
 
 /* On white, with a rule rather than a fill: the only greys left are semantic. */
 .explain {
@@ -36,7 +46,8 @@
 .sectionTitle { display: block; margin: 22px 0 10px; }
 .sectionTitle:first-child { margin-top: 0; }
 
-.rule { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: #5c6b7a; }
+/* #5c6b7a was 5.47:1 on white, below the 7:1 AAA floor for this small monospace text; #44505a is 8.26:1. */
+.rule { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: #44505a; }
 
 .facts { margin: 4px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
 .facts li { color: #24343f; }
@@ -289,9 +300,10 @@
     opacity: 0.75;
 }
 
+/* #8a6100 was 4.90:1 on this background - passes AA, not the 7:1 AAA floor. #654700 is 7.58:1. */
 .markWarn {
     background: #fdf0d5;
-    color: #8a6100;
+    color: #654700;
 }
 
 /* The marks now sit under the agent's head line rather than in a cell. */
@@ -337,8 +349,13 @@
     margin-left: 0.35rem;
 }
 
+/*
+ * Hardcoded, not var(--moon-color-accent_dark): that token resolves to
+ * #0072b1, 5.19:1 on white - AA passes, the team's 7:1 AAA floor does not.
+ * #004d70 is the same hue at 9.14:1.
+ */
 .pageLink {
-    color: var(--moon-color-accent_dark, #1c6ea4);
+    color: #004d70;
     text-decoration: none;
     font-weight: 600;
     overflow-wrap: anywhere;
@@ -435,8 +452,13 @@
  * The age of an item that is past the threshold. A status colour, so it is
  * paired with the date beside it and never carries the meaning alone.
  */
+/*
+ * Hardcoded, not var(--moon-color-warning_dark, #8a6400): whichever of the
+ * two actually renders here measured 5.38:1 on white, short of the 7:1 AAA
+ * floor. #6b4e00 is 7.74:1.
+ */
 .checkStale {
-    color: var(--moon-color-warning_dark, #8a6400);
+    color: #6b4e00;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
@@ -485,7 +507,8 @@
     text-align: right;
     font-size: 0.95rem;
     font-variant-numeric: tabular-nums;
-    color: var(--moon-color-gray, #7a7f88);
+    /* Same failing token as Charts' --geo-ink3 (4.03:1 on white); same fix. */
+    color: #4d4d4d;
 }
 
 .priorityHead {

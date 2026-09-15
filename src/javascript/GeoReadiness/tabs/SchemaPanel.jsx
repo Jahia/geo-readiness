@@ -70,7 +70,7 @@ export const SchemaPanel = ({path, language}) => {
 
     return (
         <div>
-            <Typography variant="subheading" className={styles.panelTitle}>
+            <Typography variant="subheading" component="h2" className={styles.panelTitle}>
                 {t('schema.panel.title')}
             </Typography>
             <Typography variant="caption" className={styles.panelIntro}>
@@ -97,6 +97,11 @@ export const SchemaPanel = ({path, language}) => {
                     {/* Part-to-whole in one bar: what can emit, what is mapped but thin, what is not mapped. */}
                     <StackedBar
                         total={data.total}
+                        label={t('schema.panel.counts', {
+                            mapped: data.mappedItems,
+                            complete: data.completeItems,
+                            total: data.total
+                        })}
                         restLabel={t('schema.panel.legend.unmapped')}
                         segments={[
                             {key: 'complete', label: t('schema.panel.legend.complete'), value: data.completeItems, tone: 'series1'},
