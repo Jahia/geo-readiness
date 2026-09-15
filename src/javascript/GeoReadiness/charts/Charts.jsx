@@ -36,19 +36,21 @@ function useTip() {
         });
     }, []);
     const hide = useCallback(() => setTip(null), []);
-    // Always mounted, never remounted: a role="status" node that is created
-    // already holding its text is a single DOM mutation a screen reader has
-    // no "before" to compare against, so it is frequently never announced.
-    // Keeping one node alive and only ever changing its text/visibility is
+    // <output> rather than a div with role="status": the element carries that
+    // role implicitly, so the live region is the element itself.
+    //
+    // Always mounted, never remounted. A status node that is CREATED already
+    // holding its text is a single DOM mutation a screen reader has no
+    // "before" to compare against, so it is frequently never announced.
+    // Keeping one node alive and only ever changing its text and visibility is
     // what makes the live region actually fire.
     const node = (
-        <div
+        <output
             className={styles.tip}
             style={tip ? {left: tip.x, top: tip.y} : {display: 'none'}}
-            role="status"
         >
             {tip ? tip.text : ''}
-        </div>
+        </output>
     );
     return {show, hide, node};
 }
@@ -104,19 +106,19 @@ export const BarList = ({rows, max, format, tipFor}) => {
                             <span className={styles.rowLabel}>{r.label}</span>
                             {r.sublabel && <span className={styles.rowSub}>{r.sublabel}</span>}
                         </div>
+                        {/*
+                          * Not focusable and not named. The <li> around it
+                          * already reads as "label, sublabel, value" - the
+                          * value span below is real text, not a graphic - so a
+                          * screen reader gets the row from the list itself.
+                          * Making the track a tab stop as well added one
+                          * redundant stop per row and named it with a string
+                          * the list had already said.
+                          */}
                         <div
                             className={styles.track}
-                            tabIndex={0}
-                            // The track itself carries no text when the bar is
-                            // short (a screen reader landing on it would read
-                            // only the tip value, never the row it belongs
-                            // to): name it explicitly rather than rely on
-                            // visible content.
-                            aria-label={`${r.label}${r.sublabel ? ` ${r.sublabel}` : ''}: ${format(r.value)}`}
                             onMouseEnter={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
-                            onFocus={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
                             onMouseLeave={hide}
-                            onBlur={hide}
                         >
                             <div
                                 className={`${styles.bar} ${r.status === 'warn' ? styles.fillWarn : ''} ${r.status === 'good' ? styles.fillGood : ''}`}
@@ -165,17 +167,18 @@ export const Histogram = ({rows, format, tipFor, axisLeft, axisRight}) => {
                     <div
                         key={r.key}
                         className={styles.histColumn}
-                        tabIndex={0}
-                        // A zero-count column renders no visible value text
-                        // (see the file comment on why zero is never a bare
-                        // bar), which left it with no accessible name either.
-                        aria-label={`${r.label}: ${format(r.value)}`}
                         onMouseEnter={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
-                        onFocus={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
                         onMouseLeave={hide}
-                        onBlur={hide}
                     >
-                        <span className={styles.histValue}>{r.value > 0 ? format(r.value) : ''}</span>
+                        {/*
+                          * A zero column draws no bar and shows no number (see
+                          * the file comment on why zero is never a bare bar),
+                          * so its count is carried as text only a screen reader
+                          * reads. The number is in the DOM either way, which is
+                          * what makes the column readable without being a tab
+                          * stop.
+                          */}
+                        <span className={r.value > 0 ? styles.histValue : styles.srOnly}>{format(r.value)}</span>
                         <div className={styles.histTrack}>
                             {r.value > 0 && (
                                 <div
@@ -210,7 +213,7 @@ Histogram.propTypes = {
     axisRight: PropTypes.node
 };
 
-Histogram.defaultProps = {format: v => String(v), tipFor: undefined, axisLeft: '', axisRight: ''};
+Histogram.defaultProps = {format: String, tipFor: undefined, axisLeft: '', axisRight: ''};
 
 /**
  * Part-to-whole in one bar. Segments touch through a 2px surface gap, never a
@@ -226,27 +229,21 @@ export const StackedBar = ({segments, total, format, restLabel, label}) => {
     return (
         <div className={styles.chart} data-geo-chart="">
             {/*
-              * role="img" flattens this subtree for assistive tech - a single
-              * opaque picture needs its own name, same as an <img alt>. The
-              * segments below still carry a real tabIndex and their own
-              * aria-label so a sighted keyboard user can still step through
-              * them, but a screen reader only ever hears this one label.
+              * Hidden from assistive tech entirely, because the legend below is
+              * not a key to this picture - it is the same numbers as text, every
+              * segment with its label and its value, the remainder included.
+              * Exposing both would read the figures out twice; exposing the bar
+              * instead of the legend would lose the labels under 12%, which are
+              * the ones the bar has no room to print.
               */}
-            <div className={styles.stack} role="img" aria-label={label}>
+            <div className={styles.stack} aria-hidden="true">
                 {all.filter(s => s.value > 0).map(s => (
                     <div
                         key={s.key}
-                        tabIndex={s.rest ? -1 : 0}
                         className={`${styles.segment} ${s.rest ? styles.segmentRest : ''} ${s.tone ? styles[s.tone] : ''}`}
                         style={{flexGrow: s.value, flexBasis: 0}}
-                        // Unconditional: the 12% threshold below is only about
-                        // whether the *visible* number fits inside the segment,
-                        // not about whether the segment has a name.
-                        aria-label={s.rest ? undefined : `${s.label}: ${format(s.value)}`}
                         onMouseEnter={s.rest ? undefined : e => show(e, tipText(format(s.value), s.label))}
-                        onFocus={s.rest ? undefined : e => show(e, tipText(format(s.value), s.label))}
                         onMouseLeave={hide}
-                        onBlur={hide}
                     >
                         {s.value / denom >= 0.12 && !s.rest && (
                             <span className={styles.inBar}>{format(s.value)}</span>
@@ -288,7 +285,7 @@ StackedBar.propTypes = {
     label: PropTypes.string
 };
 
-StackedBar.defaultProps = {total: undefined, format: v => String(v), restLabel: '', label: undefined};
+StackedBar.defaultProps = {total: undefined, format: String, restLabel: '', label: undefined};
 
 export const PairedBars = ({rows, series, format, missingLabel}) => {
     const {show, hide, node} = useTip();
@@ -316,13 +313,17 @@ export const PairedBars = ({rows, series, format, missingLabel}) => {
                                 <div
                                     key={s.key}
                                     className={`${styles.track} ${styles.trackThin}`}
-                                    tabIndex={has ? 0 : -1}
-                                    aria-label={`${s.label} · ${r.label}: ${has ? format(v) : missingLabel}`}
                                     onMouseEnter={has ? e => show(e, tipText(format(v), `${s.label} · ${r.tipLabel || ''}`)) : undefined}
-                                    onFocus={has ? e => show(e, tipText(format(v), `${s.label} · ${r.tipLabel || ''}`)) : undefined}
                                     onMouseLeave={hide}
-                                    onBlur={hide}
                                 >
+                                    {/*
+                                      * Which series this bar belongs to is shown
+                                      * by its colour and by the legend above,
+                                      * neither of which a screen reader reading
+                                      * the row can use. Without this the row is
+                                      * two bare numbers.
+                                      */}
+                                    <span className={styles.srOnly}>{s.label}: </span>
                                     {has ? (
                                         <>
                                             <div className={`${styles.bar} ${styles[s.tone]}`} style={{width: `${v}%`}}/>
@@ -389,11 +390,8 @@ export const FailureMatrix = ({pages, checks, legend, passLabel, tipFor, columnT
                                     key={c.id}
                                     scope="col"
                                     className={styles.matrixCol}
-                                    tabIndex={0}
                                     onMouseEnter={e => show(e, tipText(c.count, columnTipFor(c)))}
-                                    onFocus={e => show(e, tipText(c.count, columnTipFor(c)))}
                                     onMouseLeave={hide}
-                                    onBlur={hide}
                                 >
                                     <span className={styles.matrixColLabel}>{c.label}</span>
                                 </th>
@@ -415,22 +413,33 @@ export const FailureMatrix = ({pages, checks, legend, passLabel, tipFor, columnT
                                 {checks.map(c => {
                                     const failed = pg.failed.includes(c.id);
                                     return (
-                                        <td key={c.id} className={styles.matrixCell}>
+                                        <td
+                                            key={c.id}
+                                            className={styles.matrixCell}
+                                            onMouseEnter={e => show(e, tipText(failed ? legend[c.severity] : passLabel, tipFor(pg, c)))}
+                                            onMouseLeave={hide}
+                                        >
                                             {/*
-                                              * Severity was carried by background color alone: a
-                                              * blank, unlabelled span whose only signal was a hue.
-                                              * The name repeats what the color means in words, for
-                                              * whoever cannot see it.
+                                              * Severity was carried by background colour alone: a
+                                              * blank span whose only signal was a hue, made a tab
+                                              * stop and named with an aria-label. On a full scan
+                                              * that is a page times a check of tab stops - upwards
+                                              * of three hundred - to read a grid this table already
+                                              * describes.
+                                              *
+                                              * The word goes IN the cell instead, hidden visually.
+                                              * The surrounding <table> has real scope="col" and
+                                              * scope="row" headers, so a screen reader reading this
+                                              * cell announces the page and the check with it and
+                                              * navigates the grid with its own table commands.
                                               */}
                                             <span
+                                                aria-hidden="true"
                                                 className={`${styles.cell} ${failed ? tone(c.severity) : styles.cellPass}`}
-                                                tabIndex={failed ? 0 : -1}
-                                                aria-label={`${pg.label} · ${c.label}: ${failed ? legend[c.severity] : passLabel}`}
-                                                onMouseEnter={e => show(e, tipText(failed ? legend[c.severity] : passLabel, tipFor(pg, c)))}
-                                                onFocus={e => show(e, tipText(failed ? legend[c.severity] : passLabel, tipFor(pg, c)))}
-                                                onMouseLeave={hide}
-                                                onBlur={hide}
                                             />
+                                            <span className={styles.srOnly}>
+                                                {failed ? legend[c.severity] : passLabel}
+                                            </span>
                                         </td>
                                     );
                                 })}

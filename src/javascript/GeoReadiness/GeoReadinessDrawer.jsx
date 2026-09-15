@@ -152,11 +152,21 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     }
 
     return (
-        <aside
+        // A real <dialog> rather than an <aside role="dialog">. Rendered with
+        // the `open` attribute and NOT via showModal(): showModal() promotes the
+        // node to the browser's top layer, which would take it out of
+        // jContent's stacking context and break the panel's placement. With
+        // `open` it stays in normal flow and keeps its own positioning, while
+        // the element itself carries the dialog semantics.
+        //
+        // aria-modal and the focus trap stay explicit for the same reason -
+        // they are ours to enforce, not the browser's, when the dialog is
+        // non-modal.
+        <dialog
             ref={drawerRef}
+            open
             className={styles.drawer}
             aria-label={t('drawer.title')}
-            role="dialog"
             aria-modal="true"
             tabIndex={-1}
             onKeyDown={onKeyDown}
@@ -349,7 +359,7 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                     </div>
                 )}
             </div>
-        </aside>
+        </dialog>
     );
 };
 

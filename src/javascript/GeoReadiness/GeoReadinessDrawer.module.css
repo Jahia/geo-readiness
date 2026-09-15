@@ -1,4 +1,13 @@
 .drawer {
+    /* The UA stylesheet gives <dialog> padding: 1em, a solid border, auto
+       margins, fit-content sizing and its own colours. Cleared here so the
+       element behaves as the panel it is; everything below is the real style. */
+    padding: 0;
+    margin: 0;
+    border: none;
+    color: inherit;
+    max-height: none;
+
     position: fixed;
     top: 0;
     right: 0;
