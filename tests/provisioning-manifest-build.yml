@@ -2,10 +2,20 @@
 # integration-tests action, so this manifest does NOT install it. What it does is
 # make the instance able to resolve everything else the suite needs.
 #
-# geo-readiness declares <jahia-depends>default</jahia-depends> and nothing more,
-# so it has no module dependencies. The suite's own requirement is a template set
-# for createSite — override with CYPRESS_GEO_TEMPLATE_SET if the image already
-# ships a different one.
+# geo-readiness declares:
+#
+#   Jahia-Depends: default,jcontent,robots,llms
+#
+# `default` and `jcontent` ship with the platform. `robots` and `llms` are
+# community modules and do NOT, so they are installed here. Without them the
+# module never resolves and every spec fails on a 404 from a servlet that was
+# never mounted:
+#
+#   BundleException: Unable to resolve geo-readiness: missing requirement
+#   com.jahia.modules.dependencies; (moduleIdentifier=robots)
+#
+# The suite's own requirement on top of that is a template set for createSite —
+# override with CYPRESS_GEO_TEMPLATE_SET if the image already ships a different one.
 #
 # Applied by the CI action as ${MANIFEST}. By hand:
 #   curl -s --fail -u root:<pwd> -X POST \
@@ -15,7 +25,21 @@
 
 - addMavenRepository: 'https://store.jahia.com/nexus/content/repositories/jahia-public-app-store@id=JahiaStore'
 - addMavenRepository: 'https://devtools.jahia.com/nexus/content/groups/public/@snapshots@noreleases@id=JahiaSnapshot'
+- addMavenRepository: 'https://devtools.jahia.com/nexus/content/groups/public/@id=JahiaDevtools'
 
 - installBundle: "mvn:org.jahia.modules/dx-base-demo-templates/2.4.0"
+  autoStart: true
+  ignoreIfPresent: true
+
+# Module dependencies of geo-readiness.
+#
+# robots resolves from the devtools group above. llms is not published to any
+# Maven repository reachable without credentials, so it is taken from its GitHub
+# release; swap this for an mvn: coordinate once it is published.
+- installBundle: "mvn:org.jahia.modules/robots/3.0.0"
+  autoStart: true
+  ignoreIfPresent: true
+
+- installBundle: "https://github.com/Jahia/llms/releases/download/1_0_0/llms-1.0.0.jar"
   autoStart: true
   ignoreIfPresent: true

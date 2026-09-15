@@ -4,6 +4,7 @@
   "private": true,
   "description": "Cypress end-to-end suite for the geo-readiness Jahia UI extension",
   "license": "MIT",
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
   "engines": {
     "node": ">=20.19"
   },
@@ -20,6 +21,7 @@
     "cross-fetch": "^4.1.0",
     "cypress": "^13.15.0",
     "cypress-multi-reporters": "^2.0.4",
+    "cypress-wait-until": "^3.0.2",
     "mocha": "^10.8.2",
     "mocha-junit-reporter": "^2.2.1",
     "mochawesome": "^7.1.3",
@@ -29,6 +31,7 @@
   },
   "comments": {
     "cross-fetch": "Not used by this suite directly. @jahia/cypress 8.5.0 requires it from dist/support/apollo/links.js without declaring it, and @apollo/client 3.14 no longer pulls it in, so the support file fails to bundle without it. Remove once the dependency is declared upstream — see tests/README.md.",
-    "mochawesome": "Same story: dist/support/contextReporter.js requires mochawesome/addContext without declaring it. It doubles as this suite's reporter, so it is wanted here either way."
+    "mochawesome": "Same story: dist/support/contextReporter.js requires mochawesome/addContext without declaring it. It doubles as this suite's reporter, so it is wanted here either way.",
+    "cypress-wait-until": "Same story as cross-fetch. @jahia/cypress 8.5.0 requires it from dist/support/commands.js but declares it only in its OWN devDependencies, so a consumer never gets it installed. Without it cy.waitUntil is undefined and every spec that publishes content dies in its before-all hook with \"TypeError: cy.waitUntil is not a function\". Remove once the dependency is declared upstream."
   }
 }
