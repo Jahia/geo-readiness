@@ -14,19 +14,55 @@ integration-tests workflow — see the root-file section at the end, which close
 
 ## Running it
 
+This harness has the same shape as the other Jahia modules' (`securitytxt`,
+`privateappstore`, `OSGi-modules-samples`): the `ci.*` and `env.*` scripts are thin
+wrappers that resolve the pinned `@jahia/cypress` from `package.json` and delegate to
+its CLI, and `set-env.sh` exports `.env` into the shell.
+
+### Everything in Docker, the way CI runs it
+
+```bash
+cd tests
+bash ci.build.sh      # build the tests image, stage ../target/*-SNAPSHOT.jar into ./artifacts
+bash ci.startup.sh    # boot Jahia + cypress, run the suite, exit with its status
+```
+
+Re-run `ci.build.sh` after **any** change under `tests/`, or the change never reaches the
+container and you debug a stale image.
+
+### Local node, the day-to-day loop
+
+Boot Jahia once, then run specs from your own machine:
+
 ```bash
 cd tests
 yarn install
+./ci.startup.sh notests    # Jahia only, no specs
+./env.run.sh               # provision the instance + run the suite once, headless
 
-# Against a Jahia on http://localhost:8080 with the super user password "root1234"
-yarn e2e:ci
-
-# Against any other instance — both variables are read by the @jahia/cypress env plugin
-JAHIA_URL=http://localhost:8080 SUPER_USER_PASSWORD=root yarn e2e:ci
-
-# Interactive
-yarn e2e:debug
+source set-env.sh          # REQUIRED, and again in every new terminal
+yarn e2e:debug             # interactive runner
 ```
+
+`source set-env.sh` is what puts `JAHIA_URL`, the super user credentials and the rest into
+the shell; Cypress reads them from there, so a fresh terminal has none until you re-source
+it.
+
+### Against an instance you already have
+
+Every value in `.env.example` is written `${NAME:-default}`, so anything already exported
+wins and you can override one for a single run without editing the file:
+
+```bash
+JAHIA_URL=http://localhost:8080 yarn e2e:ci
+JAHIA_IMAGE=ghcr.io/jahia/jahia-ee-dev:8.2.4.0 ./ci.startup.sh
+```
+
+> **The image matters.** `JAHIA_IMAGE` now defaults to
+> `ghcr.io/jahia/jahia-ee-dev:8-SNAPSHOT`, which is what the sibling harnesses use and what
+> is actually pullable. The previous default, `jahia/jahia-dev:8.2.4.0`, is not published
+> and fails with `pull access denied for jahia/jahia-dev`. Being an EE image it wants a
+> licence in `JAHIA_LICENSE`.
 
 Node **20.19 or newer** is required: `@jahia/cypress` 8.x pulls `@faker-js/faker` v10, which refuses
 to install on anything older. The failure looks like a repository problem and is not one.

@@ -13,8 +13,6 @@
 #
 # The module under test is NOT installed by this file. See tests/README.md.
 
-version: '3.8'
-
 services:
     jahia:
         image: '${JAHIA_IMAGE}'
