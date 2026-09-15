@@ -9,8 +9,25 @@ on:
   schedule:
     - cron: '0 4 * * 1,3,5' # At 4AM, on Monday, Wednesday and Friday
 
+# A read-only token. The repository default is write, which is what these jobs
+# would inherit if this block were missing: every action in them, and every
+# dependency of those actions, able to push to main. None of them needs it. The
+# release pushes over SSH, Nexus and Dependency-Track are given their own
+# credentials, and update-signature has nothing to commit for as long as this
+# pom declares no signature element.
+permissions:
+  contents: read
+
+# Each job below asks for a read-only token. The repository default is write,
+# which is what they would inherit otherwise: every action in them, and every
+# dependency of those actions, able to push to main. None of them needs it. The
+# release pushes over SSH, Nexus and Dependency-Track are given their own
+# credentials, and update-signature has nothing to commit for as long as this
+# pom declares no signature element.
 jobs:
   sonar-analysis:
+    permissions:
+      contents: read
     name: Sonar Analysis
     runs-on: ubuntu-latest
     strategy:

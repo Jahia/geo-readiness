@@ -28,10 +28,12 @@ public final class SiteFilesChecker {
      */
     public static final Map<String, String> AI_TOKENS = AiCrawlers.robotsTokens();
 
-    private static final Pattern MD_H1 = Pattern.compile("(?m)^#\\s+(.+)$");
-    private static final Pattern MD_H2 = Pattern.compile("(?m)^##\\s+(.+)$");
-    private static final Pattern MD_LINK = Pattern.compile("\\[[^\\]]*\\]\\([^)]+\\)");
-    private static final Pattern MD_QUOTE = Pattern.compile("(?m)^>\\s+\\S");
+    /* Bounded on purpose, for the reason set out at the top of PageFetch: these
+       run over a file fetched from somewhere else. */
+    private static final Pattern MD_H1 = Pattern.compile("(?m)^#\\s{1,20}(.{1,500})$");
+    private static final Pattern MD_H2 = Pattern.compile("(?m)^##\\s{1,20}(.{1,500})$");
+    private static final Pattern MD_LINK = Pattern.compile("\\[[^\\]]{0,500}\\]\\([^)]{1,2000}\\)");
+    private static final Pattern MD_QUOTE = Pattern.compile("(?m)^>\\s{1,20}\\S");
 
     private SiteFilesChecker() {
     }

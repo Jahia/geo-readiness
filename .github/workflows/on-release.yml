@@ -12,8 +12,25 @@ on:
   release:
     types: [prereleased]
 
+# A read-only token. The repository default is write, which is what these jobs
+# would inherit if this block were missing: every action in them, and every
+# dependency of those actions, able to push to main. None of them needs it. The
+# release pushes over SSH, Nexus and Dependency-Track are given their own
+# credentials, and update-signature has nothing to commit for as long as this
+# pom declares no signature element.
+permissions:
+  contents: read
+
+# Each job below asks for a read-only token. The repository default is write,
+# which is what they would inherit otherwise: every action in them, and every
+# dependency of those actions, able to push to main. None of them needs it. The
+# release pushes over SSH, Nexus and Dependency-Track are given their own
+# credentials, and update-signature has nothing to commit for as long as this
+# pom declares no signature element.
 jobs:
   on-release:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
 
     container:
@@ -61,6 +78,8 @@ jobs:
           nexus_password: ${{ secrets.NEXUS_PASSWORD }}
 
   sbom:
+    permissions:
+      contents: read
     name: SBOM processing
     needs: on-release
     runs-on: ubuntu-latest
