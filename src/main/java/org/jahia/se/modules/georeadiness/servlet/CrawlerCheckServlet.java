@@ -349,59 +349,76 @@ public class CrawlerCheckServlet extends HttpServlet {
         JSONObject score = GeoScore.compute(out);
         out.put("score", score);
 
-        // GEO-18. If the last site scan says this page's template fails the same
-        // checks everywhere, say so: it stops an author trying to fix something
-        // that is not theirs to fix. Silent when no scan has run.
-        try {
-            out.put("templateRollup", rollupFor(path, language, score));
-        } catch (Exception e) {
-            logger.debug("template rollup unavailable for {}", path, e);
-        }
-
-        // GEO-21, one line for this page, read from the last scan rather than by
-        // fetching a sitemap the drawer has no business downloading.
-        try {
-            out.put("sitemap", sitemapFor(path, language));
-        } catch (Exception e) {
-            logger.debug("sitemap state unavailable for {}", path, e);
-        }
-
-        // GEO-22, likewise from the last scan: the graph needs every page on the
-        // site, which is not something a drawer can work out for one page.
-        try {
-            JSONObject links = linksFor(path, language);
-            if (links != null) {
-                out.put("links", links);
+        // Everything from here to the structured data below is site-wide and
+        // comes out of the stored scan, which ScanStore reads under a system
+        // session and says so: "Reading them is gated at the servlet instead".
+        // This servlet was the one that did not gate it. Read access to a single
+        // page therefore returned the site score, every section's score, the
+        // per-template failure counts, the sitemap and link state and the
+        // language coverage of a site the caller holds no dashboard permission
+        // on - the same data the dashboard servlets all require "publish" for.
+        //
+        // The per-page check above stays open to any editor who can open the
+        // drawer, because that is what the drawer is for. The fields below are
+        // simply left out when the caller is not entitled to them: the UI
+        // already renders without them, and a page check that fails outright
+        // would be a worse answer than one that says less.
+        boolean storedScanAllowed = mayReadStoredScan(path, language);
+        if (storedScanAllowed) {
+            // GEO-18. If the last site scan says this page's template fails the same
+            // checks everywhere, say so: it stops an author trying to fix something
+            // that is not theirs to fix. Silent when no scan has run.
+            try {
+                out.put("templateRollup", rollupFor(path, language, score));
+            } catch (Exception e) {
+                logger.debug("template rollup unavailable for {}", path, e);
             }
-        } catch (Exception e) {
-            logger.debug("link counts unavailable for {}", path, e);
-        }
 
-        // GEO-25, from the last scan: which addresses a page answers on is a
-        // site-wide question, not one the drawer can answer for a single page.
-        try {
-            JSONObject vanity = vanityFor(path, language);
-            if (vanity != null) {
-                out.put("vanity", vanity);
+            // GEO-21, one line for this page, read from the last scan rather than by
+            // fetching a sitemap the drawer has no business downloading.
+            try {
+                out.put("sitemap", sitemapFor(path, language));
+            } catch (Exception e) {
+                logger.debug("sitemap state unavailable for {}", path, e);
             }
-        } catch (Exception e) {
-            logger.debug("vanity state unavailable for {}", path, e);
-        }
 
-        // GEO-20, one line while editing: the languages this page is missing
-        // are something the author in front of it can act on today.
-        try {
-            out.put("languages", languagesFor(path, language));
-        } catch (Exception e) {
-            logger.debug("language coverage unavailable for {}", path, e);
-        }
+            // GEO-22, likewise from the last scan: the graph needs every page on the
+            // site, which is not something a drawer can work out for one page.
+            try {
+                JSONObject links = linksFor(path, language);
+                if (links != null) {
+                    out.put("links", links);
+                }
+            } catch (Exception e) {
+                logger.debug("link counts unavailable for {}", path, e);
+            }
 
-        // Where this page stands against the site and its section, and whether
-        // it is in llms.txt. Both read from the last scan.
-        try {
-            out.put("context", contextFor(path, language));
-        } catch (Exception e) {
-            logger.debug("page context unavailable for {}", path, e);
+            // GEO-25, from the last scan: which addresses a page answers on is a
+            // site-wide question, not one the drawer can answer for a single page.
+            try {
+                JSONObject vanity = vanityFor(path, language);
+                if (vanity != null) {
+                    out.put("vanity", vanity);
+                }
+            } catch (Exception e) {
+                logger.debug("vanity state unavailable for {}", path, e);
+            }
+
+            // GEO-20, one line while editing: the languages this page is missing
+            // are something the author in front of it can act on today.
+            try {
+                out.put("languages", languagesFor(path, language));
+            } catch (Exception e) {
+                logger.debug("language coverage unavailable for {}", path, e);
+            }
+
+            // Where this page stands against the site and its section, and whether
+            // it is in llms.txt. Both read from the last scan.
+            try {
+                out.put("context", contextFor(path, language));
+            } catch (Exception e) {
+                logger.debug("page context unavailable for {}", path, e);
+            }
         }
 
         // GEO-23. Generated, shown, and copied by a human - never written into
@@ -411,7 +428,10 @@ public class CrawlerCheckServlet extends HttpServlet {
                     ? null : out.getJSONArray("agents").optJSONObject(0);
             JSONObject html = firstAgent == null ? null : firstAgent.optJSONObject("html");
             String pageTitle = html == null ? null : html.optString("title", null);
-            out.put("schema", schemaFor(path, language, req, resp, pageTitle));
+            // The JSON-LD is derived from this page's own content, so it stays
+            // available; the overrides it can be tuned with are stored scan data
+            // and are only read for a caller entitled to that.
+            out.put("schema", schemaFor(path, language, req, resp, pageTitle, storedScanAllowed));
         } catch (Exception e) {
             logger.debug("structured data unavailable for {}", path, e);
         }
@@ -423,6 +443,29 @@ public class CrawlerCheckServlet extends HttpServlet {
 
 
 
+
+    /**
+     * True when the caller may be shown what the stored scan holds about this
+     * page's site.
+     *
+     * The same gate the dashboard servlets use, SiteScanServlet, SiteFilesServlet
+     * and GeoReportServlet alike: SiteScope.DASHBOARD on the site the path
+     * resolves to, decided in the caller's own session. Anything else - no
+     * permission, no such node, or a repository that cannot answer - omits the
+     * data, because "could not establish the permission" is not "has it".
+     */
+    private static boolean mayReadStoredScan(String path, String language) {
+        try {
+            SiteScope.require(path, language, SiteScope.DASHBOARD);
+            return true;
+        } catch (javax.jcr.PathNotFoundException | javax.jcr.AccessDeniedException e) {
+            logger.debug("no dashboard permission on {}, leaving the stored scan out", path, e);
+            return false;
+        } catch (RepositoryException e) {
+            logger.warn("Could not check the dashboard permission on {}: {}", path, e.getMessage());
+            return false;
+        }
+    }
 
     /** What the stored scan knows about this page's template, or an empty object. */
     private JSONObject rollupFor(String path, String language, JSONObject score) throws Exception {
@@ -521,12 +564,17 @@ public class CrawlerCheckServlet extends HttpServlet {
      * makes structured data worse than none when it is broken.
      */
     private JSONObject schemaFor(String path, String language, HttpServletRequest req,
-            HttpServletResponse resp, String pageTitle) throws Exception {
+            HttpServletResponse resp, String pageTitle, boolean withStoredOverrides) throws Exception {
         JCRSessionWrapper live = JCRSessionFactory.getInstance()
                 .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
         JCRNodeWrapper node = live.getNode(path);
         String sitePath = node.getResolveSite().getPath();
-        JSONObject overrides = ScanStore.read(sitePath, language).optJSONObject("schemaMap");
+        // The overrides are the one part of this that is site configuration read
+        // from the stored scan, so they follow the same permission as the rest
+        // of it. Without them the generator falls back to the defaults, which is
+        // what it does on a site that has never been scanned.
+        JSONObject overrides = withStoredOverrides
+                ? ScanStore.read(sitePath, language).optJSONObject("schemaMap") : null;
         String base = org.jahia.se.modules.georeadiness.util.PublicUrls
                 .base(node, req, config.getPublicBaseUrl());
         return StructuredData.forNode(path, language, base, overrides, pageTitle);

@@ -1,5 +1,6 @@
 package org.jahia.se.modules.georeadiness.config;
 
+import org.jahia.se.modules.georeadiness.util.FetchGuard;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
@@ -36,7 +37,14 @@ public class GeoReadinessConfigService {
     @Activate
     @Modified
     protected void activate(Map<String, Object> properties) {
-        this.config.set(Snapshot.from(properties));
+        Snapshot snapshot = Snapshot.from(properties);
+        this.config.set(snapshot);
+        // The fetchers are static utilities, reached from a servlet thread and
+        // from the scheduler alike, and they have to know which single address
+        // an operator has explicitly pointed this module at: FetchGuard refuses
+        // private addresses, and PUBLIC_BASE_URL is documented for exactly the
+        // deployment where the site only answers on one.
+        FetchGuard.trustBase(snapshot.publicBaseUrl);
     }
 
     public int getFetchTimeoutMs() {

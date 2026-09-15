@@ -42,6 +42,11 @@ public final class MockHttp {
                         case "getServerName":
                             return host;
                         case "getServerPort":
+                        // The socket port, which is what PublicUrls.base reads now
+                        // that a real request's Host header may not be believed for
+                        // it. Without this the proxy's default of 0 would be taken
+                        // for the port and a request-free url would lose it.
+                        case "getLocalPort":
                             return port;
                         case "getContextPath":
                             return ctx;
