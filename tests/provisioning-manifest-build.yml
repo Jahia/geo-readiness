@@ -27,7 +27,31 @@
 - addMavenRepository: 'https://devtools.jahia.com/nexus/content/groups/public/@snapshots@noreleases@id=JahiaSnapshot'
 - addMavenRepository: 'https://devtools.jahia.com/nexus/content/groups/public/@id=JahiaDevtools'
 
-- installBundle: "mvn:org.jahia.modules/dx-base-demo-templates/2.4.0"
+# UNRESOLVED — this entry does not currently work, and it is why 16 specs fail.
+#
+# createSite needs a template set. Without one it silently creates nothing:
+# /sites holds only systemsite, and every endpoint then answers 403, because a
+# site that is not there fails SiteScope.require with PathNotFoundException,
+# which the servlets report as "cannot read node". The 403 is three steps
+# removed from the cause, which is why this took a probe to find.
+#
+# Measured against ghcr.io/jahia/jahia-ee-dev:8-SNAPSHOT:
+#
+#   - 2.4.0 does not exist. The artifact is not in the app store at any version;
+#     it is published to the devtools group, where the release is 4.0.0.
+#   - 4.0.0 downloads, but will not resolve on this image:
+#       BundleException: missing requirement com.jahia.services.content;
+#       (nodetypes=bootstrap3mix:advancedPagination)
+#     i.e. it wants the bootstrap3 template chain, which the image does not ship.
+#   - the image ships no site template set of its own — the only candidate in
+#     /modules is templates-system, which is the platform's base, not a set
+#     createSite can build a site from.
+#
+# Someone who knows which template set this suite is meant to run against needs
+# to decide: install the bootstrap3 chain alongside 4.0.0, pick a different set
+# and point the suite at it with CYPRESS_GEO_TEMPLATE_SET, or use an image that
+# ships one. Left here deliberately rather than silently dropped.
+- installBundle: "mvn:org.jahia.modules/dx-base-demo-templates/4.0.0"
   autoStart: true
   ignoreIfPresent: true
 
