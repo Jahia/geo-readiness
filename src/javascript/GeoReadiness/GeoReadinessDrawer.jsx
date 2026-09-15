@@ -115,6 +115,25 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
         }
     }, [onClose]);
 
+    // Bound to the node rather than declared as an onKeyDown prop.
+    //
+    // A <dialog> carries an implicit `dialog` role, which is non-interactive -
+    // and a key listener on a non-interactive element is exactly the mistake
+    // that rule exists to catch, because it usually means a div is impersonating
+    // a control. Here the keys are the dialog's OWN behaviour: Escape closes it
+    // and Tab is trapped inside it. A modal dialog gets both from the browser;
+    // this one is deliberately non-modal (see the element below) so it has to
+    // implement them. Binding on the element says that, and keeps the markup
+    // free of a handler that would read as the mistake.
+    useEffect(() => {
+        const node = drawerRef.current;
+        if (!isOpen || !node) {
+            return undefined;
+        }
+        node.addEventListener('keydown', onKeyDown);
+        return () => node.removeEventListener('keydown', onKeyDown);
+    }, [isOpen, onKeyDown]);
+
     useEffect(() => {
         if (!isOpen) {
             return;
@@ -169,7 +188,6 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
             aria-label={t('drawer.title')}
             aria-modal="true"
             tabIndex={-1}
-            onKeyDown={onKeyDown}
         >
             <header className={styles.header}>
                 <div>
