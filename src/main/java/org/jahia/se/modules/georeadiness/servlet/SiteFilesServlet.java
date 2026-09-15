@@ -27,9 +27,7 @@ import javax.servlet.Servlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -63,7 +61,7 @@ import java.util.Map;
                 "service.vendor=Jahia Solutions Group SA"
         },
         immediate = true)
-public class SiteFilesServlet extends HttpServlet {
+public class SiteFilesServlet extends GeoServlet {
 
     private static final Logger logger = LoggerFactory.getLogger(SiteFilesServlet.class);
 
@@ -313,41 +311,5 @@ public class SiteFilesServlet extends HttpServlet {
         out.put("sitePath", site.getPath());
         out.put("bytes", content.getBytes(StandardCharsets.UTF_8).length);
         return out;
-    }
-
-    private static JahiaUser currentUser() {
-        try {
-            return JCRSessionFactory.getInstance().getCurrentUser();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static String read(InputStream in, int max) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        int n;
-        int total = 0;
-        while ((n = in.read(buf)) != -1) {
-            total += n;
-            out.write(buf, 0, n);
-            if (total >= max) {
-                break;
-            }
-        }
-        return new String(out.toByteArray(), StandardCharsets.UTF_8);
-    }
-
-    private static void deny(HttpServletResponse resp, int code, String msg) throws IOException {
-        JSONObject o = new JSONObject();
-        o.put("error", msg);
-        writeJson(resp, code, o);
-    }
-
-    private static void writeJson(HttpServletResponse resp, int code, JSONObject body) throws IOException {
-        resp.setStatus(code);
-        resp.setContentType("application/json;charset=UTF-8");
-        resp.setHeader("Cache-Control", "no-store");
-        resp.getWriter().write(body.toString());
     }
 }

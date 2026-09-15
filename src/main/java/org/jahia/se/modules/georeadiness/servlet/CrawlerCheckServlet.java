@@ -22,7 +22,6 @@ import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.usermanager.JahiaUser;
-import org.jahia.services.usermanager.JahiaUserManagerService;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.osgi.service.component.annotations.Activate;
@@ -36,13 +35,8 @@ import javax.servlet.Servlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -54,9 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * GEO-16, the crawler access check.
@@ -86,7 +78,7 @@ import java.util.stream.Collectors;
                 "service.vendor=Jahia Solutions Group SA"
         },
         immediate = true)
-public class CrawlerCheckServlet extends HttpServlet {
+public class CrawlerCheckServlet extends GeoServlet {
 
     private static final Logger logger = LoggerFactory.getLogger(CrawlerCheckServlet.class);
 
@@ -105,6 +97,9 @@ public class CrawlerCheckServlet extends HttpServlet {
      * the timeout is the safety net, the concurrency is the compromise.
      */
     private static final int FETCH_CONCURRENCY = 3;
+
+    /** A path and a language. Anything larger is not this endpoint's request. */
+    private static final int MAX_BODY = 64_000;
 
     /**
      * How much of robots.txt the UI is shown. A readable excerpt, not the whole
@@ -178,7 +173,20 @@ public class CrawlerCheckServlet extends HttpServlet {
      * stays silent. Every call below is therefore a single "if ... return".
      */
     private void dispatch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        JSONObject body = acceptedBody(req, resp);
+        JahiaUser user = requireUser(resp);
+        if (user == null) {
+            return;
+        }
+        // Metered BEFORE the body is read, so a flood of malformed bodies still
+        // spends the caller's budget rather than being refused for free.
+        if (!isJsonRequest(req, resp)) {
+            return;
+        }
+        if (!rateLimitOk(user.getUserKey(), config.getRateWindowMs(), config.getRateMaxCalls())) {
+            deny(resp, 429, "rate limit");
+            return;
+        }
+        JSONObject body = jsonBody(req, resp, MAX_BODY);
         if (body == null) {
             return;
         }
@@ -192,51 +200,6 @@ public class CrawlerCheckServlet extends HttpServlet {
             return;
         }
         writeJson(resp, HttpServletResponse.SC_OK, report(path, language, publicUrl, req));
-    }
-
-    /**
-     * The request body, once the caller has been let through; null when it has
-     * been refused and answered.
-     *
-     * Four refusals, in the order that costs least: who is asking, then whether
-     * this is a same-origin JSON call at all, then their rate, and only then is
-     * anything read off the wire.
-     */
-    private JSONObject acceptedBody(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        JahiaUser user = currentUser();
-        if (user == null || JahiaUserManagerService.GUEST_USERNAME.equals(user.getName())) {
-            deny(resp, HttpServletResponse.SC_UNAUTHORIZED, "authentication required");
-            return null;
-        }
-        // CSRF: same-origin JSON only. A form post or a cross-site request cannot set these.
-        String ctype = req.getContentType();
-        if (ctype == null || !ctype.toLowerCase(Locale.ROOT).contains("application/json")) {
-            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "json required");
-            return null;
-        }
-        if (!rateLimitOk(user.getUserKey())) {
-            deny(resp, 429, "rate limit");
-            return null;
-        }
-        try {
-            return new JSONObject(read(req.getInputStream(), 64_000));
-        } catch (Exception e) {
-            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "malformed body");
-            return null;
-        }
-    }
-
-    /** True when the body names a site path and a language; answers 400 when not. */
-    private boolean isWellFormed(String path, String language, HttpServletResponse resp) throws IOException {
-        if (path.isEmpty() || !path.startsWith("/sites/")) {
-            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "path required");
-            return false;
-        }
-        if (!SiteScope.isLanguage(language)) {
-            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "language required");
-            return false;
-        }
-        return true;
     }
 
     /**
@@ -797,60 +760,5 @@ public class CrawlerCheckServlet extends HttpServlet {
             }
         }
         return m.isEmpty() ? DEFAULT_AGENTS : m;
-    }
-
-    private boolean rateLimitOk(String userKey) {
-        long now = System.currentTimeMillis();
-        Deque<Long> w = callWindows.computeIfAbsent(userKey, k -> new ArrayDeque<>());
-        synchronized (w) {
-            while (!w.isEmpty() && now - w.peekFirst() > config.getRateWindowMs()) {
-                w.pollFirst();
-            }
-            if (w.size() >= config.getRateMaxCalls()) {
-                return false;
-            }
-            w.addLast(now);
-            return true;
-        }
-    }
-
-    private static JahiaUser currentUser() {
-        try {
-            return JCRSessionFactory.getInstance().getCurrentUser();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static boolean isGuest() {
-        JahiaUser u = currentUser();
-        return u == null || JahiaUserManagerService.GUEST_USERNAME.equals(u.getName());
-    }
-
-    private static String read(InputStream in, int max) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        int n, total = 0;
-        while ((n = in.read(buf)) != -1) {
-            total += n;
-            out.write(buf, 0, n);
-            if (total >= max) {
-                break;
-            }
-        }
-        return new String(out.toByteArray(), StandardCharsets.UTF_8);
-    }
-
-    private static void deny(HttpServletResponse resp, int code, String msg) throws IOException {
-        JSONObject o = new JSONObject();
-        o.put("error", msg);
-        writeJson(resp, code, o);
-    }
-
-    private static void writeJson(HttpServletResponse resp, int code, JSONObject body) throws IOException {
-        resp.setStatus(code);
-        resp.setContentType("application/json;charset=UTF-8");
-        resp.setHeader("Cache-Control", "no-store");
-        resp.getWriter().write(body.toString());
     }
 }

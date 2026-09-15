@@ -24,11 +24,7 @@ import javax.servlet.Servlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Locale;
 import java.util.Map;
@@ -54,7 +50,7 @@ import java.util.concurrent.ConcurrentHashMap;
                 "service.vendor=Jahia Solutions Group SA"
         },
         immediate = true)
-public class GeoReportServlet extends HttpServlet {
+public class GeoReportServlet extends GeoServlet {
 
     private static final Logger logger = LoggerFactory.getLogger(GeoReportServlet.class);
 
@@ -218,7 +214,7 @@ public class GeoReportServlet extends HttpServlet {
             deny(resp, HttpServletResponse.SC_CONFLICT, "no provider configured");
             return;
         }
-        if (!rateLimitOk(user.getUserKey())) {
+        if (!rateLimitOk(user.getUserKey(), RATE_WINDOW_MS, config.getAiRateMaxCalls())) {
             deny(resp, TOO_MANY_REQUESTS, "rate limit");
             return;
         }
@@ -248,59 +244,8 @@ public class GeoReportServlet extends HttpServlet {
         return m.length() > 300 ? m.substring(0, 300) + "..." : m;
     }
 
-    private boolean rateLimitOk(String userKey) {
-        int max = Math.max(1, config.getAiRateMaxCalls());
-        long now = System.currentTimeMillis();
-        Deque<Long> w = callWindows.computeIfAbsent(userKey, k -> new ArrayDeque<>());
-        synchronized (w) {
-            while (!w.isEmpty() && now - w.peekFirst() > RATE_WINDOW_MS) {
-                w.pollFirst();
-            }
-            if (w.size() >= max) {
-                return false;
-            }
-            w.addLast(now);
-            return true;
-        }
-    }
-
-    private static JahiaUser currentUser() {
-        try {
-            return JCRSessionFactory.getInstance().getCurrentUser();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
     private static boolean guest() {
         JahiaUser u = currentUser();
         return u == null || JahiaUserManagerService.GUEST_USERNAME.equals(u.getName());
-    }
-
-    private static String read(InputStream in, int max) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        int n;
-        int total = 0;
-        while ((n = in.read(buf)) != -1) {
-            total += n;
-            if (total > max) {
-                throw new IOException("body too large");
-            }
-            out.write(buf, 0, n);
-        }
-        return out.toString(StandardCharsets.UTF_8.name());
-    }
-
-    private static void writeJson(HttpServletResponse resp, int status, JSONObject json) throws IOException {
-        resp.setStatus(status);
-        resp.setContentType("application/json;charset=UTF-8");
-        resp.setHeader("Cache-Control", "no-store");
-        resp.setHeader("X-Content-Type-Options", "nosniff");
-        resp.getWriter().write(json.toString());
-    }
-
-    private static void deny(HttpServletResponse resp, int status, String message) throws IOException {
-        writeJson(resp, status, new JSONObject().put("error", message));
     }
 }
