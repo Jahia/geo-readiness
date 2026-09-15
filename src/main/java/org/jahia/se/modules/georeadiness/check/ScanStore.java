@@ -41,6 +41,19 @@ public final class ScanStore {
     public static final String STATUS_DONE = "done";
     public static final String STATUS_FAILED = "failed";
 
+    /**
+     * How long a run may claim to be running before it is treated as abandoned.
+     *
+     * STATUS_RUNNING is only ever cleared by the scanning thread reaching
+     * finishRun or failRun, so a JVM kill, an OOM, an undeploy mid-scan or a
+     * cluster failover leaves it set for ever. Without this window the guard in
+     * tryBeginRun would then refuse every future scan of that site and language,
+     * with no way to clear it from the UI - trading a rare corruption for a
+     * permanent wedge. Six hours is well past the worst honest run: 2000 pages
+     * at one fetch each, with the fetch timeout at its default.
+     */
+    private static final long MAX_RUN_AGE_MS = 6L * 60 * 60 * 1000;
+
     // Config, on the store node itself.
     private static final String CRON = "geoCron";
     private static final String ENABLED = "geoEnabled";
@@ -100,12 +113,25 @@ public final class ScanStore {
             run.put("status", STATUS_IDLE);
             if (store.hasNode(language)) {
                 JCRNodeWrapper l = store.getNode(language);
-                run.put("status", str(l, STATUS, STATUS_IDLE));
+                String status = str(l, STATUS, STATUS_IDLE);
+
+                // Report an abandoned run as what it is. The dashboard polls
+                // every four seconds for as long as it reads "running", so a run
+                // whose thread died - JVM kill, undeploy, failover - left the
+                // panel showing a progress banner that would never move again,
+                // and there is no admin action in the UI to clear it.
+                if (STATUS_RUNNING.equals(status) && isAbandoned(l)) {
+                    status = STATUS_FAILED;
+                    run.put("message", "interrupted");
+                }
+                run.put("status", status);
                 run.put("startedAt", date(l, STARTED));
                 run.put("finishedAt", date(l, FINISHED));
                 run.put("pagesDone", num(l, DONE_COUNT));
                 run.put("pagesTotal", num(l, TOTAL_COUNT));
-                run.put("message", str(l, MESSAGE, ""));
+                if (!run.has("message")) {
+                    run.put("message", str(l, MESSAGE, ""));
+                }
                 run.put("aggregate", json(l, AGGREGATE));
                 run.put("previous", json(l, PREVIOUS));
                 run.put("failures", json(l, FAILURES));
@@ -230,9 +256,32 @@ public final class ScanStore {
         });
     }
 
-    public static void beginRun(String sitePath, String language, long total) throws RepositoryException {
-        inStore(sitePath, (store, session) -> {
+    /**
+     * Claim the run for this site and language, or report that someone else
+     * holds it.
+     *
+     * Nothing used to check. A double-click on "Scan now", or a cron trigger
+     * firing while an editor ran one by hand, started two scans over the same
+     * stored state: the second copied the FIRST run's half-written aggregate
+     * into PREVIOUS, so "movement since the last run" became meaningless, both
+     * raced on progress() and finishRun(), and pagesDone walked backwards in the
+     * polling UI.
+     *
+     * The read, the decision and the write are one inStore callback and one
+     * session.save(), so they are a single JCR transaction rather than three
+     * separate ones with a window between them. A JVM-local flag would not do:
+     * the cron job and the manual run can land on different cluster nodes.
+     *
+     * @return false when a run younger than {@link #MAX_RUN_AGE_MS} is already
+     *         in flight, in which case nothing was written.
+     */
+    public static boolean tryBeginRun(String sitePath, String language, long total) throws RepositoryException {
+        return inStore(sitePath, (store, session) -> {
             JCRNodeWrapper l = language(store, language);
+
+            if (STATUS_RUNNING.equals(str(l, STATUS, STATUS_IDLE)) && !isAbandoned(l)) {
+                return false;
+            }
             // The previous aggregate is kept before it is overwritten: "movement
             // since the last run" is the only reason to store it at all.
             if (l.hasProperty(AGGREGATE)) {
@@ -244,8 +293,21 @@ public final class ScanStore {
             l.setProperty(TOTAL_COUNT, total);
             l.setProperty(MESSAGE, "");
             session.save();
-            return null;
+            return true;
         });
+    }
+
+    /**
+     * True when a run claiming to be running started longer ago than any honest
+     * run could last, so the thread that owned it is gone.
+     */
+    private static boolean isAbandoned(JCRNodeWrapper l) throws RepositoryException {
+        if (!l.hasProperty(STARTED)) {
+            // Running with no start date is incoherent on its face; let it go.
+            return true;
+        }
+        long startedAt = l.getProperty(STARTED).getDate().getTimeInMillis();
+        return System.currentTimeMillis() - startedAt > MAX_RUN_AGE_MS;
     }
 
     /** Called every N pages, not every page: silence reads as a hang, but so does a write storm. */

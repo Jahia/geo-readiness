@@ -74,7 +74,12 @@ public final class SiteScorer {
         List<String> paths = JCRTemplate.getInstance().doExecuteWithSystemSession(null, "live", locale,
                 (JCRCallback<List<String>>) session -> publishedPages(session, root, opts.maxPages));
 
-        ScanStore.beginRun(sitePath, language, paths.size());
+        // Claim the run before any of the work below. Refused means someone
+        // else is already scanning this site and language, and the two runs
+        // would otherwise interleave their writes to the same stored state.
+        if (!ScanStore.tryBeginRun(sitePath, language, paths.size())) {
+            throw new ScanInProgressException(sitePath, language);
+        }
 
         // The two site files are fetched once for the whole site, not once per
         // page: they are the same file for every row.

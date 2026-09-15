@@ -5,6 +5,7 @@ import org.jahia.se.modules.georeadiness.check.Freshness;
 import org.jahia.se.modules.georeadiness.check.Languages;
 import org.jahia.se.modules.georeadiness.check.SchemaMap;
 import org.jahia.se.modules.georeadiness.check.StructuredData;
+import org.jahia.se.modules.georeadiness.check.ScanInProgressException;
 import org.jahia.se.modules.georeadiness.check.ScanStore;
 import org.jahia.se.modules.georeadiness.check.SiteScorer;
 import org.jahia.se.modules.georeadiness.check.SitemapCheck;
@@ -222,6 +223,11 @@ public class SiteScanServlet extends HttpServlet {
                 default:
                     deny(resp, HttpServletResponse.SC_BAD_REQUEST, "unknown action");
             }
+        } catch (ScanInProgressException e) {
+            // 409, not 500: nothing is broken, the site is simply busy. The
+            // dashboard polls scanStatus, so the editor sees the run that is
+            // already going rather than being told to retry into a collision.
+            deny(resp, HttpServletResponse.SC_CONFLICT, "a scan is already running");
         } catch (Exception e) {
             logger.warn("site-scan {} failed for {}: {}", action, path, e.getMessage());
             logger.debug("site-scan failure", e);
@@ -295,6 +301,10 @@ public class SiteScanServlet extends HttpServlet {
         opts.scope = scope;
         try {
             SiteScorer.scan(sitePath, language, opts);
+        } catch (ScanInProgressException e) {
+            // Not a failure, and emphatically not ours to mark failed: the run
+            // that holds it is still going. Re-thrown for dispatch to answer 409.
+            throw e;
         } catch (Exception e) {
             ScanStore.failRun(sitePath, language, "scan failed");
             throw e;
