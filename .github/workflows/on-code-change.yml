@@ -4,6 +4,10 @@
 # their major alias @v2 (a generated Git tag, re-pointed by every v2.x.y release).
 name: On Code Change (PR)
 
+permissions:
+  contents: read
+  packages: read
+
 on:
   pull_request:
     types: [opened, reopened, synchronize]
