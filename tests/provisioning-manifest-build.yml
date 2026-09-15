@@ -2,10 +2,29 @@
 # integration-tests action, so this manifest does NOT install it. What it does is
 # make the instance able to resolve everything else the suite needs.
 #
-# geo-readiness declares <jahia-depends>default</jahia-depends> and nothing more,
-# so it has no module dependencies. The suite's own requirement is a template set
-# for createSite — override with CYPRESS_GEO_TEMPLATE_SET if the image already
-# ships a different one.
+# Two groups, for two different reasons.
+#
+# 1. geo-readiness declares:
+#
+#      Jahia-Depends: default,jcontent,robots,llms
+#
+#    `default` and `jcontent` ship with the platform. `robots` and `llms` do not.
+#    Without them the module never resolves and every spec fails on a 404 from a
+#    servlet that was never mounted:
+#
+#      BundleException: Unable to resolve geo-readiness: missing requirement
+#      com.jahia.modules.dependencies; (moduleIdentifier=robots)
+#
+# 2. The suite calls createSite, which needs a template set. Without one it
+#    silently creates nothing, /sites keeps only systemsite, and every endpoint
+#    answers 403 — because a site that is not there fails SiteScope.require with
+#    PathNotFoundException, which the servlets report as "cannot read node". The
+#    403 is three steps removed from the cause.
+#
+#    dx-base-demo-templates cannot be installed on its own: it wants
+#    bootstrap3mix:advancedPagination, which comes from bootstrap3-core. The list
+#    below is the one the sibling harnesses provision (securitytxt's
+#    tests/assets/provisioning.yml), which is the known-good set for this image.
 #
 # Applied by the CI action as ${MANIFEST}. By hand:
 #   curl -s --fail -u root:<pwd> -X POST \
@@ -15,7 +34,43 @@
 
 - addMavenRepository: 'https://store.jahia.com/nexus/content/repositories/jahia-public-app-store@id=JahiaStore'
 - addMavenRepository: 'https://devtools.jahia.com/nexus/content/groups/public/@snapshots@noreleases@id=JahiaSnapshot'
+- addMavenRepository: 'https://devtools.jahia.com/nexus/content/groups/public/@id=JahiaDevtools'
 
-- installBundle: "mvn:org.jahia.modules/dx-base-demo-templates/2.4.0"
+# Module dependencies of geo-readiness.
+#
+# robots resolves from the devtools group above. llms is not published to any
+# Maven repository reachable without credentials, so it is taken from its GitHub
+# release; swap this for an mvn: coordinate once it is published.
+- installBundle: "mvn:org.jahia.modules/robots/3.0.0"
   autoStart: true
   ignoreIfPresent: true
+
+- installBundle: "https://github.com/Jahia/llms/releases/download/1_0_0/llms-1.0.0.jar"
+  autoStart: true
+  ignoreIfPresent: true
+
+# The template set and the chain it needs, as provisioned by the sibling
+# harnesses. dx-base-demo-templates is the set createSite builds from;
+# bootstrap3-core carries the nodetypes it requires.
+- installBundle:
+      - 'mvn:org.jahia.modules/bookmarks/3.1.0'
+      - 'mvn:org.jahia.modules/bootstrap3-components/4.3.0'
+      - 'mvn:org.jahia.modules/bootstrap3-core/4.3.0'
+      - 'mvn:org.jahia.modules/calendar/3.2.0'
+      - 'mvn:org.jahia.modules/default-skins/8.2.0'
+      - 'mvn:org.jahia.modules/dx-base-demo-components/3.0.0'
+      - 'mvn:org.jahia.modules/dx-base-demo-core/2.6.0'
+      - 'mvn:org.jahia.modules/dx-base-demo-templates/4.0.0'
+      - 'mvn:org.jahia.modules/event/4.0.1'
+      - 'mvn:org.jahia.modules/font-awesome/6.1.5'
+      - 'mvn:org.jahia.modules/grid/8.1.0'
+      - 'mvn:org.jahia.modules/legacy-default-components/1.0.0'
+      - 'mvn:org.jahia.modules/location/3.2.0'
+      - 'mvn:org.jahia.modules/news/3.4.0'
+      - 'mvn:org.jahia.modules/person/3.2.0'
+      - 'mvn:org.jahia.modules/press/3.1.0'
+      - 'mvn:org.jahia.modules/rating/3.3.0'
+      - 'mvn:org.jahia.modules/skins/8.2.0'
+      - 'mvn:org.jahia.modules/topstories/3.0.0'
+  autoStart: true
+  uninstallPreviousVersion: true

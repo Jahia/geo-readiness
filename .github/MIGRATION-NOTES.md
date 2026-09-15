@@ -174,19 +174,29 @@ ticked — that tick is the trigger. Leave the old `v*` tags alone; do not retag
   `https://devtools.jahia.com/nexus/content/repositories/jahia-internal-releases`
   (that is where `keymaker-cli` is pulled from).
 
-### 2.5 Integration tests — not wired, and deliberately so
+### 2.5 Integration tests — WIRED. This section is kept for its reasoning only.
 
-A `tests/` Cypress project appeared in the working tree while this migration was being written
-(`tests/package.json` → `geo-readiness-tests`, `cypress.config.ts`, and three specs:
-`authorization`, `request-validation`, `scope-and-language`). It is **not yet runnable in CI**:
-the reusable integration-tests workflow brings the stack up with Docker Compose and provisions
-the built module, and neither file exists. So no integration-test job was added — it would be a
-permanently red required check.
+**Superseded.** Both missing files now exist and the job is in
+`.github/workflows/on-code-change.yml`. Everything below describes why it was once deferred; do
+not act on it.
 
-Still missing, outside `.github/`:
+The original reasoning was sound and the blockers are gone:
 
-- `tests/docker-compose.yml` — a Jahia + Cypress stack, with the tests container named `cypress`
-- `tests/provisioning-manifest-build.yml` — the provisioning script that installs the built module
+- `tests/docker-compose.yml` — present, tests container named `cypress`, behind the `test`
+  profile so the action can bring the rest of the stack up first
+- `tests/provisioning-manifest-build.yml` — present, and it installs what the suite needs:
+  geo-readiness's own module dependencies (`robots`, `llms`) plus the template set chain
+  `createSite` requires
+
+What the first real run found is worth recording, because none of it was visible by reading and
+all of it had accumulated while nothing executed the suite: an unpublished `jahia_image` tag, a
+missing `ci.*`/`env.*`/`set-env.sh` script layer, a manifest that declared no module dependencies
+when there are four, `cypress-wait-until` neither declared nor imported, a template set at a
+version that does not exist, and that template set installed without the chain it needs. The
+provisioning API answers HTTP 200 whether or not an entry installed, which is why several of
+those stayed invisible.
+
+That is the argument for the job below: a suite nothing runs does not stay still.
 
 Note the Cypress suite must stay out of the `build` action's test-module path. That action's
 JavaScript branch (`build-step-javascript`) runs `yarn build` and expects a deployable `.tgz`,
