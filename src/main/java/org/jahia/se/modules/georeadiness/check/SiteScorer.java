@@ -174,6 +174,12 @@ public final class SiteScorer {
                 } catch (Exception e) {
                     logger.debug("scoring failed for {}", path, e);
                 }
+                // Every PROGRESS_EVERY paths, whatever came of them. The old
+                // loop reached this through a `continue` that skipped an
+                // unpublished page, so the tick was skipped with it: on a site
+                // with many unpublished pages the dashboard's progress sat
+                // still for no reason the user could see. Progress is how far
+                // through the list we are, not how many pages scored.
                 if ((i + 1) % PROGRESS_EVERY == 0) {
                     ScanStore.progress(sitePath, language, i + 1L);
                 }

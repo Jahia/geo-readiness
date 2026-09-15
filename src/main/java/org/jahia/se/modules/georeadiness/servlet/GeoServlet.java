@@ -154,6 +154,13 @@ public abstract class GeoServlet extends HttpServlet {
      * A sliding window per user, with the policy passed in because the endpoints
      * do not share one: the AI report is metered far more tightly than a scan
      * status the dashboard polls.
+     *
+     * {@code maxCalls} is used exactly as given, with no floor. One of the four
+     * copies this replaces clamped it with Math.max(1, ...) and the others did
+     * not, so hoisting the clamp here would have changed the other endpoints:
+     * RATE_MAX_CALLS is admin-configurable with no minimum, and setting it to 0
+     * blocks the crawler check outright today. A caller that wants a floor
+     * applies its own, which is where the one that had it keeps it.
      */
     protected boolean rateLimitOk(String userKey, long windowMs, int maxCalls) {
         long now = System.currentTimeMillis();
@@ -162,7 +169,7 @@ public abstract class GeoServlet extends HttpServlet {
             while (!w.isEmpty() && now - w.peekFirst() > windowMs) {
                 w.pollFirst();
             }
-            if (w.size() >= Math.max(1, maxCalls)) {
+            if (w.size() >= maxCalls) {
                 return false;
             }
             w.addLast(now);

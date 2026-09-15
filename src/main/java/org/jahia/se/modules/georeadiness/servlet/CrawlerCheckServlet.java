@@ -37,14 +37,12 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URL;
-import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -118,8 +116,6 @@ public class CrawlerCheckServlet extends GeoServlet {
     private static final Pattern H1 = Pattern.compile("(?is)<h1[^>]*>(.*?)</h1>");
     private static final Pattern H2 = Pattern.compile("(?is)<h2[\\s>]");
 
-    private final Map<String, Deque<Long>> callWindows = new ConcurrentHashMap<>();
-
     /**
      * Injected through the constructor rather than into the field, so a servlet
      * the container shares between threads holds nothing mutable.
@@ -177,8 +173,10 @@ public class CrawlerCheckServlet extends GeoServlet {
         if (user == null) {
             return;
         }
-        // Metered BEFORE the body is read, so a flood of malformed bodies still
-        // spends the caller's budget rather than being refused for free.
+        // The content type is checked before the rate limit and the body is read
+        // after it, so a flood of malformed bodies still spends the caller's
+        // budget rather than being refused for free. jsonBody re-checks the
+        // content type; that is cheap and keeps it safe to call on its own.
         if (!isJsonRequest(req, resp)) {
             return;
         }

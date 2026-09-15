@@ -25,10 +25,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Deque;
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The written report, generated on request and read back afterwards.
@@ -60,8 +57,6 @@ public class GeoReportServlet extends GeoServlet {
     private static final String AUTH_REQUIRED = "authentication required";
     private static final String OPERATION_FAILED = "operation failed";
     private static final long RATE_WINDOW_MS = 600_000L;
-
-    private final Map<String, Deque<Long>> callWindows = new ConcurrentHashMap<>();
 
     /**
      * Injected through the constructor rather than into the field, so a servlet
@@ -214,7 +209,7 @@ public class GeoReportServlet extends GeoServlet {
             deny(resp, HttpServletResponse.SC_CONFLICT, "no provider configured");
             return;
         }
-        if (!rateLimitOk(user.getUserKey(), RATE_WINDOW_MS, config.getAiRateMaxCalls())) {
+        if (!rateLimitOk(user.getUserKey(), RATE_WINDOW_MS, Math.max(1, config.getAiRateMaxCalls()))) {
             deny(resp, TOO_MANY_REQUESTS, "rate limit");
             return;
         }

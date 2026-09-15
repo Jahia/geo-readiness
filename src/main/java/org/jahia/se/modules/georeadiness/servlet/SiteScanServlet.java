@@ -29,14 +29,11 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Deque;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.Map;
 
 /**
  * Site-wide scans that read the repository rather than fetching pages.
@@ -77,8 +74,6 @@ public class SiteScanServlet extends GeoServlet {
     private static final int RATE_MAX_CALLS = 30;
     private static final long RATE_WINDOW_MS = 600_000L;
     private static final int MAX_PAGES = 2000;
-
-    private final Map<String, Deque<Long>> callWindows = new ConcurrentHashMap<>();
 
     /**
      * Injected through the constructor rather than into the field, so a servlet
