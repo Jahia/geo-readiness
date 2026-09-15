@@ -20,7 +20,8 @@ function nameOf(code, uiLanguage) {
     try {
         const names = new Intl.DisplayNames([uiLanguage || 'en'], {type: 'language'});
         return languageLabel(code, names.of(code) || code);
-    } catch (e) {
+    } catch {
+        // Intl does not know this tag. The code itself is the label then.
         return languageLabel(code);
     }
 }
@@ -42,6 +43,8 @@ export const LanguagesPanel = ({path, language}) => {
         try {
             setData(await checkLanguages({path, language}));
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: language coverage could not be read', e);
             setFailed(true);
         }
     }, [path, language]);

@@ -1,11 +1,20 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Chip, Separator, Typography} from '@jahia/moonstone';
+import {Chip, Typography} from '@jahia/moonstone';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
 const GROUPS = ['access', 'content', 'files'];
+
+/** What llms.txt says about this page: listed, would be listed, or no file yet. */
+function llmsKey(llms) {
+    if (llms.listed) {
+        return 'context.llms.listed';
+    }
+
+    return llms.wouldAdd ? 'context.llms.wouldAdd' : 'context.llms.notGenerated';
+}
 
 /**
  * The score is a count of checks, not a rating out of 100. Every row names the
@@ -25,7 +34,12 @@ export const ScoreTab = ({report}) => {
     // author is not sent to fix something that is not theirs to fix.
     const rollup = report.templateRollup || {};
     const shared = new Set(rollup.sharedChecks || []);
-    const tone = criticalFailed > 0 ? 'bad' : (importantFailed > 0 ? 'warn' : 'good');
+    let tone = 'good';
+    if (criticalFailed > 0) {
+        tone = 'bad';
+    } else if (importantFailed > 0) {
+        tone = 'warn';
+    }
 
     return (
         <div>
@@ -70,11 +84,7 @@ export const ScoreTab = ({report}) => {
                     )}
                     {report.context && report.context.llms && (
                         <li>
-                            {report.context.llms.listed ?
-                                t('context.llms.listed') :
-                                t(report.context.llms.wouldAdd ?
-                                    'context.llms.wouldAdd' :
-                                    'context.llms.notGenerated')}
+                            {t(llmsKey(report.context.llms))}
                         </li>
                     )}
                 </ul>

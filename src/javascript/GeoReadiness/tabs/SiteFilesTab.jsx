@@ -24,11 +24,7 @@ export const SiteFilesTab = ({report}) => {
             {/* robots.txt */}
             <Typography variant="subheading" className={styles.sectionTitle}>{t('files.robots.title')}</Typography>
 
-            {!robots.present ? (
-                <div className={`${styles.verdict} ${styles.warn}`}>
-                    {t('files.robots.absent')}
-                </div>
-            ) : (
+            {robots.present ? (
                 <>
                     <div className={`${styles.verdict} ${named === 0 ? styles.warn : styles.good}`}>
                         {named === 0
@@ -78,29 +74,16 @@ export const SiteFilesTab = ({report}) => {
                         </p>
                     )}
                 </>
+            ) : (
+                <div className={`${styles.verdict} ${styles.warn}`}>
+                    {t('files.robots.absent')}
+                </div>
             )}
 
             {/* llms.txt */}
             <Typography variant="subheading" className={styles.sectionTitle}>{t('files.llms.title')}</Typography>
 
-            {llms.servedHtmlInstead ? (
-                <div className={`${styles.verdict} ${styles.bad}`}>{t('files.llms.servedHtml')}</div>
-            ) : llms.present ? (
-                <>
-                    <div className={`${styles.verdict} ${styles.good}`}>{t('files.llms.present')}</div>
-                    <ul className={styles.facts}>
-                        <li>{t('files.llms.h1')}: <strong>{llms.h1 || t('crawler.missing')}</strong></li>
-                        <li>{t('files.llms.summary')}: <strong>{llms.hasSummary ? t('crawler.present') : t('crawler.missing')}</strong></li>
-                        <li>{t('files.llms.sections')}: <strong>{llms.sections ?? 0}</strong></li>
-                        <li>{t('files.llms.links')}: <strong>{llms.links ?? 0}</strong></li>
-                        <li>{t('files.llms.contentType')}: <strong>{llms.contentType || '—'}</strong></li>
-                    </ul>
-                </>
-            ) : (
-                <div className={`${styles.verdict} ${styles.warn}`}>
-                    {t('files.llms.absent', {status: llms.status ?? '—'})}
-                </div>
-            )}
+            <LlmsVerdict llms={llms} t={t}/>
 
             <p className={styles.explain}>
                 {t('files.llmsFull.label')}:{' '}
@@ -115,4 +98,43 @@ export const SiteFilesTab = ({report}) => {
 
 SiteFilesTab.propTypes = {
     report: PropTypes.object.isRequired
+};
+
+/**
+ * What llms.txt is: served as HTML, served properly, or not there at all.
+ *
+ * Three answers rather than two, which is why this is a component and not a
+ * conditional inside one: a reader should not have to unpick which branch of
+ * which question produced the line they are looking at.
+ */
+const LlmsVerdict = ({llms, t}) => {
+    if (llms.servedHtmlInstead) {
+        return <div className={`${styles.verdict} ${styles.bad}`}>{t('files.llms.servedHtml')}</div>;
+    }
+
+    if (!llms.present) {
+        return (
+            <div className={`${styles.verdict} ${styles.warn}`}>
+                {t('files.llms.absent', {status: llms.status ?? '—'})}
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <div className={`${styles.verdict} ${styles.good}`}>{t('files.llms.present')}</div>
+            <ul className={styles.facts}>
+                <li>{t('files.llms.h1')}: <strong>{llms.h1 || t('crawler.missing')}</strong></li>
+                <li>{t('files.llms.summary')}: <strong>{llms.hasSummary ? t('crawler.present') : t('crawler.missing')}</strong></li>
+                <li>{t('files.llms.sections')}: <strong>{llms.sections ?? 0}</strong></li>
+                <li>{t('files.llms.links')}: <strong>{llms.links ?? 0}</strong></li>
+                <li>{t('files.llms.contentType')}: <strong>{llms.contentType || '—'}</strong></li>
+            </ul>
+        </>
+    );
+};
+
+LlmsVerdict.propTypes = {
+    llms: PropTypes.object.isRequired,
+    t: PropTypes.func.isRequired
 };

@@ -407,11 +407,20 @@ public final class SiteScorer {
 
     private static String baseFor(String sitePath, String language, Options opts) throws RepositoryException {
         if (opts.publicBaseUrl != null && !opts.publicBaseUrl.trim().isEmpty()) {
-            return opts.publicBaseUrl.trim().replaceAll("/+$", "");
+            return withoutTrailingSlashes(opts.publicBaseUrl.trim());
         }
         return JCRTemplate.getInstance().doExecuteWithSystemSession(null, "live",
                 Locale.forLanguageTag(language), (JCRCallback<String>) session ->
                         PublicUrls.base(session.getNode(sitePath), null, ""));
+    }
+
+    /** Trimmed by counting back, where "/+$" would re-try from every slash. */
+    private static String withoutTrailingSlashes(String s) {
+        int end = s.length();
+        while (end > 0 && s.charAt(end - 1) == '/') {
+            end--;
+        }
+        return s.substring(0, end);
     }
 
     private static String agentUa() {

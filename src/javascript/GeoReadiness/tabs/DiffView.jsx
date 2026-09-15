@@ -7,6 +7,12 @@ import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
 
+/** What marks a row, for readers who cannot tell the two colours apart. */
+const SIGN = {add: '+', del: '-'};
+
+/** A row's identity is where it came from, not where it sits in this array. */
+const keyOf = r => `${r.type}:${r.line}`;
+
 /**
  * Shows what an apply would change, before it changes it. Removed lines and
  * added lines are marked with a sign as well as a colour, so the diff still
@@ -27,18 +33,18 @@ export const DiffView = ({before, after}) => {
         <div>
             <Typography variant="caption" className={styles.diffSummary}>{t('diff.summary', {added, removed})}</Typography>
             <pre className={styles.diff}>
-                {rows.map((r, i) => {
+                {rows.map(r => {
                     if (r.type === 'gap') {
                         return (
-                            <span key={i} className={styles.diffGap}>
+                            <span key={keyOf(r)} className={styles.diffGap}>
                                 {t('diff.unchanged', {count: r.count})}{'\n'}
                             </span>
                         );
                     }
-                    const sign = r.type === 'add' ? '+' : (r.type === 'del' ? '-' : ' ');
+
                     return (
-                        <span key={i} className={styles['diff' + r.type]}>
-                            {sign} {r.text}{'\n'}
+                        <span key={keyOf(r)} className={styles['diff' + r.type]}>
+                            {SIGN[r.type] || ' '} {r.text}{'\n'}
                         </span>
                     );
                 })}

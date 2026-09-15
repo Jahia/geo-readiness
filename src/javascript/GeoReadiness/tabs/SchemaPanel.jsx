@@ -30,8 +30,10 @@ export const SchemaPanel = ({path, language}) => {
         try {
             const d = await checkSchema({path, language});
             setData(d);
-            setDraft({...(d.schemaMap || {})});
+            setDraft({...d.schemaMap});
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: the schema report could not be read', e);
             setFailed(true);
         }
     }, [path, language]);
@@ -48,6 +50,8 @@ export const SchemaPanel = ({path, language}) => {
             await load();
             setSaved(true);
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: the schema mapping could not be saved', e);
             setFailed(true);
         } finally {
             setBusy(false);
@@ -106,9 +110,8 @@ export const SchemaPanel = ({path, language}) => {
 
                     <ul className={styles.checkList}>
                         {types.map(row => {
-                            const current = draft[row.nodeType] !== undefined ?
-                                draft[row.nodeType] :
-                                (row.mapped ? row.schemaType : UNMAPPED);
+                            const saved = row.mapped ? row.schemaType : UNMAPPED;
+                            const current = draft[row.nodeType] === undefined ? saved : draft[row.nodeType];
                             return (
                                 <li key={row.nodeType} className={styles.checkItem}>
                                     <span className={styles.checkText}>

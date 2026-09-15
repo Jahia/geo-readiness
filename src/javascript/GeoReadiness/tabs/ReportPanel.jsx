@@ -237,8 +237,8 @@ const Report = ({report, language, reportLanguage, t}) => {
                 <Typography variant="caption" className={styles.panelIntro}>{t('report.none')}</Typography>
             )}
             <ol className={styles.priorityList}>
-                {priorities.map((p, i) => (
-                    <li key={`${i}:${p.title}`} className={styles.priority}>
+                {priorities.map(p => (
+                    <li key={`${p.area}:${p.severity}:${p.title}`} className={styles.priority}>
                         <div className={styles.priorityHead}>
                             <Chip label={t(`score.severity.${p.severity}`)} color={SEVERITY_COLOR[p.severity] || 'default'}/>
                             <Typography variant="body" className={styles.priorityTitle}>{p.title}</Typography>

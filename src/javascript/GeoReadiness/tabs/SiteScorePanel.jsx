@@ -47,6 +47,8 @@ export const SiteScorePanel = ({path, language}) => {
             setPhase('ready');
             return s;
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: the site score could not be read', e);
             setError(t('score17.error'));
             setPhase('ready');
             return null;
@@ -85,15 +87,15 @@ export const SiteScorePanel = ({path, language}) => {
      * to type a repository path correctly from memory.
      */
     const pickScope = useCallback(() => {
-        if (!window.CE_API || !window.CE_API.openPicker) {
+        if (!globalThis.CE_API || !globalThis.CE_API.openPicker) {
             return;
         }
 
-        window.CE_API.openPicker({
+        globalThis.CE_API.openPicker({
             type: 'editorial',
             initialSelectedItem: scope ? [scope] : [path],
-            site: (window.jahiaGWTParameters && window.jahiaGWTParameters.siteKey) || undefined,
-            lang: (window.jahiaGWTParameters && window.jahiaGWTParameters.uilang) || language,
+            site: (globalThis.jahiaGWTParameters && globalThis.jahiaGWTParameters.siteKey) || undefined,
+            lang: (globalThis.jahiaGWTParameters && globalThis.jahiaGWTParameters.uilang) || language,
             isMultiple: false,
             setValue: selected => {
                 const first = Array.isArray(selected) ? selected[0] : selected;
@@ -115,6 +117,8 @@ export const SiteScorePanel = ({path, language}) => {
 
             setState(s);
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: the schedule could not be saved', e);
             setError(t('score17.error'));
         }
     }, [path, language, cron, enabled, scope, t]);
@@ -160,7 +164,7 @@ export const SiteScorePanel = ({path, language}) => {
                       * carries severity and the headline above carries the words,
                       * so color is never the only signal.
                       */}
-                    <Meter value={agg.percent} label={t('score17.headline', {percent: agg.percent})}/>
+                    <Meter value={agg.percent}/>
                     <Typography variant="caption" className={styles.panelIntro}>
                         {t('score17.counts', {
                             scored: agg.scored,

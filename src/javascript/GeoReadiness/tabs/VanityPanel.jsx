@@ -27,6 +27,8 @@ export const VanityPanel = ({path, language}) => {
         try {
             setState(await scanStatus({path, language}));
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: the vanity URL report could not be read', e);
             setError(true);
         }
     }, [path, language]);
@@ -66,78 +68,100 @@ export const VanityPanel = ({path, language}) => {
                         })}
                     </Typography>
 
-                    {/*
-                      * No vanity URLs at all is not the same as no problems, and
-                      * a clean bill of health would be misleading for a site that
-                      * simply does not use them.
-                      */}
-                    {vanity.total === 0 ? (
-                        <Banner variant="info" title={t('vanity.noneTitle')}>
-                            {t('vanity.none')}
-                        </Banner>
-                    ) : vanity.agrees ? (
-                        <Banner variant="info" title={t('vanity.agreesTitle')}>
-                            {t('vanity.agrees', {total: vanity.total})}
-                        </Banner>
-                    ) : (
-                        GROUPS
-                            .map(key => ({key, rows: vanity[key] || []}))
-                            .filter(g => g.rows.length > 0)
-                            .map(g => (
-                                <div key={g.key} className={styles.sitemapGroup}>
-                                    <div className={styles.sitemapGroupHead}>
-                                        <Typography variant="body" className={styles.checkLabel}>
-                                            {t(`vanity.kind.${g.key}`)}
-                                        </Typography>
-                                        <Chip
-                                            label={String(g.rows.length)}
-                                            color={g.key === 'unresolvable' ? 'danger' : 'warning'}
-                                        />
-                                    </div>
-                                    <Typography variant="caption" className={styles.checkFix}>
-                                        {t(`vanity.why.${g.key}`)}
-                                    </Typography>
-                                    <Paged rows={g.rows}>
-                                        {slice => (
-                                    <ul className={styles.checkList}>
-                                        {slice.map(r => (
-                                            <li key={`${g.key}:${r.url}`} className={styles.checkItem}>
-                                                <span className={styles.checkText}>
-                                                    {jcontentUrl(r.jcrPath, language) ? (
-                                                        <a
-                                                            className={styles.pageLink}
-                                                            href={jcontentUrl(r.jcrPath, language)}
-                                                            title={t('score17.openPage')}
-                                                        >
-                                                            {r.title || r.url}
-                                                        </a>
-                                                    ) : (
-                                                        <Typography variant="body" className={styles.checkLabel}>
-                                                            {r.title || r.url}
-                                                        </Typography>
-                                                    )}
-                                                    <Typography variant="caption" className={styles.checkFix}>
-                                                        {r.detail || r.url}
-                                                    </Typography>
-                                                </span>
-                                                <span className={styles.checkMeta}>
-                                                    <Typography variant="caption" className={styles.checkValue}>
-                                                        {r.why ? t(`vanity.tag.${r.why}`) : r.language}
-                                                    </Typography>
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                        )}
-                                    </Paged>
-                                </div>
-                            ))
-                    )}
+                    <VanityVerdict vanity={vanity} language={language} t={t}/>
                     <p className={styles.explain}>{t('vanity.limits')}</p>
                 </>
             )}
         </div>
     );
+};
+
+/**
+ * What the vanity URLs add up to: none at all, all in agreement, or the groups
+ * that disagree. Three answers, so each gets its own return rather than being
+ * threaded through one expression.
+ */
+const VanityVerdict = ({vanity, language, t}) => {
+    // No vanity URLs at all is not the same as no problems, and a clean bill of
+    // health would be misleading for a site that simply does not use them.
+    if (vanity.total === 0) {
+        return (
+            <Banner variant="info" title={t('vanity.noneTitle')}>
+                {t('vanity.none')}
+            </Banner>
+        );
+    }
+
+    if (vanity.agrees) {
+        return (
+            <Banner variant="info" title={t('vanity.agreesTitle')}>
+                {t('vanity.agrees', {total: vanity.total})}
+            </Banner>
+        );
+    }
+
+    return (
+        <>
+            {GROUPS
+                .map(key => ({key, rows: vanity[key] || []}))
+                .filter(g => g.rows.length > 0)
+                .map(g => (
+                    <div key={g.key} className={styles.sitemapGroup}>
+                        <div className={styles.sitemapGroupHead}>
+                            <Typography variant="body" className={styles.checkLabel}>
+                                {t(`vanity.kind.${g.key}`)}
+                            </Typography>
+                            <Chip
+                                label={String(g.rows.length)}
+                                color={g.key === 'unresolvable' ? 'danger' : 'warning'}
+                            />
+                        </div>
+                        <Typography variant="caption" className={styles.checkFix}>
+                            {t(`vanity.why.${g.key}`)}
+                        </Typography>
+                        <Paged rows={g.rows}>
+                            {slice => (
+                                <ul className={styles.checkList}>
+                                    {slice.map(r => (
+                                        <li key={`${g.key}:${r.url}`} className={styles.checkItem}>
+                                            <span className={styles.checkText}>
+                                                {jcontentUrl(r.jcrPath, language) ? (
+                                                    <a
+                                                        className={styles.pageLink}
+                                                        href={jcontentUrl(r.jcrPath, language)}
+                                                        title={t('score17.openPage')}
+                                                    >
+                                                        {r.title || r.url}
+                                                    </a>
+                                                ) : (
+                                                    <Typography variant="body" className={styles.checkLabel}>
+                                                        {r.title || r.url}
+                                                    </Typography>
+                                        )}
+                                                <Typography variant="caption" className={styles.checkFix}>
+                                                    {r.detail || r.url}
+                                                </Typography>
+                                            </span>
+                                            <span className={styles.checkMeta}>
+                                                <Typography variant="caption" className={styles.checkValue}>
+                                                    {r.why ? t(`vanity.tag.${r.why}`) : r.language}
+                                                </Typography>
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </Paged>
+                    </div>
+                ))}
+        </>
+    );
+};
+
+VanityVerdict.propTypes = {
+    vanity: PropTypes.object.isRequired,
+    language: PropTypes.string.isRequired,
+    t: PropTypes.func.isRequired
 };
 
 VanityPanel.propTypes = {

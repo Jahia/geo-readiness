@@ -1,5 +1,6 @@
 package org.jahia.se.modules.georeadiness.check;
 
+import org.jahia.se.modules.georeadiness.util.Markup;
 import org.jahia.services.content.JCRCallback;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionWrapper;
@@ -51,7 +52,8 @@ public final class LinkGraph {
 
     private static final Logger logger = LoggerFactory.getLogger(LinkGraph.class);
 
-    private static final Pattern ANCHOR = Pattern.compile("(?is)<a\\s[^>]*?href=[\"']([^\"'#][^\"']*)[\"']");
+    /** Read from one anchor tag at a time; Markup is what finds the tags. */
+    private static final Pattern HREF = Pattern.compile("(?is)\\bhref=[\"']([^\"'#][^\"']{0,2000})[\"']");
     /**
      * Regions whose links are navigation. `<header>` is deliberately not here:
      * it is also used for the heading of a card or an article, so treating it as
@@ -99,24 +101,27 @@ public final class LinkGraph {
         }
 
         Map<String, Integer> seen = new LinkedHashMap<>();
-        Matcher m = ANCHOR.matcher(html);
-        while (m.find()) {
+        Markup.forEachTag(html, "a", (tag, at, end) -> {
+            Matcher m = HREF.matcher(tag);
+            if (!m.find()) {
+                return;
+            }
             String href = m.group(1).trim();
             if (!href.startsWith("/")) {
                 // Same-site links are emitted root-relative by the renderer.
                 // Anything else is either external or an in-page fragment.
-                continue;
+                return;
             }
             String target = stripQuery(href);
             if (target.equals(fromPath)) {
                 // A page linking to itself says nothing about reachability.
-                continue;
+                return;
             }
-            int kind = inAny(navRegions, m.start()) ? NAV : CONTENT;
+            int kind = inAny(navRegions, at) ? NAV : CONTENT;
             // Content wins a tie: if the same target is linked from both a menu
             // and the body, somebody chose to point at it.
             seen.merge(target, kind, Math::max);
-        }
+        });
 
         for (Map.Entry<String, Integer> e : seen.entrySet()) {
             acc.slot(e.getKey())[e.getValue()]++;
@@ -335,11 +340,14 @@ public final class LinkGraph {
      */
     private static List<int[]> regions(String html, String tag) {
         List<int[]> out = new ArrayList<>();
-        Matcher m = Pattern.compile("(?is)<(/?)" + tag + "(?:\\s[^>]*)?>").matcher(html);
         List<int[]> events = new ArrayList<>();
-        while (m.find()) {
-            events.add(new int[]{m.start(), m.group(1).isEmpty() ? 1 : -1, m.end()});
-        }
+        Markup.forEachTag(html, (text, start, end) -> {
+            if (Markup.opens(text, tag)) {
+                events.add(new int[]{start, 1, end});
+            } else if (Markup.closes(text, tag)) {
+                events.add(new int[]{start, -1, end});
+            }
+        });
         int depth = 0;
         int start = -1;
         for (int[] ev : events) {

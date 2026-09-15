@@ -44,6 +44,8 @@ export const RobotsControlPanel = ({path, language}) => {
 
             setPhase('ready');
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: robots.txt could not be read', e);
             setError(t('files.robots.control.error'));
             setPhase('idle');
         }
@@ -89,6 +91,8 @@ export const RobotsControlPanel = ({path, language}) => {
             setAccess({url: r.url, byName});
             setAccessPhase('done');
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: crawler access could not be checked', e);
             setAccessPhase('failed');
         }
     }, [preview, language]);
@@ -113,6 +117,8 @@ export const RobotsControlPanel = ({path, language}) => {
             setPhase('applied');
             setConfirming(false);
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: robots.txt could not be written', e);
             setError(t('files.robots.control.error'));
             setPhase('ready');
             setConfirming(false);
@@ -123,6 +129,13 @@ export const RobotsControlPanel = ({path, language}) => {
         return error ?
             <Banner variant="danger" title={t('files.robots.control.errorTitle')}>{error}</Banner> :
             <Loader size="big"/>;
+    }
+
+    let accessLabel = t('files.robots.control.checkAccess');
+    if (accessPhase === 'running') {
+        accessLabel = t('files.robots.control.checkingAccess');
+    } else if (access) {
+        accessLabel = t('files.robots.control.recheckAccess');
     }
 
     return (
@@ -158,9 +171,7 @@ export const RobotsControlPanel = ({path, language}) => {
                     size="default"
                     variant="outlined"
                     isDisabled={accessPhase === 'running' || !preview.homePath}
-                    label={accessPhase === 'running' ?
-                        t('files.robots.control.checkingAccess') :
-                        (access ? t('files.robots.control.recheckAccess') : t('files.robots.control.checkAccess'))}
+                    label={accessLabel}
                     onClick={checkAccess}
                 />
                 <Typography variant="caption">
@@ -201,7 +212,13 @@ export const RobotsControlPanel = ({path, language}) => {
                 const bots = (preview.agents || []).map(a => access.byName[a.name]).filter(Boolean);
                 const refused = bots.filter(b => b.status !== 200).length;
                 const mismatched = bots.filter(b => b.mismatch).length;
-                const tone = refused > 0 ? 'danger' : (mismatched > 0 ? 'warning' : 'info');
+                let tone = 'info';
+                if (refused > 0) {
+                    tone = 'danger';
+                } else if (mismatched > 0) {
+                    tone = 'warning';
+                }
+
                 const title = refused > 0 ?
                     t('files.robots.control.verdictRefused', {count: refused}) :
                     t('files.robots.control.verdictServed', {count: bots.length});
