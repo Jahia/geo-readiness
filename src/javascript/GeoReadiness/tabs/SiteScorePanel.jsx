@@ -164,7 +164,7 @@ export const SiteScorePanel = ({path, language}) => {
                       * carries severity and the headline above carries the words,
                       * so color is never the only signal.
                       */}
-                    <Meter value={agg.percent} label={t('score17.headline', {percent: agg.percent})}/>
+                    <Meter value={agg.percent}/>
                     <Typography variant="caption" className={styles.panelIntro}>
                         {t('score17.counts', {
                             scored: agg.scored,

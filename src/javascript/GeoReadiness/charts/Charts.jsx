@@ -19,7 +19,13 @@ import styles from './Charts.module.css';
  * "bad" when it means "nobody looked".
  */
 
-/** One tooltip per chart, positioned at the hovered mark. Enhances, never gates. */
+/**
+ * One tooltip per chart, positioned at the hovered mark.
+ *
+ * Hidden from assistive technology on purpose. Nothing lives only in the
+ * tooltip: every value it shows is also text in the page, so announcing it
+ * again on a pointer event that a screen reader never sends is noise.
+ */
 function useTip() {
     const [tip, setTip] = useState(null);
     const show = useCallback((e, text) => {
@@ -37,7 +43,7 @@ function useTip() {
     }, []);
     const hide = useCallback(() => setTip(null), []);
     const node = tip ? (
-        <div className={styles.tip} style={{left: tip.x, top: tip.y}} role="status">
+        <div className={styles.tip} style={{left: tip.x, top: tip.y}} aria-hidden="true">
             {tip.text}
         </div>
     ) : null;
@@ -56,11 +62,23 @@ const tipText = (value, label) => (
  * A single ratio against its limit. The fill carries severity and the track is
  * a lighter step of the same ramp, so state reads across the whole bar.
  */
-export const Meter = ({value, max, label, good, warn}) => {
+export const Meter = ({value, max, good, warn}) => {
     const pct = Math.max(0, Math.min(100, (value / max) * 100));
-    const tone = value >= good ? styles.fillGood : (value >= warn ? styles.fillWarn : styles.fillBad);
+    let tone = styles.fillBad;
+    if (value >= good) {
+        tone = styles.fillGood;
+    } else if (value >= warn) {
+        tone = styles.fillWarn;
+    }
+
+    /*
+     * Decorative, and says so. The caller prints the same sentence as text
+     * directly above this bar - "82% of checks pass across the site" - so a
+     * name here would be that sentence announced twice, and a meter role would
+     * be the same number a third time.
+     */
     return (
-        <div className={`${styles.chart} ${styles.meter}`} data-geo-chart="" role="img" aria-label={label}>
+        <div className={`${styles.chart} ${styles.meter}`} data-geo-chart="" aria-hidden="true">
             <div className={styles.meterTrack}>
                 <div className={`${styles.meterFill} ${tone}`} style={{width: `${pct}%`}}/>
             </div>
@@ -71,12 +89,11 @@ export const Meter = ({value, max, label, good, warn}) => {
 Meter.propTypes = {
     value: PropTypes.number.isRequired,
     max: PropTypes.number,
-    label: PropTypes.string,
     good: PropTypes.number,
     warn: PropTypes.number
 };
 
-Meter.defaultProps = {max: 100, label: undefined, good: 80, warn: 60};
+Meter.defaultProps = {max: 100, good: 80, warn: 60};
 
 /**
  * Horizontal bars, one series, magnitude low to high. Value at the tip, thin
@@ -95,13 +112,19 @@ export const BarList = ({rows, max, format, tipFor}) => {
                             <span className={styles.rowLabel}>{r.label}</span>
                             {r.sublabel && <span className={styles.rowSub}>{r.sublabel}</span>}
                         </div>
+                        {/*
+                          * role="none" - the ARIA spelling of "this box is a
+                          * drawing surface, not a thing in its own right". The
+                          * number inside it keeps its own semantics and stays
+                          * readable. The tooltip is a pointer convenience over
+                          * the whole width, which is why the handlers sit here
+                          * rather than on the bar.
+                          */}
                         <div
                             className={styles.track}
-                            tabIndex={0}
+                            role="none"
                             onMouseEnter={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
-                            onFocus={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
                             onMouseLeave={hide}
-                            onBlur={hide}
                         >
                             <div
                                 className={`${styles.bar} ${r.status === 'warn' ? styles.fillWarn : ''} ${r.status === 'good' ? styles.fillGood : ''}`}
@@ -130,7 +153,7 @@ BarList.propTypes = {
     tipFor: PropTypes.func
 };
 
-BarList.defaultProps = {max: undefined, format: v => String(v), tipFor: undefined};
+BarList.defaultProps = {max: undefined, format: String, tipFor: undefined};
 
 /**
  * Counts over a time axis, read left to right from oldest to most recent.
@@ -150,11 +173,9 @@ export const Histogram = ({rows, format, tipFor, axisLeft, axisRight}) => {
                     <div
                         key={r.key}
                         className={styles.histColumn}
-                        tabIndex={0}
+                        role="none"
                         onMouseEnter={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
-                        onFocus={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
                         onMouseLeave={hide}
-                        onBlur={hide}
                     >
                         <span className={styles.histValue}>{r.value > 0 ? format(r.value) : ''}</span>
                         <div className={styles.histTrack}>
@@ -191,7 +212,7 @@ Histogram.propTypes = {
     axisRight: PropTypes.node
 };
 
-Histogram.defaultProps = {format: v => String(v), tipFor: undefined, axisLeft: '', axisRight: ''};
+Histogram.defaultProps = {format: String, tipFor: undefined, axisLeft: '', axisRight: ''};
 
 /**
  * Part-to-whole in one bar. Segments touch through a 2px surface gap, never a
@@ -206,17 +227,20 @@ export const StackedBar = ({segments, total, format, restLabel}) => {
     const denom = Math.max(1, total || sum);
     return (
         <div className={styles.chart} data-geo-chart="">
-            <div className={styles.stack} role="img">
+            {/*
+              * No role on the stack. It was an image with no name, which hides
+              * every segment inside it; the legend below is the text version,
+              * and it carries every label and every value.
+              */}
+            <div className={styles.stack}>
                 {all.filter(s => s.value > 0).map(s => (
                     <div
                         key={s.key}
-                        tabIndex={s.rest ? -1 : 0}
+                        aria-hidden="true"
                         className={`${styles.segment} ${s.rest ? styles.segmentRest : ''} ${s.tone ? styles[s.tone] : ''}`}
                         style={{flexGrow: s.value, flexBasis: 0}}
                         onMouseEnter={s.rest ? undefined : e => show(e, tipText(format(s.value), s.label))}
-                        onFocus={s.rest ? undefined : e => show(e, tipText(format(s.value), s.label))}
                         onMouseLeave={hide}
-                        onBlur={hide}
                     >
                         {s.value / denom >= 0.12 && !s.rest && (
                             <span className={styles.inBar}>{format(s.value)}</span>
@@ -257,7 +281,7 @@ StackedBar.propTypes = {
     restLabel: PropTypes.node
 };
 
-StackedBar.defaultProps = {total: undefined, format: v => String(v), restLabel: ''};
+StackedBar.defaultProps = {total: undefined, format: String, restLabel: ''};
 
 export const PairedBars = ({rows, series, format, missingLabel}) => {
     const {show, hide, node} = useTip();
@@ -285,11 +309,9 @@ export const PairedBars = ({rows, series, format, missingLabel}) => {
                                 <div
                                     key={s.key}
                                     className={`${styles.track} ${styles.trackThin}`}
-                                    tabIndex={has ? 0 : -1}
+                                    role="none"
                                     onMouseEnter={has ? e => show(e, tipText(format(v), `${s.label} · ${r.tipLabel || ''}`)) : undefined}
-                                    onFocus={has ? e => show(e, tipText(format(v), `${s.label} · ${r.tipLabel || ''}`)) : undefined}
                                     onMouseLeave={hide}
-                                    onBlur={hide}
                                 >
                                     {has ? (
                                         <>
@@ -332,6 +354,10 @@ PairedBars.defaultProps = {format: v => `${v}%`, missingLabel: '—'};
 /**
  * Pages down, failing checks across, one cell per pair.
  *
+ * A real table, with real row and column headers, and every cell carrying the
+ * word its colour stands for. That is the accessible form of this chart: the
+ * grid IS a table of page against check, so nothing has to be invented for it.
+ *
  * A list of "15/17" chips says how many things are wrong on each page. It
  * cannot say *which* things, or that two of them are wrong on every page - and
  * that second fact is the whole point of the template roll-up: a column that is
@@ -344,7 +370,8 @@ PairedBars.defaultProps = {format: v => `${v}%`, missingLabel: '—'};
  */
 export const FailureMatrix = ({pages, checks, legend, passLabel, tipFor, columnTipFor}) => {
     const {show, hide, node} = useTip();
-    const tone = sev => (sev === 'critical' ? styles.fillBad : (sev === 'important' ? styles.fillWarn : styles.fillAdvisory));
+    const TONES = {critical: styles.fillBad, important: styles.fillWarn};
+    const tone = sev => TONES[sev] || styles.fillAdvisory;
     return (
         <div className={styles.chart} data-geo-chart="">
             <div className={styles.matrixScroll}>
@@ -355,12 +382,10 @@ export const FailureMatrix = ({pages, checks, legend, passLabel, tipFor, columnT
                             {checks.map(c => (
                                 <th
                                     key={c.id}
+                                    scope="col"
                                     className={styles.matrixCol}
-                                    tabIndex={0}
                                     onMouseEnter={e => show(e, tipText(c.count, columnTipFor(c)))}
-                                    onFocus={e => show(e, tipText(c.count, columnTipFor(c)))}
                                     onMouseLeave={hide}
-                                    onBlur={hide}
                                 >
                                     <span className={styles.matrixColLabel}>{c.label}</span>
                                 </th>
@@ -371,7 +396,7 @@ export const FailureMatrix = ({pages, checks, legend, passLabel, tipFor, columnT
                     <tbody>
                         {pages.map(pg => (
                             <tr key={pg.key}>
-                                <th className={styles.matrixRow}>
+                                <th scope="row" className={styles.matrixRow}>
                                     {pg.href ? (
                                         <a className={styles.matrixLink} href={pg.href}>{pg.label}</a>
                                     ) : (
@@ -383,13 +408,20 @@ export const FailureMatrix = ({pages, checks, legend, passLabel, tipFor, columnT
                                     const failed = pg.failed.includes(c.id);
                                     return (
                                         <td key={c.id} className={styles.matrixCell}>
+                                            {/*
+                                              * The word the colour stands for. Without it every
+                                              * cell is an empty square, and a reader who cannot
+                                              * see the fill gets a table of blanks - when which
+                                              * check fails on which page is the entire point.
+                                              */}
+                                            <span className={styles.srOnly}>
+                                                {failed ? legend[c.severity] : passLabel}
+                                            </span>
                                             <span
+                                                aria-hidden="true"
                                                 className={`${styles.cell} ${failed ? tone(c.severity) : styles.cellPass}`}
-                                                tabIndex={failed ? 0 : -1}
                                                 onMouseEnter={e => show(e, tipText(failed ? legend[c.severity] : passLabel, tipFor(pg, c)))}
-                                                onFocus={e => show(e, tipText(failed ? legend[c.severity] : passLabel, tipFor(pg, c)))}
                                                 onMouseLeave={hide}
-                                                onBlur={hide}
                                             />
                                         </td>
                                     );

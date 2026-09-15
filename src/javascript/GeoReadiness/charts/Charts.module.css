@@ -440,3 +440,20 @@
     text-align: center;
     line-height: 1.2;
 }
+
+/*
+ * For a reader, not for the eye: the word a colour stands for, kept out of the
+ * layout. Not `display: none`, which would take it out of the accessibility
+ * tree along with the layout.
+ */
+.srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(50%);
+}
