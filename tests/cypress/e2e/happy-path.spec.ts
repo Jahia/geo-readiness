@@ -16,7 +16,15 @@ import {
     setupGeoFixture,
     teardownGeoFixture
 } from '../support/fixtures';
-import {GEO_ACTION_SELECTOR, GEO_NAV_LABEL, openGeoDashboard, openJContentPages} from '../support/ui';
+import {
+    GEO_ACTION_SELECTOR,
+    GEO_NAV_LABEL,
+    openGeoDashboard,
+    openJContentApps,
+    openJContentPages,
+    SEO_LABEL,
+    selectTab
+} from '../support/ui';
 
 describe('geo-readiness — happy path', () => {
     const fixture = geoFixture('geohappy');
@@ -43,8 +51,12 @@ describe('geo-readiness — happy path', () => {
             }).then(response => {
                 expectJsonOk(response, 'a publisher can run a scan of their own site');
                 // Asserting the stored state, not just that the call returned:
-                // runScan answers with what ScanStore holds afterwards.
-                expect(response.body, 'the scan must record a run').to.have.property('lastRun');
+                // runScan answers with what ScanStore holds afterwards, and what
+                // it holds is a `run` object - there is no `lastRun` anywhere in
+                // the module. `startedAt` is what distinguishes a run that
+                // happened from the idle shape, which is `{status: "IDLE"}`.
+                expect(response.body, 'the scan must record a run').to.have.property('run');
+                expect(response.body.run.startedAt, 'the run must have started').to.not.be.null;
             });
         });
 
@@ -56,9 +68,13 @@ describe('geo-readiness — happy path', () => {
             }).then(response => {
                 expectJsonOk(response, 'the dashboard polls this while a scan runs');
                 expect(
-                    response.body.lastRun,
+                    response.body.run,
+                    'scanStatus must carry the run block'
+                ).to.exist;
+                expect(
+                    response.body.run.startedAt,
                     'the run performed in the previous test must still be there'
-                ).to.not.be.undefined;
+                ).to.not.be.null;
             });
         });
 
@@ -112,7 +128,13 @@ describe('geo-readiness — happy path', () => {
 
             // "Invisible content" — the cheapest panel that performs a real
             // scan: it reads the repository rather than fetching every page.
-            cy.contains('button, [role="tab"], div', 'Invisible content', {timeout: 30000}).click();
+            //
+            // It is a SUB-tab. The dashboard's top level is Overview / Can a
+            // crawler reach it / Is what arrives usable / Site-level files, and
+            // Invisible content sits under the second of those next to Internal
+            // links and Addresses. Reaching for it directly matched nothing.
+            selectTab('Can a crawler reach it');
+            selectTab('Invisible content');
             cy.contains('button', 'Scan the site', {timeout: 30000}).click();
 
             // The summary line the panel renders from the scan's own numbers.
@@ -125,16 +147,31 @@ describe('geo-readiness — happy path', () => {
             cy.login(fixture.publisher.username, fixture.publisher.password);
             openJContentPages(fixture.siteKey);
 
-            cy.contains('td, tr, a', 'home', {timeout: 30000}).click();
+            // /pages lands on the site's home page with it already selected and
+            // its toolbar rendered, so there is no row to click - and no table
+            // to click it in, since this view is Page Builder.
             cy.get(GEO_ACTION_SELECTOR, {timeout: 30000}).click();
 
-            cy.contains('Tested URL', {timeout: 30000}).should('be.visible');
+            // The drawer opens on its own prompt and a Run check button; the
+            // tested URL is a result, so it is asserted after the run and not
+            // before it.
             cy.contains('button', 'Run check', {timeout: 30000}).click();
+
             // The drawer fetches the page once per crawler, three at a time, so
-            // the budget here is the servlet's worst case and not Cypress's.
-            // A per-crawler verdict is what proves a result was rendered rather
-            // than a spinner left running.
-            cy.contains(/Reachable|Blocked/, {timeout: 180000}).should('be.visible');
+            // the budget here is the servlet's worst case and not Cypress's. The
+            // score line is what proves a result was rendered rather than a
+            // spinner left running: it is computed from those fetches.
+            //
+            // This used to look for /Reachable|Blocked/. Both strings exist in
+            // en.json, but they are not what the panel puts on the page once a
+            // check has run, so the assertion sat through its whole 180s budget
+            // against a drawer that had finished and was showing its results.
+            cy.contains(/\d+ of \d+ checks passed/, {timeout: 180000}).should('be.visible');
+
+            // And the address it actually fetched, which is on Crawler access
+            // rather than on the Score tab the results open on.
+            selectTab('Crawler access', 60000);
+            cy.contains('Tested URL', {timeout: 60000}).should('be.visible');
         });
 
         it('does not offer the dashboard to a contributor', () => {
@@ -150,9 +187,15 @@ describe('geo-readiness — happy path', () => {
             // in which case the security property holds and this navigation
             // needs rewriting. tests/README.md says how to tell them apart.
             cy.login(fixture.contributor.username, fixture.contributor.password);
-            openJContentPages(fixture.siteKey);
-            cy.contains('button, [role="tab"], li, div', 'Additional', {timeout: 30000}).click();
-            cy.contains('button, li, div, a', 'SEO', {timeout: 30000}).click();
+            openJContentApps(fixture.siteKey);
+
+            // The liveness this test's premise needs, asserted rather than
+            // assumed: the contributor reaches the SEO section itself, so an
+            // absent entry below means absent and not unreachable. Measured on
+            // 8.2, a contributor is offered Page models and SEO but NOT Link
+            // checker - the section is filtered by permission, so arriving here
+            // proves nothing was hidden wholesale.
+            cy.contains(SEO_LABEL, {timeout: 30000}).should('be.visible');
             cy.contains(GEO_NAV_LABEL).should('not.exist');
         });
     });

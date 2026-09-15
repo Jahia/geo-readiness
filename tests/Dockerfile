@@ -2,8 +2,10 @@
 #
 # Mirrors @jahia/cypress's own env.Dockerfile — the browsers image, a non-root
 # user, the suite copied in and installed, and env.run.sh as the entry point.
-# env.run.sh is what checks the module is actually installed before running a
-# single spec, merges the reports afterwards and sets the exit code.
+# env.run.sh is the local wrapper, as in the sibling harnesses: it resolves the
+# pinned @jahia/cypress from package.json and delegates to its CLI, which checks
+# the module is actually installed before running a single spec, merges the
+# reports afterwards and sets the exit code.
 #
 # Build locally with:
 #   docker build -t geo-readiness-tests:latest .
@@ -29,4 +31,4 @@ COPY --chown=jahians:jahians . /home/jahians
 
 RUN CI=true yarn install && /home/jahians/node_modules/.bin/cypress install
 
-CMD ["/bin/bash", "-c", "/home/jahians/node_modules/@jahia/cypress/env.run.sh"]
+CMD ["/bin/bash", "-c", "/home/jahians/env.run.sh"]

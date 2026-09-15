@@ -31,16 +31,37 @@ export const MODULE_NAME = 'geo-readiness';
  */
 export const TEMPLATE_SET: string = Cypress.env('GEO_TEMPLATE_SET') || 'dx-base-demo-templates';
 
-/** The role that carries `publish` on a site. */
-export const PUBLISHER_ROLES = ['editor-in-chief', 'privileged'];
+/**
+ * The roles that carry `publish` on a site.
+ *
+ * `editor-in-chief` was the original choice and does not exist on
+ * `ghcr.io/jahia/jahia-ee-dev:8-SNAPSHOT`, which ships eleven roles and not
+ * that one. Granting a role that is not there grants nothing, so every user
+ * came out with no rights at all — which is the state `assertSitePermission`
+ * exists to catch, and did.
+ *
+ * Measured on that image, the roles carrying `publish` are `reviewer`,
+ * `site-administrator` and `server-administrator`. `site-administrator` is the
+ * one used here because the UI half of the happy path opens Site Settings, and
+ * a role carrying `publish` but unable to reach that screen would fail the UI
+ * tests for an unrelated reason.
+ *
+ * Overridable, because which role carries `publish` is exactly the thing that
+ * moves between Jahia versions.
+ */
+export const PUBLISHER_ROLES = (Cypress.env('GEO_PUBLISHER_ROLES') || 'site-administrator,privileged').split(',');
 
 /**
  * The roles that carry `jcr:modifyProperties` and `publication-start` but NOT
  * `publish`. This is the interesting denial case: a user who can edit and can
  * *request* publication, and who must still be refused the dashboard, because
  * the dashboard rewrites robots.txt and llms.txt for the whole site.
+ *
+ * `contributor` does not exist on the image either. `editor` is the role that
+ * holds `publication-start` without `publish` there, which is the shape this
+ * constant is describing.
  */
-export const CONTRIBUTOR_ROLES = ['contributor', 'privileged'];
+export const CONTRIBUTOR_ROLES = (Cypress.env('GEO_CONTRIBUTOR_ROLES') || 'editor,privileged').split(',');
 
 export type GeoFixture = {
     siteKey: string;
@@ -128,8 +149,17 @@ export function setupGeoFixture(fixture: GeoFixture): void {
     // at all and the UI spec looks for controls that were never rendered.
     enableModule(MODULE_NAME, fixture.siteKey);
 
+    // Publish first, so that what follows is genuinely absent from live.
+    publishAndWaitJobEnding(fixture.sitePath, ['en']);
+
     // A page inside the site, so a scope naming a real subtree can be tested
     // against something that exists rather than against the site root.
+    //
+    // Created AFTER the publication on purpose. The crawler check reports
+    // `published: false` for a node absent from live, and the happy path has a
+    // test for exactly that answer. Creating it before the publish put it in
+    // live with the rest of the site and that test asserted false against a
+    // page that was published.
     addNode({
         parentPathOrId: fixture.homePath,
         primaryNodeType: 'jnt:page',
@@ -140,10 +170,6 @@ export function setupGeoFixture(fixture: GeoFixture): void {
             {name: 'jcr:title', type: 'STRING', value: 'GEO child page', language: 'en'}
         ]
     });
-
-    // The crawler check reports `published: false` for a node absent from live,
-    // which is a real answer and not the one the happy path is about.
-    publishAndWaitJobEnding(fixture.sitePath, ['en']);
 
     createUser(fixture.publisher.username, fixture.publisher.password);
     createUser(fixture.contributor.username, fixture.contributor.password);
@@ -191,7 +217,10 @@ export function assertSitePermission(
         expect(result.errors, `${user.username} must be able to read ${sitePath} for this premise to mean anything`)
             .to.be.undefined;
         const node = result.data?.jcr?.nodeByPath;
-        expect(node, `${user.username} must resolve ${sitePath}`).to.not.be.null;
+        // to.not.be.null passes for undefined, which is what nodeByPath is when
+        // the user cannot read the node at all - so the next line threw a
+        // TypeError instead of saying so. to.exist covers both.
+        expect(node, `${user.username} must resolve ${sitePath}`).to.exist;
         expect(
             node.hasPermission,
             `${user.username} ${expected ? 'must hold' : 'must NOT hold'} "${permission}" on ${sitePath}`

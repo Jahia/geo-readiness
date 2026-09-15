@@ -4,6 +4,10 @@
 # their major alias @v2 (a generated Git tag, re-pointed by every v2.x.y release).
 name: On Code Change (PR)
 
+permissions:
+  contents: read
+  packages: read
+
 on:
   pull_request:
     types: [opened, reopened, synchronize]
@@ -71,6 +75,32 @@ jobs:
           # The action defaults to Java 11; sonar-maven-plugin 5.x needs a Java 17 runtime.
           java_version: '17'
 
-  # Integration tests are not wired yet. A tests/ Cypress suite exists, but the reusable
-  # workflow also needs tests/docker-compose.yml and a provisioning manifest, and neither is
-  # in the repository. The ready-to-paste job is in .github/MIGRATION-NOTES.md section 2.5.
+  # The tests/ Cypress suite, 127 assertions over the three servlets and the
+  # jContent dashboard. It ran green against a real instance before this job was
+  # added; until then nothing had ever executed it, and seven faults had
+  # accumulated in the harness unnoticed.
+  #
+  # jahia_image is the one the sibling harnesses use. The tag `jahia/jahia-dev`
+  # that tests/.env.example carried is not published and fails the pull.
+  #
+  # instance_type is deliberately left at the action's default, `self-hosted`.
+  # Setting it to ubuntu-latest was tried and fails: the workflow runs
+  # jahia-modules-action/helper, which reports the runner with
+  # `ec2metadata --instance-id`, and that command does not exist on a
+  # GitHub-hosted runner. The org has 21 self-hosted EC2 runners online carrying
+  # the `self-hosted` label, so the default is both correct and available.
+  # Reasoning from the ubuntu-latest that this repo's other jobs use does not
+  # transfer - none of them goes through this reusable workflow.
+  integration-tests:
+    name: Integration Tests
+    needs: build
+    secrets: inherit
+    uses: Jahia/jahia-modules-action/.github/workflows/reusable-integration-tests.yml@v2
+    with:
+      module_id: geo-readiness
+      module_branch: ${{ github.ref }}
+      jahia_image: ghcr.io/jahia/jahia-ee-dev:8-SNAPSHOT
+      provisioning_manifest: provisioning-manifest-build.yml
+      artifact_prefix: geo-readiness
+      should_skip_testrail: true
+      pagerduty_skip_notification: true
