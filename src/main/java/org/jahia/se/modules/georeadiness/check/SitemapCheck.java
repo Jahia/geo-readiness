@@ -1,5 +1,6 @@
 package org.jahia.se.modules.georeadiness.check;
 
+import org.jahia.se.modules.georeadiness.util.Markup;
 import org.jahia.se.modules.georeadiness.util.PublicUrls;
 import org.jahia.services.content.JCRCallback;
 import org.jahia.services.content.JCRNodeWrapper;
@@ -13,9 +14,11 @@ import org.slf4j.LoggerFactory;
 import javax.jcr.NodeIterator;
 import javax.jcr.RepositoryException;
 import javax.jcr.query.Query;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -46,10 +49,16 @@ public final class SitemapCheck {
     private static final Logger logger = LoggerFactory.getLogger(SitemapCheck.class);
 
     /** Parsed rather than XML-parsed: no namespaces to fight, no XXE surface. */
-    private static final Pattern URL_BLOCK = Pattern.compile("(?is)<url>(.*?)</url>");
-    private static final Pattern LOC = Pattern.compile("(?is)<loc>\\s*(.*?)\\s*</loc>");
-    private static final Pattern LASTMOD = Pattern.compile("(?is)<lastmod>\\s*(.*?)\\s*</lastmod>");
-    private static final Pattern SITEMAP_BLOCK = Pattern.compile("(?is)<sitemap>(.*?)</sitemap>");
+    /*
+     * The blocks are found by walking the file, for the reason Markup sets out:
+     * it is fetched from somewhere else. What is left reads one value out of
+     * one block, and says so in a way that has only one reading - an element's
+     * text cannot contain "<", where "<loc>\\s*(.*?)\\s*</loc>" leaves the engine
+     * to work out which of the three parts takes each space. Values are trimmed
+     * afterwards instead.
+     */
+    private static final Pattern LOC = Pattern.compile("(?is)<loc>([^<]{0,2000})</loc>");
+    private static final Pattern LASTMOD = Pattern.compile("(?is)<lastmod>([^<]{0,100})</lastmod>");
 
     private static final int MAX_ENTRIES = 10_000;
     private static final int MAX_REPORTED = 200;
@@ -248,31 +257,53 @@ public final class SitemapCheck {
      */
     private static void collect(String xml, String base, Map<String, String> into,
             int timeoutMs, int maxBytes, int depth) {
-        Matcher urls = URL_BLOCK.matcher(xml);
-        boolean any = false;
-        while (urls.find() && into.size() < MAX_ENTRIES) {
-            any = true;
-            String block = urls.group(1);
-            Matcher loc = LOC.matcher(block);
-            if (!loc.find()) {
-                continue;
+        boolean[] any = {false};
+        Markup.forEachElement(xml, "url", (tag, block, at) -> {
+            any[0] = true;
+            if (into.size() < MAX_ENTRIES) {
+                entry(block, into);
             }
-            Matcher mod = LASTMOD.matcher(block);
-            into.put(PublishedMap.pathOf(loc.group(1)), mod.find() ? mod.group(1) : null);
-        }
-        if (any || depth >= 1) {
+        });
+        if (any[0] || depth >= 1) {
             return;
         }
+        follow(childrenOf(xml), base, into, timeoutMs, maxBytes, depth);
+    }
 
-        Matcher children = SITEMAP_BLOCK.matcher(xml);
-        while (children.find() && into.size() < MAX_ENTRIES) {
-            Matcher loc = LOC.matcher(children.group(1));
-            if (!loc.find()) {
-                continue;
+    /** One `<url>` block: where it points, and when it says it last changed. */
+    private static void entry(String block, Map<String, String> into) {
+        Matcher loc = LOC.matcher(block);
+        if (!loc.find()) {
+            return;
+        }
+        Matcher mod = LASTMOD.matcher(block);
+        into.put(PublishedMap.pathOf(loc.group(1).trim()), mod.find() ? mod.group(1).trim() : null);
+    }
+
+    /** The sitemaps a sitemap index names. */
+    private static List<String> childrenOf(String xml) {
+        List<String> out = new ArrayList<>();
+        Markup.forEachElement(xml, "sitemap", (tag, block, at) -> {
+            Matcher loc = LOC.matcher(block);
+            if (loc.find()) {
+                out.add(loc.group(1).trim());
             }
-            // A sitemap index names its children, and the file is fetched
-            // content: only a child on the site's own origin is followed.
-            SiteFilesChecker.Fetched child = SiteFilesChecker.fetch(loc.group(1), base, timeoutMs, maxBytes);
+        });
+        return out;
+    }
+
+    /**
+     * Reads each child in turn. The file naming them is fetched content, so
+     * only a child on the site's own origin is followed - FetchGuard is what
+     * decides that, in SiteFilesChecker.fetch.
+     */
+    private static void follow(List<String> children, String base, Map<String, String> into,
+            int timeoutMs, int maxBytes, int depth) {
+        for (String location : children) {
+            if (into.size() >= MAX_ENTRIES) {
+                return;
+            }
+            SiteFilesChecker.Fetched child = SiteFilesChecker.fetch(location, base, timeoutMs, maxBytes);
             if (child.status != null && child.status == 200 && child.body != null) {
                 collect(child.body, base, into, timeoutMs, maxBytes, depth + 1);
             }
