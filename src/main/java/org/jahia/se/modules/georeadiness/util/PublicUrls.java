@@ -201,22 +201,32 @@ public final class PublicUrls {
         // The host is the site's own, always: the request only gets to say WHICH
         // of the site's names is in use, never a name of its own. The scheme and
         // the port are not taken from it at all, see jahiaPort.
-        if (req == null || !servedBy(site, req.getServerName())) {
+        //
+        // Which is what the line below now actually does. servedName returns the
+        // REPOSITORY's spelling of the name that matched, and that is what gets
+        // built into the url; it used to check the request's host and then build
+        // with the request's own copy of it. Equal under equalsIgnoreCase is not
+        // equal: `Host: WWW.ACME.COM` produced the base `https://WWW.ACME.COM`,
+        // and SiteScanServlet persists that base in geoBaseUrl, so a casing a
+        // caller chose outlived the request in every later scheduled scan. It
+        // also left the only string in the url that a request could influence.
+        String host = req == null ? null : servedName(site, req.getServerName());
+        if (host == null) {
             // A real server name that differs from the request host: an edit host
             // against a public host. Assume https on the default port.
             return "https://" + server;
         }
-        return onThisJahia(req);
+        return onThisJahia(host, req);
     }
 
     /**
      * The site's own host, at the scheme and port THIS Jahia answers on, which
      * keeps local setups such as http://luxe.local.com:8080 working.
      */
-    private static String onThisJahia(HttpServletRequest req) {
+    private static String onThisJahia(String host, HttpServletRequest req) {
         int port = jahiaPort(req);
         String scheme = scheme(req, port);
-        return scheme + "://" + req.getServerName() + (isDefaultPort(scheme, port) ? "" : ":" + port);
+        return scheme + "://" + host + (isDefaultPort(scheme, port) ? "" : ":" + port);
     }
 
     /** True when the port is the one the scheme implies, so a url need not name it. */
@@ -230,7 +240,7 @@ public final class PublicUrls {
      * {@code req.getServerPort()}.
      *
      * Per the servlet spec that method returns the part after ':' in the Host
-     * header, which the caller writes. {@link #servedBy} checks the host name
+     * header, which the caller writes. {@link #servedName} checks the host name
      * and nothing checked the port, so {@code Host: www.acme.com:6379} produced
      * the base {@code http://www.acme.com:6379} and every fetch this module
      * makes off that base - sixteen crawler agents plus robots.txt and the two
@@ -283,21 +293,21 @@ public final class PublicUrls {
     }
 
     /** True when {@code host} is one of the names this site answers to. */
-    private static boolean servedBy(JCRSiteNode site, String host) {
+    private static String servedName(JCRSiteNode site, String host) {
         if (host == null || host.isEmpty()) {
-            return false;
+            return null;
         }
         if (host.equalsIgnoreCase(site.getServerName())) {
-            return true;
+            return site.getServerName();
         }
         List<String> aliases = site.getServerNameAliases();
         if (aliases != null) {
             for (String alias : aliases) {
                 if (host.equalsIgnoreCase(alias)) {
-                    return true;
+                    return alias;
                 }
             }
         }
-        return false;
+        return null;
     }
 }
