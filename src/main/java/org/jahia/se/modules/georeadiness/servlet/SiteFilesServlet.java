@@ -17,6 +17,7 @@ import org.jahia.services.usermanager.JahiaUser;
 import org.jahia.services.usermanager.JahiaUserManagerService;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -76,11 +77,29 @@ public class SiteFilesServlet extends HttpServlet {
     private static final String ROBOTS_DEFAULT = "User-agent: *";
     private static final int MAX_CONTENT = 400_000;
 
-    @Reference
-    private GeoReadinessConfigService config;
+    /**
+     * Injected through the constructor rather than into the field, so a servlet
+     * the container shares between threads holds nothing mutable.
+     */
+    private final transient GeoReadinessConfigService config;
+
+    @Activate
+    public SiteFilesServlet(@Reference GeoReadinessConfigService config) {
+        this.config = config;
+    }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
+        try {
+            dispatch(req, resp);
+        } catch (IOException | RuntimeException e) {
+            // Nothing may leave a servlet method: the container would answer with
+            // a stack trace instead of a response.
+            logger.debug("could not write the site files response", e);
+        }
+    }
+
+    private void dispatch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         JahiaUser user = currentUser();
         if (user == null || JahiaUserManagerService.GUEST_USERNAME.equals(user.getName())) {
             deny(resp, HttpServletResponse.SC_UNAUTHORIZED, "authentication required");

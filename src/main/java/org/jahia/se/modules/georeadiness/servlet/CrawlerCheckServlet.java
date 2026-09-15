@@ -25,6 +25,7 @@ import org.jahia.services.usermanager.JahiaUser;
 import org.jahia.services.usermanager.JahiaUserManagerService;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
@@ -110,23 +111,46 @@ public class CrawlerCheckServlet extends HttpServlet {
 
     private final Map<String, Deque<Long>> callWindows = new ConcurrentHashMap<>();
 
-    @Reference
-    private GeoReadinessConfigService config;
+    /**
+     * Injected through the constructor rather than into the field, so a servlet
+     * the container shares between threads holds nothing mutable.
+     */
+    private final transient GeoReadinessConfigService config;
 
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        if (isGuest()) {
-            deny(resp, HttpServletResponse.SC_UNAUTHORIZED, "authentication required");
-            return;
-        }
-        JSONObject out = new JSONObject();
-        out.put("enabled", true);
-        out.put("agents", new JSONArray(agents().keySet()));
-        writeJson(resp, HttpServletResponse.SC_OK, out);
+    @Activate
+    public CrawlerCheckServlet(@Reference GeoReadinessConfigService config) {
+        this.config = config;
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
+        try {
+            if (isGuest()) {
+                deny(resp, HttpServletResponse.SC_UNAUTHORIZED, "authentication required");
+                return;
+            }
+            JSONObject out = new JSONObject();
+            out.put("enabled", true);
+            out.put("agents", new JSONArray(agents().keySet()));
+            writeJson(resp, HttpServletResponse.SC_OK, out);
+        } catch (IOException | RuntimeException e) {
+            // Nothing may leave a servlet method: the container would answer with
+            // a stack trace instead of a response. A broken socket, or a JSON
+            // library that throws unchecked, both end here.
+            logger.debug("could not write the crawler check status", e);
+        }
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
+        try {
+            dispatch(req, resp);
+        } catch (IOException | RuntimeException e) {
+            logger.debug("could not write the crawler check response", e);
+        }
+    }
+
+    private void dispatch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         JahiaUser user = currentUser();
         if (user == null || JahiaUserManagerService.GUEST_USERNAME.equals(user.getName())) {
             deny(resp, HttpServletResponse.SC_UNAUTHORIZED, "authentication required");
@@ -258,6 +282,11 @@ public class CrawlerCheckServlet extends HttpServlet {
                 try {
                     probed.add(futures.get(i).get());
                 } catch (Exception e) {
+                    if (e instanceof InterruptedException) {
+                        // get() cleared the flag on the way out. Restore it, or
+                        // nothing downstream can tell the request was cancelled.
+                        Thread.currentThread().interrupt();
+                    }
                     // One agent failing must not lose the other fifteen.
                     JSONObject r = new JSONObject();
                     r.put("name", names.get(i));
