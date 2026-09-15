@@ -15,6 +15,7 @@ import javax.jcr.RepositoryException;
 import javax.jcr.query.Query;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -51,6 +52,16 @@ public final class SiteScorer {
     /** Worst pages kept in full. Beyond this the tail stops being read by anyone. */
     private static final int MAX_FAILURES = 500;
 
+    /**
+     * The keys of the per-page report this walks over. Named because they are
+     * read here and written by {@link GeoScore}, so a typo on either side is a
+     * silent zero rather than a failure.
+     */
+    private static final String GUEST_READABLE = "guestReadable";
+    private static final String PASSED = "passed";
+    private static final String TOTAL = "total";
+    private static final String CRITICAL_FAILED = "criticalFailed";
+
     private SiteScorer() {
     }
 
@@ -68,228 +79,346 @@ public final class SiteScorer {
      * nature: the caller decides whether that is a job or a request.
      */
     public static JSONObject scan(String sitePath, String language, Options opts) throws RepositoryException {
-        String root = opts.scope == null || opts.scope.trim().isEmpty() ? sitePath : opts.scope.trim();
-        Locale locale = Locale.forLanguageTag(language);
+        return new Run(sitePath, language, opts).execute();
+    }
 
-        List<String> paths = JCRTemplate.getInstance().doExecuteWithSystemSession(null, "live", locale,
-                (JCRCallback<List<String>>) session -> publishedPages(session, root, opts.maxPages));
+    /**
+     * One scan, with its accumulators as fields.
+     *
+     * This used to be a single static method that Sonar scored at a cognitive
+     * complexity of 42 against a threshold of 15. The length was a symptom; the
+     * cause was that eleven running totals lived as locals, so no part of the
+     * walk could be lifted out without threading ten arguments through it - which
+     * only trades one Sonar finding for another. Giving the run an identity makes
+     * every step below a method with no arguments or one.
+     *
+     * Deliberately short-lived and confined to {@link #scan}: one instance per
+     * scan, never shared, never reused. The accumulators are plainly mutable, and
+     * that is only safe because nothing else can reach them.
+     */
+    private static final class Run {
 
-        // Claim the run before any of the work below. Refused means someone
-        // else is already scanning this site and language, and the two runs
-        // would otherwise interleave their writes to the same stored state.
-        if (!ScanStore.tryBeginRun(sitePath, language, paths.size())) {
-            throw new ScanInProgressException(sitePath, language);
+        private final String sitePath;
+        private final String language;
+        private final Options opts;
+        private final String siteBase;
+
+        /** Fetched once for the whole site: the same file for every row. */
+        private JSONObject siteFiles;
+        private RobotsRules rules;
+        /** GEO-21, kept because the link report reads it as well as storing it. */
+        private JSONObject sitemap;
+
+        private final LinkGraph.Accumulator links = new LinkGraph.Accumulator();
+        /** GEO-25. Where each fetched page says its canonical is, keyed by the path it was fetched at. */
+        private final Map<String, String> canonicals = new LinkedHashMap<>();
+        private final JSONArray failures = new JSONArray();
+        private final Map<String, Integer> failCounts = new TreeMap<>();
+        private final Map<String, String> severities = new LinkedHashMap<>();
+        private final Map<String, int[]> bySection = new LinkedHashMap<>();
+        private final TemplateRollup.Accumulator byTemplate = new TemplateRollup.Accumulator();
+
+        private int scored;
+        private int totalPassed;
+        private int totalChecks;
+        private int criticalPages;
+        private int unreadable;
+
+        Run(String sitePath, String language, Options opts) throws RepositoryException {
+            this.sitePath = sitePath;
+            this.language = language;
+            this.opts = opts;
+            this.siteBase = baseFor(sitePath, language, opts);
         }
 
-        // The two site files are fetched once for the whole site, not once per
-        // page: they are the same file for every row.
-        String siteBase = baseFor(sitePath, language, opts);
-        JSONObject siteFiles = SiteFilesChecker.check(siteBase, "/", opts.fetchTimeoutMs, opts.maxBodyBytes);
+        JSONObject execute() throws RepositoryException {
+            List<String> paths = publishedPaths();
+
+            // Claim the run before any of the work below. Refused means someone
+            // else is already scanning this site and language, and the two runs
+            // would otherwise interleave their writes to the same stored state.
+            if (!ScanStore.tryBeginRun(sitePath, language, paths.size())) {
+                throw new ScanInProgressException(sitePath, language);
+            }
+
+            siteFiles = SiteFilesChecker.check(siteBase, "/", opts.fetchTimeoutMs, opts.maxBodyBytes);
+            rules = rulesOf(siteFiles);
+
+            walk(paths);
+            JSONObject aggregate = aggregate(paths.size());
+            storeSiteReports(paths);
+
+            ScanStore.progress(sitePath, language, paths.size());
+            ScanStore.finishRun(sitePath, language, aggregate, failures);
+            return aggregate;
+        }
+
+        /** Every published page under the scope, or under the site when none is set. */
+        private List<String> publishedPaths() throws RepositoryException {
+            String root = opts.scope == null || opts.scope.trim().isEmpty() ? sitePath : opts.scope.trim();
+            return JCRTemplate.getInstance().doExecuteWithSystemSession(null, "live",
+                    Locale.forLanguageTag(language),
+                    (JCRCallback<List<String>>) session -> publishedPages(session, root, opts.maxPages));
+        }
+
+        /**
+         * One fetch per page. A page that cannot be scored is logged and skipped:
+         * a single bad row must not cost the other fifty thousand.
+         */
+        private void walk(List<String> paths) throws RepositoryException {
+            for (int i = 0; i < paths.size(); i++) {
+                String path = paths.get(i);
+                try {
+                    fold(path, scorePage(sitePath, path, language, rules, siteFiles, opts,
+                            links, canonicals, siteBase));
+                } catch (Exception e) {
+                    logger.debug("scoring failed for {}", path, e);
+                }
+                if ((i + 1) % PROGRESS_EVERY == 0) {
+                    ScanStore.progress(sitePath, language, i + 1L);
+                }
+            }
+        }
+
+        /** One page folded into the running totals. Null means it is not published. */
+        private void fold(String path, JSONObject one) {
+            if (one == null) {
+                return;
+            }
+            if (!one.optBoolean(GUEST_READABLE, true)) {
+                unreadable++;
+            }
+
+            JSONObject score = one.getJSONObject("score");
+            scored++;
+            int passed = score.optInt(PASSED, 0);
+            int total = score.optInt(TOTAL, 0);
+            totalPassed += passed;
+            totalChecks += total;
+            if (score.optInt(CRITICAL_FAILED, 0) > 0) {
+                criticalPages++;
+            }
+
+            int[] agg = bySection.computeIfAbsent(sectionOf(sitePath, path), k -> new int[3]);
+            agg[0]++;
+            agg[1] += passed;
+            agg[2] += total;
+
+            JSONArray failed = one.getJSONArray("failed");
+            byTemplate.add(one.optString("template", ""), failed);
+            recordSeverities(one);
+            for (int f = 0; f < failed.length(); f++) {
+                failCounts.merge(failed.getString(f), 1, Integer::sum);
+            }
+            recordFailure(path, one, score, failed);
+        }
+
+        /**
+         * The same eighteen for every page, so recorded once: what the failure
+         * matrix needs to colour a cell by how much it matters.
+         */
+        private void recordSeverities(JSONObject one) {
+            JSONObject sev = one.optJSONObject("severities");
+            if (sev == null || !severities.isEmpty()) {
+                return;
+            }
+            for (String k : sev.keySet()) {
+                severities.put(k, sev.getString(k));
+            }
+        }
+
+        /**
+         * Only pages with something wrong are kept, worst first by virtue of
+         * critical failures being rarer than advisory ones.
+         */
+        private void recordFailure(String path, JSONObject one, JSONObject score, JSONArray failed) {
+            if (failed.length() == 0 || failures.length() >= MAX_FAILURES) {
+                return;
+            }
+            JSONObject row = new JSONObject();
+            row.put("path", path);
+            row.put("title", one.optString("title", ""));
+            row.put("template", one.optString("template", ""));
+            row.put(PASSED, score.optInt(PASSED, 0));
+            row.put(TOTAL, score.optInt(TOTAL, 0));
+            row.put("critical", score.optInt(CRITICAL_FAILED, 0));
+            row.put("failed", failed);
+            failures.put(row);
+        }
+
+        /** What the dashboard reads: the site, its sections and its templates. */
+        private JSONObject aggregate(int pages) {
+            JSONObject aggregate = new JSONObject();
+            aggregate.put("pages", pages);
+            aggregate.put("scored", scored);
+            aggregate.put("unreadable", unreadable);
+            aggregate.put("criticalPages", criticalPages);
+            aggregate.put("truncated", pages >= opts.maxPages);
+            // One number everybody will quote, so it is stated as what it is: the
+            // share of checks that passed across every page scored.
+            aggregate.put("percent", totalChecks == 0 ? 0 : Math.round(totalPassed * 100.0 / totalChecks));
+            aggregate.put("failCounts", new JSONObject(failCounts));
+            aggregate.put("severities", new JSONObject(severities));
+
+            JSONArray sections = new JSONArray();
+            bySection.forEach((name, agg) -> {
+                JSONObject s = new JSONObject();
+                s.put("section", name);
+                s.put("pages", agg[0]);
+                s.put("percent", agg[2] == 0 ? 0 : Math.round(agg[1] * 100.0 / agg[2]));
+                sections.put(s);
+            });
+            aggregate.put("sections", sections);
+            // GEO-18. Ranked by pages rendered, so the biggest single fix is first.
+            aggregate.put("templates", byTemplate.toJson());
+            return aggregate;
+        }
+
+        /**
+         * The five reports stored beside the score rather than in it.
+         *
+         * None of them move the percentage: they are facts about the site, not
+         * checks a page passed or failed. Each is stored on its own and each
+         * swallows its own failure, so one unavailable report does not cost the
+         * other four or the scan itself.
+         *
+         * Order matters once: the sitemap is fetched before the link report,
+         * which reads it.
+         */
+        private void storeSiteReports(List<String> paths) {
+            storeSitemap();
+            storeLinks(paths);
+            storeVanity();
+            storeFreshness();
+            storeLlms();
+        }
+
+        /**
+         * GEO-21. Run once per scan, not once per page: it is the same file for
+         * every row, and storing it is what lets the drawer answer "is this page
+         * in the sitemap" without fetching a sitemap of its own.
+         */
+        private void storeSitemap() {
+            try {
+                sitemap = SitemapCheck.check(sitePath, language, siteBase,
+                        opts.fetchTimeoutMs, opts.maxBodyBytes);
+                ScanStore.saveSitemap(sitePath, language, sitemap);
+            } catch (Exception e) {
+                logger.debug("sitemap check failed for {}", sitePath, e);
+            }
+        }
+
+        /**
+         * GEO-22. "Nothing links here" is a fact about the site, not a check this
+         * page passed or failed.
+         */
+        private void storeLinks(List<String> paths) {
+            try {
+                Map<String, PublishedMap.Entry> published = PublishedMap.forSite(sitePath, siteBase);
+                LinkGraph.addReferences(links, published, language, new LinkedHashSet<>(paths));
+                ScanStore.saveLinks(sitePath, language,
+                        LinkGraph.report(links, published, language, PublishedMap.homePath(sitePath),
+                                sitemap != null && sitemap.optBoolean("present", false),
+                                notListed(sitemap)));
+            } catch (Exception e) {
+                logger.debug("link graph failed for {}", sitePath, e);
+            }
+        }
+
+        /**
+         * GEO-25. Almost entirely a repository question, so it needs nothing from
+         * the walk except the canonical tags it already read.
+         */
+        private void storeVanity() {
+            try {
+                ScanStore.saveVanity(sitePath, language, VanityUrls.check(sitePath, canonicals));
+            } catch (Exception e) {
+                logger.debug("vanity url check failed for {}", sitePath, e);
+            }
+        }
+
+        /**
+         * GEO-24. Pure repository work, so the scheduled run keeps it current at
+         * no cost; the tab can also ask for it directly at any time.
+         */
+        private void storeFreshness() {
+            try {
+                int staleDays = ScanStore.read(sitePath, language).optInt("staleDays", 0);
+                if (staleDays <= 0) {
+                    staleDays = Freshness.DEFAULT_STALE_DAYS;
+                }
+                ScanStore.saveFreshness(sitePath, language,
+                        Freshness.check(sitePath, language, siteBase, staleDays), staleDays);
+            } catch (Exception e) {
+                logger.debug("freshness failed for {}", sitePath, e);
+            }
+        }
+
+        /**
+         * Is the published llms.txt still about this site? Compared against what
+         * regenerating would produce now, using the copy the site files check
+         * already fetched, so it costs one generation and no request.
+         */
+        private void storeLlms() {
+            try {
+                JSONObject llmsJson = siteFiles.optJSONObject("llms");
+                String servedLlms = llmsJson == null ? null : llmsJson.optString("rawBody", null);
+                String regenerated = GuestVisibility.inGuestSession(language, this::generateLlms);
+                ScanStore.saveLlms(sitePath, language, LlmsFreshness.check(servedLlms, regenerated,
+                        PublishedMap.forSite(sitePath, siteBase), sitePath));
+            } catch (Exception e) {
+                logger.debug("llms.txt freshness failed for {}", sitePath, e);
+            }
+        }
+
+        /**
+         * What llms.txt would say if it were regenerated now, as the guest sees
+         * the site.
+         *
+         * The rethrow is not decoration: the callback may only raise
+         * RepositoryException, so anything else has to be wrapped to get out.
+         */
+        private String generateLlms(JCRSessionWrapper guest) throws RepositoryException {
+            try {
+                return LlmsGenerator.generate(guest.getNode(sitePath), language,
+                        n -> PublicUrls.forNode(n, opts.publicBaseUrl));
+            } catch (RepositoryException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new RepositoryException(e);
+            }
+        }
+
+        /**
+         * The published paths the sitemap does *not* list.
+         *
+         * The comparison stores its findings, not the sitemap's entries - a large
+         * site's entry list would dwarf everything else in the record - so "is this
+         * page listed" cannot be asked directly. It does not need to be: `missing`
+         * is exactly the published paths absent from the sitemap, so everything
+         * else published is listed. Capped with the rest of the findings, so on a
+         * site with more than two hundred missing pages some will read as listed;
+         * a sitemap missing two hundred pages has a louder problem than this.
+         */
+        private static java.util.Set<String> notListed(JSONObject sitemap) {
+            java.util.Set<String> out = new java.util.LinkedHashSet<>();
+            JSONArray missing = sitemap == null ? null : sitemap.optJSONArray("missing");
+            for (int i = 0; missing != null && i < missing.length(); i++) {
+                out.add(missing.getJSONObject(i).optString("path", ""));
+            }
+            return out;
+        }
+    }
+
+    /** The rules robots.txt states for this site, or none when it has nothing to say. */
+    private static RobotsRules rulesOf(JSONObject siteFiles) {
         JSONObject robotsJson = siteFiles.optJSONObject("robots");
-        RobotsRules rules = robotsJson != null && robotsJson.optBoolean("present", false)
+        return robotsJson != null && robotsJson.optBoolean("present", false)
                 ? RobotsRules.parse(robotsJson.optString("rawBody", ""))
                 : RobotsRules.empty();
-
-        LinkGraph.Accumulator links = new LinkGraph.Accumulator();
-        // GEO-25. Where each fetched page says its canonical is, keyed by the
-        // path it was fetched at.
-        Map<String, String> canonicals = new LinkedHashMap<>();
-        JSONArray failures = new JSONArray();
-        Map<String, Integer> failCounts = new TreeMap<>();
-        Map<String, String> severities = new LinkedHashMap<>();
-        Map<String, int[]> bySection = new LinkedHashMap<>();
-        TemplateRollup.Accumulator byTemplate = new TemplateRollup.Accumulator();
-        int scored = 0;
-        int totalPassed = 0;
-        int totalChecks = 0;
-        int criticalPages = 0;
-        int unreadable = 0;
-
-        for (int i = 0; i < paths.size(); i++) {
-            String path = paths.get(i);
-            try {
-                JSONObject one = scorePage(sitePath, path, language, rules, siteFiles, opts, links, canonicals, siteBase);
-                if (one == null) {
-                    continue;
-                }
-
-                boolean pageUnreadable = !one.optBoolean("guestReadable", true);
-                if (pageUnreadable) {
-                    unreadable++;
-                }
-
-                JSONObject score = one.getJSONObject("score");
-                scored++;
-                totalPassed += score.optInt("passed", 0);
-                totalChecks += score.optInt("total", 0);
-                boolean critical = score.optInt("criticalFailed", 0) > 0;
-                if (critical) {
-                    criticalPages++;
-                }
-
-                String section = sectionOf(sitePath, path);
-                int[] agg = bySection.computeIfAbsent(section, k -> new int[3]);
-                agg[0]++;
-                agg[1] += score.optInt("passed", 0);
-                agg[2] += score.optInt("total", 0);
-
-                JSONArray failed = one.getJSONArray("failed");
-                byTemplate.add(one.optString("template", ""), failed);
-                // The same eighteen every page, so recorded once: what the
-                // failure matrix needs to color a cell by how much it matters.
-                JSONObject sev = one.optJSONObject("severities");
-                if (sev != null && severities.isEmpty()) {
-                    for (String k : sev.keySet()) {
-                        severities.put(k, sev.getString(k));
-                    }
-                }
-                for (int f = 0; f < failed.length(); f++) {
-                    String id = failed.getString(f);
-                    failCounts.merge(id, 1, Integer::sum);
-                }
-
-                // Only pages with something wrong are kept, worst first by virtue
-                // of critical failures being rarer than advisory ones.
-                if (failed.length() > 0 && failures.length() < MAX_FAILURES) {
-                    JSONObject row = new JSONObject();
-                    row.put("path", path);
-                    row.put("title", one.optString("title", ""));
-                    row.put("template", one.optString("template", ""));
-                    row.put("passed", score.optInt("passed", 0));
-                    row.put("total", score.optInt("total", 0));
-                    row.put("critical", score.optInt("criticalFailed", 0));
-                    row.put("failed", failed);
-                    failures.put(row);
-                }
-            } catch (Exception e) {
-                logger.debug("scoring failed for {}", path, e);
-            }
-
-            if ((i + 1) % PROGRESS_EVERY == 0) {
-                ScanStore.progress(sitePath, language, i + 1L);
-            }
-        }
-
-        JSONObject aggregate = new JSONObject();
-        aggregate.put("pages", paths.size());
-        aggregate.put("scored", scored);
-        aggregate.put("unreadable", unreadable);
-        aggregate.put("criticalPages", criticalPages);
-        aggregate.put("truncated", paths.size() >= opts.maxPages);
-        // One number everybody will quote, so it is stated as what it is: the
-        // share of checks that passed across every page scored.
-        aggregate.put("percent", totalChecks == 0 ? 0 : Math.round(totalPassed * 100.0 / totalChecks));
-        aggregate.put("failCounts", new JSONObject(failCounts));
-        aggregate.put("severities", new JSONObject(severities));
-
-        JSONArray sections = new JSONArray();
-        bySection.forEach((name, agg) -> {
-            JSONObject s = new JSONObject();
-            s.put("section", name);
-            s.put("pages", agg[0]);
-            s.put("percent", agg[2] == 0 ? 0 : Math.round(agg[1] * 100.0 / agg[2]));
-            sections.put(s);
-        });
-        aggregate.put("sections", sections);
-        // GEO-18. Ranked by pages rendered, so the biggest single fix is first.
-        aggregate.put("templates", byTemplate.toJson());
-
-        // GEO-21. Run once per scan, not once per page: it is the same file for
-        // every row, and storing it is what lets the drawer answer "is this page
-        // in the sitemap" without fetching a sitemap of its own. Stored beside
-        // the aggregate rather than in it, because it is a comparison and not a
-        // score, and it can also be refreshed on its own.
-        JSONObject sitemap = null;
-        try {
-            sitemap = SitemapCheck.check(sitePath, language, siteBase,
-                    opts.fetchTimeoutMs, opts.maxBodyBytes);
-            ScanStore.saveSitemap(sitePath, language, sitemap);
-        } catch (Exception e) {
-            logger.debug("sitemap check failed for {}", sitePath, e);
-        }
-
-        // GEO-22. Stored beside the score for the same reason the sitemap is:
-        // "nothing links here" is a fact about the site, not a check this page
-        // passed or failed, and it does not move the percentage.
-        try {
-            Map<String, PublishedMap.Entry> published = PublishedMap.forSite(sitePath, siteBase);
-            LinkGraph.addReferences(links, published, language, new java.util.LinkedHashSet<>(paths));
-            ScanStore.saveLinks(sitePath, language,
-                    LinkGraph.report(links, published, language, PublishedMap.homePath(sitePath),
-                            sitemap != null && sitemap.optBoolean("present", false),
-                            notListed(sitemap)));
-        } catch (Exception e) {
-            logger.debug("link graph failed for {}", sitePath, e);
-        }
-
-        // GEO-25. Almost entirely a repository question, so it needs nothing
-        // from the walk except the canonical tags it already read.
-        try {
-            ScanStore.saveVanity(sitePath, language, VanityUrls.check(sitePath, canonicals));
-        } catch (Exception e) {
-            logger.debug("vanity url check failed for {}", sitePath, e);
-        }
-
-        // GEO-24. Pure repository work, so the scheduled run keeps it current at
-        // no cost; the tab can also ask for it directly at any time.
-        try {
-            int staleDays = ScanStore.read(sitePath, language).optInt("staleDays", 0);
-            if (staleDays <= 0) {
-                staleDays = Freshness.DEFAULT_STALE_DAYS;
-            }
-            ScanStore.saveFreshness(sitePath, language,
-                    Freshness.check(sitePath, language, siteBase, staleDays), staleDays);
-        } catch (Exception e) {
-            logger.debug("freshness failed for {}", sitePath, e);
-        }
-
-        // Is the published llms.txt still about this site? Compared against what
-        // regenerating would produce now, using the copy the site files check
-        // already fetched, so it costs one generation and no request.
-        try {
-            JSONObject llmsJson = siteFiles.optJSONObject("llms");
-            String servedLlms = llmsJson == null ? null : llmsJson.optString("rawBody", null);
-            String regenerated = GuestVisibility.inGuestSession(language, guest -> {
-                try {
-                    return LlmsGenerator.generate(guest.getNode(sitePath), language,
-                            n -> PublicUrls.forNode(n, opts.publicBaseUrl));
-                } catch (javax.jcr.RepositoryException e) {
-                    throw e;
-                } catch (Exception e) {
-                    throw new javax.jcr.RepositoryException(e);
-                }
-            });
-            ScanStore.saveLlms(sitePath, language, LlmsFreshness.check(servedLlms, regenerated,
-                    PublishedMap.forSite(sitePath, siteBase), sitePath));
-        } catch (Exception e) {
-            logger.debug("llms.txt freshness failed for {}", sitePath, e);
-        }
-
-        ScanStore.progress(sitePath, language, paths.size());
-        ScanStore.finishRun(sitePath, language, aggregate, failures);
-        return aggregate;
     }
 
     /** One page: is it readable, what does its HTML contain, what does that score. */
-    /**
-     * The published paths the sitemap does *not* list.
-     *
-     * The comparison stores its findings, not the sitemap's entries - a large
-     * site's entry list would dwarf everything else in the record - so "is this
-     * page listed" cannot be asked directly. It does not need to be: `missing`
-     * is exactly the published paths absent from the sitemap, so everything
-     * else published is listed. Capped with the rest of the findings, so on a
-     * site with more than two hundred missing pages some will read as listed;
-     * a sitemap missing two hundred pages has a louder problem than this.
-     */
-    private static java.util.Set<String> notListed(JSONObject sitemap) {
-        java.util.Set<String> out = new java.util.LinkedHashSet<>();
-        JSONArray missing = sitemap == null ? null : sitemap.optJSONArray("missing");
-        for (int i = 0; missing != null && i < missing.length(); i++) {
-            out.add(missing.getJSONObject(i).optString("path", ""));
-        }
-        return out;
-    }
 
     private static JSONObject scorePage(String sitePath, String path, String language,
             RobotsRules rules, JSONObject siteFiles, Options opts, LinkGraph.Accumulator links,
@@ -300,7 +429,7 @@ public final class SiteScorer {
         }
 
         JSONObject out = new JSONObject();
-        out.put("guestReadable", visibility.optBoolean("guestReadable", true));
+        out.put(GUEST_READABLE, visibility.optBoolean(GUEST_READABLE, true));
 
         String url = JCRTemplate.getInstance().doExecuteWithSystemSession(null, "live",
                 Locale.forLanguageTag(language), (JCRCallback<String>) session -> {
@@ -315,7 +444,7 @@ public final class SiteScorer {
                 });
 
         JSONObject agent;
-        if (!visibility.optBoolean("guestReadable", true) || url == null) {
+        if (!visibility.optBoolean(GUEST_READABLE, true) || url == null) {
             // No point fetching a page a visitor cannot open. The score still
             // records it, and the critical guestReadable check does the talking.
             agent = new JSONObject();
@@ -373,7 +502,7 @@ public final class SiteScorer {
             }
             severities.put(c.getString("id"), c.getString("severity"));
             total++;
-            if (c.getBoolean("passed")) {
+            if (c.getBoolean(PASSED)) {
                 passed++;
             } else {
                 failed.put(c.getString("id"));
@@ -383,9 +512,9 @@ public final class SiteScorer {
             }
         }
         JSONObject trimmed = new JSONObject();
-        trimmed.put("passed", passed);
-        trimmed.put("total", total);
-        trimmed.put("criticalFailed", critical);
+        trimmed.put(PASSED, passed);
+        trimmed.put(TOTAL, total);
+        trimmed.put(CRITICAL_FAILED, critical);
         out.put("score", trimmed);
         out.put("failed", failed);
         out.put("severities", severities);
