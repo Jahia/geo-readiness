@@ -42,8 +42,14 @@ public final class SiteScope {
      * form ({@code fr-BE}) and the node-name form ({@code pt_BR}). Anything
      * else is refused before it reaches the repository, because the value ends
      * up as a node name under a system session.
+     *
+     * The subtags are bounded rather than left open. An unbounded group makes
+     * Java's matcher recurse once per repetition, so a long enough input
+     * overflows the stack before it is ever refused - and this value arrives
+     * from the request. Four is past anything real: language-script-region-variant.
      */
-    private static final Pattern LANGUAGE = Pattern.compile("[a-zA-Z]{2,8}([-_][a-zA-Z0-9]{1,8})*");
+    private static final Pattern LANGUAGE =
+            Pattern.compile("[a-zA-Z]{2,8}(?:[-_][a-zA-Z0-9]{1,8}){0,4}");
 
     private SiteScope() {
     }

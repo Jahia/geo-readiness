@@ -5,6 +5,7 @@ import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
 
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * OSGi-managed configuration for the GEO Readiness crawler check.
@@ -23,71 +24,78 @@ import java.util.Map;
         immediate = true)
 public class GeoReadinessConfigService {
 
-    private volatile Snapshot config = Snapshot.defaults();
+    /**
+     * The whole configuration is swapped at once, never edited in place, so a
+     * reader either sees the settings as they were or as they now are and never
+     * a mixture of the two. Snapshot is immutable, which is what makes that
+     * safe; the reference is held here rather than marked volatile so that the
+     * swap is visibly the atomic operation it has to be.
+     */
+    private final AtomicReference<Snapshot> config = new AtomicReference<>(Snapshot.defaults());
 
     @Activate
     @Modified
     protected void activate(Map<String, Object> properties) {
-        this.config = Snapshot.from(properties);
+        this.config.set(Snapshot.from(properties));
     }
 
     public int getFetchTimeoutMs() {
-        return config.fetchTimeoutMs;
+        return config.get().fetchTimeoutMs;
     }
 
     public int getMaxBodyBytes() {
-        return config.maxBodyBytes;
+        return config.get().maxBodyBytes;
     }
 
     public int getRateMaxCalls() {
-        return config.rateMaxCalls;
+        return config.get().rateMaxCalls;
     }
 
     public long getRateWindowMs() {
-        return config.rateWindowMs;
+        return config.get().rateWindowMs;
     }
 
     /** Blank means "use the built-in agent list", which is the normal case. */
     public String getCrawlerAgents() {
-        return config.crawlerAgents;
+        return config.get().crawlerAgents;
     }
 
     /** Blank means "derive the base URL from the site's server name". */
     public String getPublicBaseUrl() {
-        return config.publicBaseUrl;
+        return config.get().publicBaseUrl;
     }
 
     /** anthropic, openai or deepseek. Blank disables the written report. */
     public String getAiProvider() {
-        return config.aiProvider;
+        return config.get().aiProvider;
     }
 
     public String getAiModel() {
-        return config.aiModel;
+        return config.get().aiModel;
     }
 
     /** Never logged, never sent to the browser. */
     public String getAiApiKey() {
-        return config.aiApiKey;
+        return config.get().aiApiKey;
     }
 
     public int getAiMaxTokens() {
-        return config.aiMaxTokens;
+        return config.get().aiMaxTokens;
     }
 
     /** Blank means the provider's own endpoint. Set for a proxy or a compatible gateway. */
     public String getAiBaseUrl() {
-        return config.aiBaseUrl;
+        return config.get().aiBaseUrl;
     }
 
     /** Site-specific instructions appended to the report prompt. */
     public String getAiPromptAppendix() {
-        return config.aiPromptAppendix;
+        return config.get().aiPromptAppendix;
     }
 
     /** Report generations allowed per user per ten minutes. Each one is paid for. */
     public int getAiRateMaxCalls() {
-        return config.aiRateMaxCalls;
+        return config.get().aiRateMaxCalls;
     }
 
     // Immutable snapshot. One volatile read gives a fully consistent view.
