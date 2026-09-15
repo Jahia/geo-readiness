@@ -110,11 +110,19 @@ public final class Markup {
                     || Character.isWhitespace(tag.charAt(after)));
     }
 
-    /** Whether this tag closes one. */
+    /**
+     * Whether this tag closes one.
+     *
+     * The name has to end where the tag says it ends: without that, `</nav>`
+     * and `</navigation>` are the same closer, and a navigation region ends at
+     * the wrong place.
+     */
     public static boolean closes(String tag, String name) {
-        return tag.length() > 1 + name.length()
+        int after = 2 + name.length();
+        return tag.length() > after
                 && tag.charAt(1) == '/'
-                && tag.regionMatches(true, 2, name, 0, name.length());
+                && tag.regionMatches(true, 2, name, 0, name.length())
+                && (tag.charAt(after) == '>' || Character.isWhitespace(tag.charAt(after)));
     }
 
     /** As String.indexOf, ignoring case, so `</SCRIPT>` closes a script. */
