@@ -20,6 +20,7 @@
         "blocked": "{{count}} robot est bloqué.",
         "blocked_plural": "{{count}} robots sont bloqués.",
         "thin": "Certains robots reçoivent beaucoup moins de texte qu'un navigateur. La page a sans doute besoin de JavaScript pour afficher son contenu.",
+        "unpublishedTitle": "Cette page n'est pas publiée",
         "unpublished": "Cette page n'a jamais été publiée. Il n'y a donc pas encore d'URL publique à tester.",
         "empty": "Même un navigateur ne reçoit presque aucun texte avant l'exécution du JavaScript ({{count}} mots). Les robots verront une page vide."
       },
@@ -32,7 +33,7 @@
       "reachable": "Accessible",
       "initialHtml": "Ce que le robot reçoit avant l'exécution du JavaScript",
       "h1": "Titre H1",
-      "metaDescription": "Meta description",
+      "metaDescription": "Méta-description",
       "canonical": "URL canonique",
       "links": "Liens",
       "jsonLd": "Données structurées",

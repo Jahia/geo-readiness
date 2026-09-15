@@ -95,7 +95,15 @@ public final class Freshness {
         // An item with no date first: "nobody knows when this changed" is a
         // finding of its own. Then oldest to newest, so the list opens on what
         // needs attention rather than on whatever the repository returned first.
-        items.sort((a, b) -> a.days == b.days ? a.path.compareTo(b.path) : Integer.compare(b.days, a.days));
+        // Undated items carry days = -1, which is the SMALLEST value, so a plain
+        // descending sort put them last - the opposite of what this comment, the
+        // README, docs/checks.md and the changelog all promise. The cap below then
+        // kept the first MAX_ITEMS, so on a site above that size the pages with no
+        // date at all were exactly the ones dropped. Treat -1 as the oldest.
+        items.sort((a, b) -> a.days == b.days
+                ? a.path.compareTo(b.path)
+                : Integer.compare(b.days < 0 ? Integer.MAX_VALUE : b.days,
+                        a.days < 0 ? Integer.MAX_VALUE : a.days));
 
         out.put("total", dated);
         out.put("undated", undated);

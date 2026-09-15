@@ -20,6 +20,7 @@
         "blocked": "{{count}} crawler is blocked.",
         "blocked_plural": "{{count}} crawlers are blocked.",
         "thin": "Some crawlers receive far less text than a browser. The page may need JavaScript to show its content.",
+        "unpublishedTitle": "This page is not published",
         "unpublished": "This page has never been published, so there is no public URL to test yet.",
         "empty": "Even a browser receives almost no text before JavaScript runs ({{count}} words). Crawlers will see an empty page."
       },

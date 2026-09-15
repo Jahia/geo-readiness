@@ -275,7 +275,12 @@ public final class GeoReport {
             JSONObject tpl = templates.getJSONObject(i);
             sb.append(INDENT).append("template ").append(tpl.optString("template")).append(" (")
                     .append(tpl.optInt(PAGES)).append(" pages)");
-            JSONArray from = tpl.optJSONArray("fromPages");
+            // fromTemplate, not fromPages. TemplateRollup splits on
+            // isTemplateWide(): fromTemplate is the template's fault, fromPages
+            // merely happens on some of its pages. The heading above promises the
+            // former and this read the latter, so the digest handed the model the
+            // page-level noise and never saw the roll-up at all.
+            JSONArray from = tpl.optJSONArray("fromTemplate");
             if (from != null) {
                 for (int j = 0; j < from.length(); j++) {
                     JSONObject f = from.getJSONObject(j);
@@ -352,10 +357,15 @@ public final class GeoReport {
             sb.append(NOT_MEASURED);
             return;
         }
+        // LlmsFreshness stores "stale" as the ARRAY of stale entries and "outdated"
+        // as the boolean summarising it. Reading them the other way round made
+        // optBoolean("stale") always false and optJSONArray("outdated") always
+        // null, so this section reported "stale: false" and "0 listed pages that
+        // changed since" on every report ever produced, whatever the scan found.
         sb.append("served: ").append(llms.optBoolean("present")).append("  listed pages: ")
-                .append(llms.optInt("listed")).append("  stale: ").append(llms.optBoolean("stale")).append('\n');
+                .append(llms.optInt("listed")).append("  stale: ").append(llms.optBoolean("outdated")).append('\n');
         counted(sb, "published pages the file does not mention", llms.optJSONArray(MISSING), PATH);
-        counted(sb, "listed pages that changed since", llms.optJSONArray("outdated"), PATH);
+        counted(sb, "listed pages that changed since", llms.optJSONArray("stale"), PATH);
     }
 
     private static void appendFreshness(StringBuilder sb, JSONObject fresh) {

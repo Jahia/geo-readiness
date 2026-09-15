@@ -164,6 +164,10 @@ public class SiteFilesServlet extends HttpServlet {
             }
         } catch (javax.jcr.AccessDeniedException e) {
             deny(resp, HttpServletResponse.SC_FORBIDDEN, "not allowed");
+        } catch (IllegalArgumentException e) {
+            // A refusal the caller can fix, not a server fault: say so with 400
+            // and the reason, rather than folding it into "operation failed".
+            deny(resp, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
         } catch (Exception e) {
             logger.warn("site-files {} failed for {}: {}", action, path, e.getMessage());
             logger.debug("site-files failure", e);
@@ -281,9 +285,11 @@ public class SiteFilesServlet extends HttpServlet {
     private JSONObject applySiteFile(String path, String language, String content, String mixin, String prop)
             throws Exception {
         if (content == null || content.trim().isEmpty()) {
-            JSONObject err = new JSONObject();
-            err.put("error", "empty content");
-            return err;
+            // Answered 200 with an error object until now, which is the one
+            // refusal in this module that did not carry a matching status. The
+            // frontend's shared call() helper only checks res.ok, so an empty
+            // write was reported to the user as a success.
+            throw new IllegalArgumentException("empty content");
         }
         JCRSessionWrapper edit = JCRSessionFactory.getInstance()
                 .getCurrentUserSession("default", Locale.forLanguageTag(language));
