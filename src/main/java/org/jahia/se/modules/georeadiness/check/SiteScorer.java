@@ -61,6 +61,8 @@ public final class SiteScorer {
     private static final String PASSED = "passed";
     private static final String TOTAL = "total";
     private static final String CRITICAL_FAILED = "criticalFailed";
+    private static final String SEVERITY = "severity";
+    private static final String CRITICAL = "critical";
 
     private SiteScorer() {
     }
@@ -156,7 +158,12 @@ public final class SiteScorer {
         /** Every published page under the scope, or under the site when none is set. */
         private List<String> publishedPaths() throws RepositoryException {
             String root = opts.scope == null || opts.scope.trim().isEmpty() ? sitePath : opts.scope.trim();
-            return JCRTemplate.getInstance().doExecuteWithSystemSession(null, "live",
+            // ...AsUser rather than the deprecated ...WithSystemSession(String, ...).
+            // A null user is a system session in both, so this is the same call
+            // by its current name. The module's other uses are left alone on
+            // purpose: touching them would make their own pre-existing findings
+            // count as this pull request's new code.
+            return JCRTemplate.getInstance().doExecuteWithSystemSessionAsUser(null, "live",
                     Locale.forLanguageTag(language),
                     (JCRCallback<List<String>>) session -> publishedPages(session, root, opts.maxPages));
         }
@@ -406,6 +413,14 @@ public final class SiteScorer {
          * site with more than two hundred missing pages some will read as listed;
          * a sitemap missing two hundred pages has a louder problem than this.
          */
+        /** The rules robots.txt states for this site, or none when it has nothing to say. */
+        private static RobotsRules rulesOf(JSONObject siteFiles) {
+            JSONObject robotsJson = siteFiles.optJSONObject("robots");
+            return robotsJson != null && robotsJson.optBoolean("present", false)
+                    ? RobotsRules.parse(robotsJson.optString("rawBody", ""))
+                    : RobotsRules.empty();
+        }
+
         private static java.util.Set<String> notListed(JSONObject sitemap) {
             java.util.Set<String> out = new java.util.LinkedHashSet<>();
             JSONArray missing = sitemap == null ? null : sitemap.optJSONArray("missing");
@@ -414,14 +429,6 @@ public final class SiteScorer {
             }
             return out;
         }
-    }
-
-    /** The rules robots.txt states for this site, or none when it has nothing to say. */
-    private static RobotsRules rulesOf(JSONObject siteFiles) {
-        JSONObject robotsJson = siteFiles.optJSONObject("robots");
-        return robotsJson != null && robotsJson.optBoolean("present", false)
-                ? RobotsRules.parse(robotsJson.optString("rawBody", ""))
-                : RobotsRules.empty();
     }
 
     /** One page: is it readable, what does its HTML contain, what does that score. */
@@ -437,7 +444,28 @@ public final class SiteScorer {
         JSONObject out = new JSONObject();
         out.put(GUEST_READABLE, visibility.optBoolean(GUEST_READABLE, true));
 
-        String url = JCRTemplate.getInstance().doExecuteWithSystemSession(null, "live",
+        // Also writes title and template onto `out`: they come from the same
+        // node read, and reading it twice to keep the method tidy would double
+        // the repository work for every page on the site.
+        String url = resolveUrl(path, language, opts, out);
+
+        JSONObject agent = fetch(url, visibility, siteBase, opts, links);
+        recordCanonical(url, agent, canonicals);
+
+        JSONObject score = GeoScore.compute(drawerReport(url, agent, visibility, siteFiles, rules));
+        return summarise(out, score);
+    }
+
+    /**
+     * The public url of a page, with its title and template written onto
+     * {@code out} on the way past.
+     *
+     * Null when the node has no address a visitor could use, which the caller
+     * treats as "do not fetch" rather than as a failure.
+     */
+    private static String resolveUrl(String path, String language, Options opts, JSONObject out)
+            throws RepositoryException {
+        return JCRTemplate.getInstance().doExecuteWithSystemSessionAsUser(null, "live",
                 Locale.forLanguageTag(language), (JCRCallback<String>) session -> {
                     JCRNodeWrapper n = session.getNode(path);
                     out.put("title", title(n));
@@ -448,71 +476,99 @@ public final class SiteScorer {
                         return null;
                     }
                 });
+    }
 
-        JSONObject agent;
+    /**
+     * One fetch as the scan agent, or a synthetic miss.
+     *
+     * No point fetching a page a visitor cannot open. The score still records
+     * it, and the critical guestReadable check does the talking.
+     */
+    private static JSONObject fetch(String url, JSONObject visibility, String siteBase, Options opts,
+            LinkGraph.Accumulator links) {
         if (!visibility.optBoolean(GUEST_READABLE, true) || url == null) {
-            // No point fetching a page a visitor cannot open. The score still
-            // records it, and the critical guestReadable check does the talking.
-            agent = new JSONObject();
+            JSONObject agent = new JSONObject();
             agent.put("name", SCAN_AGENT);
             agent.put("status", JSONObject.NULL);
-        } else {
-            // GEO-22. The link graph is built from the page we are already
-            // fetching, so it costs nothing beyond this request.
-            String from = PublishedMap.pathOf(url);
-            agent = PageFetch.probe(url, siteBase, SCAN_AGENT, agentUa(), opts.fetchTimeoutMs, opts.maxBodyBytes,
-                    html -> LinkGraph.addPage(links, from, html));
+            return agent;
         }
+        // GEO-22. The link graph is built from the page we are already fetching,
+        // so it costs nothing beyond this request.
+        String from = PublishedMap.pathOf(url);
+        return PageFetch.probe(url, siteBase, SCAN_AGENT, agentUa(), opts.fetchTimeoutMs, opts.maxBodyBytes,
+                html -> LinkGraph.addPage(links, from, html));
+    }
 
-        if (url != null) {
-            JSONObject html = agent.optJSONObject("html");
-            // Recorded even when absent, so "fetched and had none" can be told
-            // apart from "never fetched".
-            canonicals.put(PublishedMap.pathOf(url), html == null ? "" : html.optString("canonicalHref", ""));
+    /**
+     * GEO-25. Recorded even when absent, so "fetched and had none" can be told
+     * apart from "never fetched".
+     */
+    private static void recordCanonical(String url, JSONObject agent, Map<String, String> canonicals) {
+        if (url == null) {
+            return;
         }
+        JSONObject html = agent.optJSONObject("html");
+        canonicals.put(PublishedMap.pathOf(url), html == null ? "" : html.optString("canonicalHref", ""));
+    }
 
-        // A report shaped like the drawer's, so one scorer serves both.
+    /**
+     * A report shaped exactly like the drawer's, so one scorer serves both and
+     * the site score and the page score cannot drift apart.
+     */
+    private static JSONObject drawerReport(String url, JSONObject agent, JSONObject visibility,
+            JSONObject siteFiles, RobotsRules rules) {
         JSONObject report = new JSONObject();
         report.put("published", true);
         report.put("url", url == null ? JSONObject.NULL : url);
         JSONArray agents = new JSONArray();
         agents.put(agent);
         report.put("agents", agents);
-        report.put("controlWords", agent.optJSONObject("html") != null
-                ? agent.getJSONObject("html").optInt("words", 0) : 0);
+        JSONObject html = agent.optJSONObject("html");
+        report.put("controlWords", html == null ? 0 : html.optInt("words", 0));
         report.put("blockedCount", agent.optInt("status", 0) == 200 ? 0 : 1);
         report.put("visibility", visibility);
-
-        int mismatches = 0;
-        RobotsRules.Verdict v = rules.evaluate(SCAN_AGENT, pathOf(url));
-        if (v.allowed && agent.optInt("status", 0) != 200 && !agent.isNull("status")) {
-            mismatches++;
-        } else if (!v.allowed && agent.optInt("status", 0) == 200) {
-            mismatches++;
-        }
         report.put("blockedButAllowedCount", 0);
-        report.put("reachableButDisallowedCount", mismatches);
+        report.put("reachableButDisallowedCount", contradicts(agent, rules, url) ? 1 : 0);
         report.put("siteFiles", siteFiles);
+        return report;
+    }
 
-        JSONObject score = GeoScore.compute(report);
+    /** True when robots.txt and the fetch disagree about this page, either way round. */
+    private static boolean contradicts(JSONObject agent, RobotsRules rules, String url) {
+        RobotsRules.Verdict v = rules.evaluate(SCAN_AGENT, pathOf(url));
+        int status = agent.optInt("status", 0);
+        if (v.allowed) {
+            return status != 200 && !agent.isNull("status");
+        }
+        return status == 200;
+    }
+
+    /**
+     * The per-page row the walk accumulates: the counts, which checks failed,
+     * and how much each failure matters.
+     *
+     * The one check that genuinely needs several agents is dropped rather than
+     * allowed to pass for free.
+     */
+    private static JSONObject summarise(JSONObject out, JSONObject score) {
         JSONArray failed = new JSONArray();
+        JSONObject severities = new JSONObject();
         JSONArray checks = score.getJSONArray("checks");
         int passed = 0;
         int total = 0;
         int critical = 0;
-        JSONObject severities = new JSONObject();
         for (int i = 0; i < checks.length(); i++) {
             JSONObject c = checks.getJSONObject(i);
             if (MULTI_AGENT_ONLY.equals(c.getString("id"))) {
                 continue;
             }
-            severities.put(c.getString("id"), c.getString("severity"));
+            severities.put(c.getString("id"), c.getString(SEVERITY));
             total++;
             if (c.getBoolean(PASSED)) {
                 passed++;
             } else {
                 failed.put(c.getString("id"));
-                if ("critical".equals(c.getString("severity"))) {
+                if (CRITICAL.equals(c.getString(SEVERITY))) {
                     critical++;
                 }
             }

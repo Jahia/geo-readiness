@@ -61,6 +61,9 @@ public class SiteScanServlet extends GeoServlet {
 
     private static final int MAX_BODY = 64_000;
 
+    /** The stored type-to-schema mapping, read and written under this one key. */
+    private static final String SCHEMA_MAP = "schemaMap";
+
     /**
      * The actions that walk the site or fetch from it, and so are rate limited.
      *
@@ -254,9 +257,9 @@ public class SiteScanServlet extends GeoServlet {
     private JSONObject schema(String sitePath, String language, HttpServletRequest req) throws Exception {
         JSONObject state = ScanStore.read(sitePath, language);
         JSONObject schema = StructuredData.coverage(sitePath, language,
-                baseUrlFor(sitePath, language, req), state.optJSONObject("schemaMap"));
+                baseUrlFor(sitePath, language, req), state.optJSONObject(SCHEMA_MAP));
         schema.put("vocabulary", SchemaMap.vocabulary());
-        schema.put("schemaMap", state.opt("schemaMap"));
+        schema.put(SCHEMA_MAP, state.opt(SCHEMA_MAP));
         return schema;
     }
 

@@ -105,6 +105,11 @@ public class CrawlerCheckServlet extends GeoServlet {
      */
     private static final int MAX_RAW_ROBOTS = 4000;
 
+    /** The fetched body of robots.txt or llms.txt, as the site-files check returns it. */
+    private static final String RAW_BODY = "rawBody";
+    /** The per-agent results array, the report's own key for it. */
+    private static final String AGENTS = "agents";
+
     /** Set by the site-files check when the file was actually served. */
     private static final String PRESENT = "present";
 
@@ -136,7 +141,7 @@ public class CrawlerCheckServlet extends GeoServlet {
             }
             JSONObject out = new JSONObject();
             out.put("enabled", true);
-            out.put("agents", new JSONArray(agents().keySet()));
+            out.put(AGENTS, new JSONArray(agents().keySet()));
             writeJson(resp, HttpServletResponse.SC_OK, out);
         } catch (IOException | RuntimeException e) {
             // Nothing may leave a servlet method: the container would answer with
@@ -332,11 +337,11 @@ public class CrawlerCheckServlet extends GeoServlet {
             return RobotsRules.empty();
         }
         RobotsRules rules = robotsJson.optBoolean(PRESENT, false)
-                ? RobotsRules.parse(robotsJson.optString("rawBody", ""))
+                ? RobotsRules.parse(robotsJson.optString(RAW_BODY, ""))
                 : RobotsRules.empty();
-        if (robotsJson.has("rawBody")) {
-            String raw = robotsJson.getString("rawBody");
-            robotsJson.put("rawBody", raw.length() > MAX_RAW_ROBOTS ? raw.substring(0, MAX_RAW_ROBOTS) : raw);
+        if (robotsJson.has(RAW_BODY)) {
+            String raw = robotsJson.getString(RAW_BODY);
+            robotsJson.put(RAW_BODY, raw.length() > MAX_RAW_ROBOTS ? raw.substring(0, MAX_RAW_ROBOTS) : raw);
         }
         return rules;
     }
@@ -422,7 +427,7 @@ public class CrawlerCheckServlet extends GeoServlet {
             results.put(r);
         }
 
-        out.put("agents", results);
+        out.put(AGENTS, results);
         out.put("blockedCount", blocked);
         out.put("blockedButAllowedCount", blockedButAllowed);
         out.put("reachableButDisallowedCount", reachableButDisallowed);
@@ -537,8 +542,8 @@ public class CrawlerCheckServlet extends GeoServlet {
     private void addSchema(JSONObject out, String path, String language, HttpServletRequest req,
             boolean withStoredOverrides) {
         try {
-            JSONObject firstAgent = out.optJSONArray("agents") == null
-                    ? null : out.getJSONArray("agents").optJSONObject(0);
+            JSONObject firstAgent = out.optJSONArray(AGENTS) == null
+                    ? null : out.getJSONArray(AGENTS).optJSONObject(0);
             JSONObject html = firstAgent == null ? null : firstAgent.optJSONObject("html");
             String pageTitle = html == null ? null : html.optString("title", null);
             out.put("schema", schemaFor(path, language, req, pageTitle, withStoredOverrides));
