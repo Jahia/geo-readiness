@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * What this module is allowed to fetch.
@@ -38,8 +39,17 @@ public final class FetchGuard {
     /** PUBLIC_BASE_URL, see {@link #trustBase}. Blank until the config service says otherwise. */
     private static volatile String trustedBase = "";
 
-    /** Settled once the connectors are known: neither they nor site.url.port move afterwards. */
-    private static volatile Set<Integer> allowedPorts;
+    /**
+     * Settled once the connectors are known: neither they nor site.url.port move
+     * afterwards.
+     *
+     * An AtomicReference rather than a volatile field. The set is made
+     * unmodifiable before it is ever published, so a volatile reference was in
+     * fact safe - but that is not a property a reader can see from the
+     * declaration, and it is the same argument GeoReadinessConfigService makes
+     * for its own snapshot. One pattern for "swapped whole, never edited".
+     */
+    private static final AtomicReference<Set<Integer>> allowedPorts = new AtomicReference<>();
 
     private FetchGuard() {
     }
@@ -175,7 +185,7 @@ public final class FetchGuard {
      * different port; the connectors are the answer when it does not.
      */
     private static Set<Integer> allowedPorts() {
-        Set<Integer> known = allowedPorts;
+        Set<Integer> known = allowedPorts.get();
         if (known != null) {
             return known;
         }
@@ -198,7 +208,7 @@ public final class FetchGuard {
         // otherwise cache a list missing the very port this Jahia serves on, and
         // every fetch for the rest of the run would be refused.
         if (!connectors.isEmpty()) {
-            allowedPorts = known;
+            allowedPorts.set(known);
         }
         return known;
     }
