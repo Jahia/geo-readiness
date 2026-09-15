@@ -62,7 +62,15 @@ public final class SiteScorer {
     private static final String TOTAL = "total";
     private static final String CRITICAL_FAILED = "criticalFailed";
     private static final String SEVERITY = "severity";
-    private static final String CRITICAL = "critical";
+    /** The HTTP status of the one fetch a site scan makes per page. */
+    private static final String STATUS = "status";
+
+    // "critical" is NOT hoisted, though it appears twice and reads as
+    // duplicated. The severity VALUE compared in summarise and the output KEY
+    // written on a failure row are unrelated strings that happen to match: one
+    // is a grading, one is a field name, and they would have to change
+    // independently. A shared constant would tie them together and cause
+    // exactly the drift a later edit of either one would otherwise not.
 
     private SiteScorer() {
     }
@@ -489,7 +497,7 @@ public final class SiteScorer {
         if (!visibility.optBoolean(GUEST_READABLE, true) || url == null) {
             JSONObject agent = new JSONObject();
             agent.put("name", SCAN_AGENT);
-            agent.put("status", JSONObject.NULL);
+            agent.put(STATUS, JSONObject.NULL);
             return agent;
         }
         // GEO-22. The link graph is built from the page we are already fetching,
@@ -525,7 +533,7 @@ public final class SiteScorer {
         report.put("agents", agents);
         JSONObject html = agent.optJSONObject("html");
         report.put("controlWords", html == null ? 0 : html.optInt("words", 0));
-        report.put("blockedCount", agent.optInt("status", 0) == 200 ? 0 : 1);
+        report.put("blockedCount", agent.optInt(STATUS, 0) == 200 ? 0 : 1);
         report.put("visibility", visibility);
         report.put("blockedButAllowedCount", 0);
         report.put("reachableButDisallowedCount", contradicts(agent, rules, url) ? 1 : 0);
@@ -536,9 +544,9 @@ public final class SiteScorer {
     /** True when robots.txt and the fetch disagree about this page, either way round. */
     private static boolean contradicts(JSONObject agent, RobotsRules rules, String url) {
         RobotsRules.Verdict v = rules.evaluate(SCAN_AGENT, pathOf(url));
-        int status = agent.optInt("status", 0);
+        int status = agent.optInt(STATUS, 0);
         if (v.allowed) {
-            return status != 200 && !agent.isNull("status");
+            return status != 200 && !agent.isNull(STATUS);
         }
         return status == 200;
     }
@@ -568,7 +576,7 @@ public final class SiteScorer {
                 passed++;
             } else {
                 failed.put(c.getString("id"));
-                if (CRITICAL.equals(c.getString(SEVERITY))) {
+                if ("critical".equals(c.getString(SEVERITY))) {
                     critical++;
                 }
             }
