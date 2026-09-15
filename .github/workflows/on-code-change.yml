@@ -79,9 +79,14 @@ jobs:
   # jahia_image is the one the sibling harnesses use. The tag `jahia/jahia-dev`
   # that tests/.env.example carried is not published and fails the pull.
   #
-  # instance_type is ubuntu-latest because the action defaults to `self-hosted`,
-  # which this repository's other jobs do not use. Change it if this repo is
-  # entitled to the self-hosted pool.
+  # instance_type is deliberately left at the action's default, `self-hosted`.
+  # Setting it to ubuntu-latest was tried and fails: the workflow runs
+  # jahia-modules-action/helper, which reports the runner with
+  # `ec2metadata --instance-id`, and that command does not exist on a
+  # GitHub-hosted runner. The org has 21 self-hosted EC2 runners online carrying
+  # the `self-hosted` label, so the default is both correct and available.
+  # Reasoning from the ubuntu-latest that this repo's other jobs use does not
+  # transfer - none of them goes through this reusable workflow.
   integration-tests:
     name: Integration Tests
     needs: build
@@ -95,4 +100,3 @@ jobs:
       artifact_prefix: geo-readiness
       should_skip_testrail: true
       pagerduty_skip_notification: true
-      instance_type: ubuntu-latest
