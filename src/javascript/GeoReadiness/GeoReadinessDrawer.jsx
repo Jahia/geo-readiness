@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Badge, Banner, Button, Close, Tab, TabItem, Typography} from '@jahia/moonstone';
@@ -65,6 +65,55 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     const [phase, setPhase] = useState('idle');
     const [tab, setTab] = useState('score');
     const [error, setError] = useState(null);
+    const drawerRef = useRef(null);
+    const previouslyFocused = useRef(null);
+
+    // A portal into document.body has no natural place in the page's own
+    // focus order. Without this, opening the drawer leaves keyboard focus on
+    // the trigger underneath - now visually hidden behind a fixed, 820px
+    // panel - and closing it drops focus back to <body>, forgetting where
+    // the user came from.
+    useEffect(() => {
+        if (isOpen) {
+            previouslyFocused.current = document.activeElement;
+            if (drawerRef.current) {
+                drawerRef.current.focus();
+            }
+        } else if (previouslyFocused.current && typeof previouslyFocused.current.focus === 'function') {
+            previouslyFocused.current.focus();
+            previouslyFocused.current = null;
+        }
+    }, [isOpen]);
+
+    // Escape to close, and a minimal Tab trap: neither existed, so keyboard
+    // focus could walk out of the drawer into the page it now covers.
+    const onKeyDown = useCallback(e => {
+        if (e.key === 'Escape') {
+            onClose();
+            return;
+        }
+
+        if (e.key !== 'Tab' || !drawerRef.current) {
+            return;
+        }
+
+        const focusable = drawerRef.current.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) {
+            return;
+        }
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }, [onClose]);
 
     useEffect(() => {
         if (!isOpen) {
@@ -103,10 +152,18 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     }
 
     return (
-        <aside className={styles.drawer} aria-label={t('drawer.title')}>
+        <aside
+            ref={drawerRef}
+            className={styles.drawer}
+            aria-label={t('drawer.title')}
+            role="dialog"
+            aria-modal="true"
+            tabIndex={-1}
+            onKeyDown={onKeyDown}
+        >
             <header className={styles.header}>
                 <div>
-                    <Typography variant="heading" className={styles.title}>{t('drawer.title')}</Typography>
+                    <Typography variant="heading" component="h2" className={styles.title}>{t('drawer.title')}</Typography>
                     <Typography variant="caption" className={styles.subtitle}>{t('drawer.subtitle')}</Typography>
                 </div>
                 <Button variant="ghost" icon={<Close/>} label={t('drawer.close')} onClick={onClose}/>
@@ -127,7 +184,8 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                 )}
             </div>
 
-            {error && <div className={styles.error}>{error}</div>}
+            {/* role="alert" carries an implicit assertive live region, so a failed check is announced without a second attribute. */}
+            {error && <div className={styles.error} role="alert">{error}</div>}
 
             <div className={styles.body}>
                 {phase === 'idle' && !report && (
@@ -248,6 +306,8 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                         ].map(item => (
                             <TabItem
                                 key={item.id}
+                                id={`geo-drawer-tab-${item.id}`}
+                                aria-controls={`geo-drawer-panel-${item.id}`}
                                 label={item.label}
                                 isSelected={tab === item.id}
                                 icon={item.count > 0 ? <Badge label={String(item.count)} color="warning"/> : undefined}
@@ -275,10 +335,19 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                     </Banner>
                 )}
 
-                {report && report.published && tab === 'score' && <ScoreTab report={report}/>}
-                {report && report.published && tab === 'crawler' && <CrawlerTab report={report}/>}
-                {report && report.published && tab === 'files' && <SiteFilesTab report={report}/>}
-                {report && report.published && tab === 'schema' && <SchemaTab report={report}/>}
+                {report && report.published && (
+                    <div
+                        role="tabpanel"
+                        id={`geo-drawer-panel-${tab}`}
+                        aria-labelledby={`geo-drawer-tab-${tab}`}
+                        tabIndex={0}
+                    >
+                        {tab === 'score' && <ScoreTab report={report}/>}
+                        {tab === 'crawler' && <CrawlerTab report={report}/>}
+                        {tab === 'files' && <SiteFilesTab report={report}/>}
+                        {tab === 'schema' && <SchemaTab report={report}/>}
+                    </div>
+                )}
             </div>
         </aside>
     );

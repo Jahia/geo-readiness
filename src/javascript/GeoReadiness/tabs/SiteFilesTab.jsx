@@ -22,7 +22,7 @@ export const SiteFilesTab = ({report}) => {
     return (
         <div>
             {/* robots.txt */}
-            <Typography variant="subheading" className={styles.sectionTitle}>{t('files.robots.title')}</Typography>
+            <Typography variant="subheading" component="h3" className={styles.sectionTitle}>{t('files.robots.title')}</Typography>
 
             {!robots.present ? (
                 <div className={`${styles.verdict} ${styles.warn}`}>
@@ -81,7 +81,7 @@ export const SiteFilesTab = ({report}) => {
             )}
 
             {/* llms.txt */}
-            <Typography variant="subheading" className={styles.sectionTitle}>{t('files.llms.title')}</Typography>
+            <Typography variant="subheading" component="h3" className={styles.sectionTitle}>{t('files.llms.title')}</Typography>
 
             {llms.servedHtmlInstead ? (
                 <div className={`${styles.verdict} ${styles.bad}`}>{t('files.llms.servedHtml')}</div>

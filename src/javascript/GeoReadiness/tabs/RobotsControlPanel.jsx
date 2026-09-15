@@ -127,7 +127,7 @@ export const RobotsControlPanel = ({path, language}) => {
 
     return (
         <div className={styles.panel}>
-            <Typography variant="heading" className={styles.panelTitle}>
+            <Typography variant="heading" component="h2" className={styles.panelTitle}>
                 {t('files.robots.control.title')}
             </Typography>
             <Typography variant="body" className={styles.panelIntro}>
@@ -257,10 +257,17 @@ export const RobotsControlPanel = ({path, language}) => {
                                         t('files.robots.control.allow') :
                                         t('files.robots.control.block')}
                                 </Typography>
+                                {/*
+                                  * Same Field/label gap as the scheduled-scan
+                                  * switch: nothing links the "allow"/"block"
+                                  * caption to this control, so it has no
+                                  * accessible name without one directly.
+                                  */}
                                 <span className={moved ? styles.switchMoved : undefined}>
                                     <Switch
                                         checked={value === 'allow'}
                                         isDisabled={phase === 'applying'}
+                                        aria-label={`${a.name} ${value === 'allow' ? t('files.robots.control.allow') : t('files.robots.control.block')}`}
                                         onChange={(e, v, checked) => choose(a.token, checked ? 'allow' : 'block')}
                                     />
                                 </span>
@@ -277,7 +284,7 @@ export const RobotsControlPanel = ({path, language}) => {
             ) : (
                 <>
                     <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" className={styles.panelSub}>
+                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
                         {t('files.robots.control.changes')}
                     </Typography>
                     <DiffView before={preview.current} after={preview.proposed}/>

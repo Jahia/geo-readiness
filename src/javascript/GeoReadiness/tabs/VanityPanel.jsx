@@ -43,7 +43,7 @@ export const VanityPanel = ({path, language}) => {
 
     return (
         <div>
-            <Typography variant="subheading" className={styles.panelTitle}>
+            <Typography variant="subheading" component="h2" className={styles.panelTitle}>
                 {t('vanity.title')}
             </Typography>
             <Typography variant="caption" className={styles.panelIntro}>

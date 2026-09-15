@@ -35,12 +35,13 @@
 
 .meta { color: var(--color-gray-dark, #5c6b7a); }
 
+/* Same pair as tabs/Tabs.module.css .bad, and the same fix: #a5312a was 5.69:1 on this background, short of AAA's 7:1; #8c2921 is 7.13:1. */
 .error {
     margin: 12px 20px 0;
     padding: 10px 12px;
     border-radius: 4px;
     background: #fae6e4;
-    color: #a5312a;
+    color: #8c2921;
     font-size: 13px;
 }
 

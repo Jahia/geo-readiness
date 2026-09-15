@@ -36,11 +36,20 @@ function useTip() {
         });
     }, []);
     const hide = useCallback(() => setTip(null), []);
-    const node = tip ? (
-        <div className={styles.tip} style={{left: tip.x, top: tip.y}} role="status">
-            {tip.text}
+    // Always mounted, never remounted: a role="status" node that is created
+    // already holding its text is a single DOM mutation a screen reader has
+    // no "before" to compare against, so it is frequently never announced.
+    // Keeping one node alive and only ever changing its text/visibility is
+    // what makes the live region actually fire.
+    const node = (
+        <div
+            className={styles.tip}
+            style={tip ? {left: tip.x, top: tip.y} : {display: 'none'}}
+            role="status"
+        >
+            {tip ? tip.text : ''}
         </div>
-    ) : null;
+    );
     return {show, hide, node};
 }
 
@@ -98,6 +107,12 @@ export const BarList = ({rows, max, format, tipFor}) => {
                         <div
                             className={styles.track}
                             tabIndex={0}
+                            // The track itself carries no text when the bar is
+                            // short (a screen reader landing on it would read
+                            // only the tip value, never the row it belongs
+                            // to): name it explicitly rather than rely on
+                            // visible content.
+                            aria-label={`${r.label}${r.sublabel ? ` ${r.sublabel}` : ''}: ${format(r.value)}`}
                             onMouseEnter={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
                             onFocus={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
                             onMouseLeave={hide}
@@ -151,6 +166,10 @@ export const Histogram = ({rows, format, tipFor, axisLeft, axisRight}) => {
                         key={r.key}
                         className={styles.histColumn}
                         tabIndex={0}
+                        // A zero-count column renders no visible value text
+                        // (see the file comment on why zero is never a bare
+                        // bar), which left it with no accessible name either.
+                        aria-label={`${r.label}: ${format(r.value)}`}
                         onMouseEnter={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
                         onFocus={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
                         onMouseLeave={hide}
@@ -198,7 +217,7 @@ Histogram.defaultProps = {format: v => String(v), tipFor: undefined, axisLeft: '
  * stroke, and the legend is always present because there are several series.
  * The remainder segment is the track color: it is what is left, not a series.
  */
-export const StackedBar = ({segments, total, format, restLabel}) => {
+export const StackedBar = ({segments, total, format, restLabel, label}) => {
     const {show, hide, node} = useTip();
     const sum = segments.reduce((a, s) => a + s.value, 0);
     const rest = Math.max(0, (total || sum) - sum);
@@ -206,13 +225,24 @@ export const StackedBar = ({segments, total, format, restLabel}) => {
     const denom = Math.max(1, total || sum);
     return (
         <div className={styles.chart} data-geo-chart="">
-            <div className={styles.stack} role="img">
+            {/*
+              * role="img" flattens this subtree for assistive tech - a single
+              * opaque picture needs its own name, same as an <img alt>. The
+              * segments below still carry a real tabIndex and their own
+              * aria-label so a sighted keyboard user can still step through
+              * them, but a screen reader only ever hears this one label.
+              */}
+            <div className={styles.stack} role="img" aria-label={label}>
                 {all.filter(s => s.value > 0).map(s => (
                     <div
                         key={s.key}
                         tabIndex={s.rest ? -1 : 0}
                         className={`${styles.segment} ${s.rest ? styles.segmentRest : ''} ${s.tone ? styles[s.tone] : ''}`}
                         style={{flexGrow: s.value, flexBasis: 0}}
+                        // Unconditional: the 12% threshold below is only about
+                        // whether the *visible* number fits inside the segment,
+                        // not about whether the segment has a name.
+                        aria-label={s.rest ? undefined : `${s.label}: ${format(s.value)}`}
                         onMouseEnter={s.rest ? undefined : e => show(e, tipText(format(s.value), s.label))}
                         onFocus={s.rest ? undefined : e => show(e, tipText(format(s.value), s.label))}
                         onMouseLeave={hide}
@@ -254,10 +284,11 @@ StackedBar.propTypes = {
     })).isRequired,
     total: PropTypes.number,
     format: PropTypes.func,
-    restLabel: PropTypes.node
+    restLabel: PropTypes.node,
+    label: PropTypes.string
 };
 
-StackedBar.defaultProps = {total: undefined, format: v => String(v), restLabel: ''};
+StackedBar.defaultProps = {total: undefined, format: v => String(v), restLabel: '', label: undefined};
 
 export const PairedBars = ({rows, series, format, missingLabel}) => {
     const {show, hide, node} = useTip();
@@ -286,6 +317,7 @@ export const PairedBars = ({rows, series, format, missingLabel}) => {
                                     key={s.key}
                                     className={`${styles.track} ${styles.trackThin}`}
                                     tabIndex={has ? 0 : -1}
+                                    aria-label={`${s.label} · ${r.label}: ${has ? format(v) : missingLabel}`}
                                     onMouseEnter={has ? e => show(e, tipText(format(v), `${s.label} · ${r.tipLabel || ''}`)) : undefined}
                                     onFocus={has ? e => show(e, tipText(format(v), `${s.label} · ${r.tipLabel || ''}`)) : undefined}
                                     onMouseLeave={hide}
@@ -355,6 +387,7 @@ export const FailureMatrix = ({pages, checks, legend, passLabel, tipFor, columnT
                             {checks.map(c => (
                                 <th
                                     key={c.id}
+                                    scope="col"
                                     className={styles.matrixCol}
                                     tabIndex={0}
                                     onMouseEnter={e => show(e, tipText(c.count, columnTipFor(c)))}
@@ -371,7 +404,7 @@ export const FailureMatrix = ({pages, checks, legend, passLabel, tipFor, columnT
                     <tbody>
                         {pages.map(pg => (
                             <tr key={pg.key}>
-                                <th className={styles.matrixRow}>
+                                <th scope="row" className={styles.matrixRow}>
                                     {pg.href ? (
                                         <a className={styles.matrixLink} href={pg.href}>{pg.label}</a>
                                     ) : (
@@ -383,9 +416,16 @@ export const FailureMatrix = ({pages, checks, legend, passLabel, tipFor, columnT
                                     const failed = pg.failed.includes(c.id);
                                     return (
                                         <td key={c.id} className={styles.matrixCell}>
+                                            {/*
+                                              * Severity was carried by background color alone: a
+                                              * blank, unlabelled span whose only signal was a hue.
+                                              * The name repeats what the color means in words, for
+                                              * whoever cannot see it.
+                                              */}
                                             <span
                                                 className={`${styles.cell} ${failed ? tone(c.severity) : styles.cellPass}`}
                                                 tabIndex={failed ? 0 : -1}
+                                                aria-label={`${pg.label} · ${c.label}: ${failed ? legend[c.severity] : passLabel}`}
                                                 onMouseEnter={e => show(e, tipText(failed ? legend[c.severity] : passLabel, tipFor(pg, c)))}
                                                 onFocus={e => show(e, tipText(failed ? legend[c.severity] : passLabel, tipFor(pg, c)))}
                                                 onMouseLeave={hide}

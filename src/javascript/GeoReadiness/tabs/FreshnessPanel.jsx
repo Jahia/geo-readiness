@@ -93,7 +93,7 @@ export const FreshnessPanel = ({path, language}) => {
 
     return (
         <div>
-            <Typography variant="subheading" className={styles.panelTitle}>
+            <Typography variant="subheading" component="h2" className={styles.panelTitle}>
                 {t('freshness.title')}
             </Typography>
             <Typography variant="caption" className={styles.panelIntro}>
@@ -129,7 +129,7 @@ export const FreshnessPanel = ({path, language}) => {
             {f && (
                 <>
                     <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" className={styles.panelSub}>
+                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
                         {t('freshness.whenTitle')}
                     </Typography>
                     <Typography variant="caption" className={styles.panelIntro}>
@@ -156,7 +156,7 @@ export const FreshnessPanel = ({path, language}) => {
                     />
 
                     <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" className={styles.panelSub}>
+                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
                         {t('freshness.byType')}
                     </Typography>
                     <Typography variant="caption" className={styles.panelIntro}>
@@ -165,7 +165,7 @@ export const FreshnessPanel = ({path, language}) => {
                     {groups(f.byType, 'type')}
 
                     <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" className={styles.panelSub}>
+                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
                         {t('freshness.bySection')}
                     </Typography>
                     <Typography variant="caption" className={styles.panelIntro}>
@@ -174,7 +174,7 @@ export const FreshnessPanel = ({path, language}) => {
                     {groups(f.bySection, 'section')}
 
                     <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" className={styles.panelSub}>
+                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
                         {t('freshness.allTitle')}
                     </Typography>
                     <Typography variant="caption" className={styles.panelIntro}>

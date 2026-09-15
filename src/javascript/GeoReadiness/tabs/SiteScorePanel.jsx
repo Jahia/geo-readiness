@@ -130,18 +130,24 @@ export const SiteScorePanel = ({path, language}) => {
 
     return (
         <div className={styles.panel}>
-            <Typography variant="heading" className={styles.panelTitle}>{t('score17.title')}</Typography>
+            <Typography variant="heading" component="h2" className={styles.panelTitle}>{t('score17.title')}</Typography>
             <Typography variant="body" className={styles.panelIntro}>{t('score17.intro')}</Typography>
 
-            {error && <Banner variant="danger" title={t('score17.errorTitle')}>{error}</Banner>}
+            {/*
+              * A scan runs for minutes with nobody watching the screen. Without
+              * a live role, its progress and outcome are announced to nobody -
+              * role="alert" is implicitly assertive for the failure/error
+              * cases, role="status" polite for the still-running one.
+              */}
+            {error && <Banner variant="danger" title={t('score17.errorTitle')} role="alert">{error}</Banner>}
 
             {run.status === 'running' && (
-                <Banner variant="info" title={t('score17.runningTitle')}>
+                <Banner variant="info" title={t('score17.runningTitle')} role="status" aria-live="polite">
                     {t('score17.running', {done: run.pagesDone, total: run.pagesTotal})}
                 </Banner>
             )}
             {run.status === 'failed' && (
-                <Banner variant="danger" title={t('score17.failedTitle')}>{t('score17.failed')}</Banner>
+                <Banner variant="danger" title={t('score17.failedTitle')} role="alert">{t('score17.failed')}</Banner>
             )}
 
             {agg && (
@@ -209,7 +215,7 @@ export const SiteScorePanel = ({path, language}) => {
             {agg && (agg.sections || []).length > 0 && (
                 <>
                     <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" className={styles.panelSub}>
+                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
                         {t('score17.bySection')}
                     </Typography>
                     <BarList
@@ -231,7 +237,7 @@ export const SiteScorePanel = ({path, language}) => {
             {agg && (agg.templates || []).length > 0 && (
                 <>
                     <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" className={styles.panelSub}>
+                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
                         {t('score17.byTemplate')}
                     </Typography>
                     <Typography variant="caption" className={styles.panelIntro}>
@@ -279,7 +285,7 @@ export const SiteScorePanel = ({path, language}) => {
             {(run.failures || []).length > 0 && (
                 <>
                     <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" className={styles.panelSub}>
+                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
                         {t('score17.worstPages')}
                     </Typography>
                     <Typography variant="caption" className={styles.panelIntro}>
@@ -345,12 +351,23 @@ export const SiteScorePanel = ({path, language}) => {
 
             <Separator spacing="big" size="full"/>
 
-            <Typography variant="subheading" className={styles.panelSub}>{t('score17.schedule')}</Typography>
+            <Typography variant="subheading" component="h3" className={styles.panelSub}>{t('score17.schedule')}</Typography>
             <Typography variant="caption" className={styles.panelIntro}>{t('score17.scheduleHelp')}</Typography>
 
+            {/*
+              * Moonstone's Field renders its label as a plain sibling with no
+              * htmlFor, and puts the id on the wrapper rather than the
+              * control - so the actual input this Field describes has no
+              * accessible name of its own. aria-label repeats the same text
+              * Field already shows, directly on the control.
+              */}
             <Field id="geoEnabled" label={t('score17.enabledLabel')} helper={t('score17.enabledHelp')}>
                 <span className={styles.switchCell}>
-                    <Switch checked={enabled} onChange={(e, v, checked) => setEnabled(checked)}/>
+                    <Switch
+                        checked={enabled}
+                        aria-label={t('score17.enabledLabel')}
+                        onChange={(e, v, checked) => setEnabled(checked)}
+                    />
                     <Typography variant="caption">
                         {enabled ? t('score17.enabled') : t('score17.disabled')}
                     </Typography>
@@ -369,6 +386,7 @@ export const SiteScorePanel = ({path, language}) => {
             >
                 <Input
                     value={scope}
+                    aria-label={t('score17.scopeLabel')}
                     placeholder={t('score17.scopePlaceholder')}
                     onChange={e => setScope(e.target.value)}
                 />

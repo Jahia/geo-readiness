@@ -294,7 +294,9 @@
       },
       "checkColumn": "Vérification",
       "severityLabel": "Gravité",
-      "fromTemplate": "Provient du gabarit « {{template}} », qui produit {{count}} pages. Le corriger là les corrige toutes."
+      "fromTemplate": "Provient du gabarit « {{template}} », qui produit {{count}} pages. Le corriger là les corrige toutes.",
+      "passed": "Réussi",
+      "failed": "Échoué"
     },
     "diff": {
       "identical": "Aucun changement. Le fichier serait écrit tel qu'il est aujourd'hui.",
@@ -425,6 +427,13 @@
         "friday": "vendredi",
         "saturday": "samedi",
         "sunday": "dimanche"
+      },
+      "aria": {
+        "frequency": "Fréquence",
+        "dayOfWeek": "Jour de la semaine",
+        "dayOfMonth": "Jour du mois",
+        "hour": "Heure",
+        "minute": "Minute"
       }
     },
     "sitemap": {

@@ -73,7 +73,7 @@ export const LlmsGeneratorPanel = ({path, language}) => {
 
     return (
         <div className={styles.panel}>
-            <Typography variant="heading" className={styles.panelTitle}>
+            <Typography variant="heading" component="h2" className={styles.panelTitle}>
                 {t('files.llms.generate.title')}
             </Typography>
             <Typography variant="body" className={styles.panelIntro}>
@@ -157,12 +157,19 @@ export const LlmsGeneratorPanel = ({path, language}) => {
 
                     {phase !== 'applied' && (
                         <>
-                            <Typography variant="subheading" className={styles.panelSub}>
+                            <Typography variant="subheading" component="h3" className={styles.panelSub}>
                                 {t('files.llms.generate.generated')}
                             </Typography>
+                            {/*
+                              * This is the editor for text written to the live
+                              * site. Field's label is a plain sibling with no
+                              * htmlFor, so without aria-label the control that
+                              * matters most in this panel has no name at all.
+                              */}
                             <Textarea
                                 isResizable
                                 id="geoReadinessLlmsText"
+                                aria-label={t('files.llms.generate.generated')}
                                 className={styles.genText}
                                 value={text}
                                 spellCheck="false"
@@ -173,7 +180,7 @@ export const LlmsGeneratorPanel = ({path, language}) => {
                             />
 
                             <Separator spacing="big" size="full"/>
-                            <Typography variant="subheading" className={styles.panelSub}>
+                            <Typography variant="subheading" component="h3" className={styles.panelSub}>
                                 {t('files.llms.generate.changes')}
                             </Typography>
                             <DiffView before={preview.current || ''} after={text}/>

@@ -58,7 +58,7 @@ export const LanguagesPanel = ({path, language}) => {
 
     return (
         <div>
-            <Typography variant="subheading" className={styles.panelTitle}>
+            <Typography variant="subheading" component="h2" className={styles.panelTitle}>
                 {t('languages.title')}
             </Typography>
             <Typography variant="caption" className={styles.panelIntro}>

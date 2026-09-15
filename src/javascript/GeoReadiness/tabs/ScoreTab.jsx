@@ -88,15 +88,18 @@ export const ScoreTab = ({report}) => {
 
                 return (
                     <div key={group}>
-                        <Typography variant="subheading" className={styles.sectionTitle}>
+                        <Typography variant="subheading" component="h3" className={styles.sectionTitle}>
                             {t(`score.group.${group}`)}
                         </Typography>
                         <ul className={styles.checkList}>
                             {rows.map(c => (
                                 <li key={c.id} className={styles.checkItem}>
                                     <span className={styles.checkMark}>
+                                        {/* A bare glyph is not a word: a screen reader either skips it as
+                                          * punctuation or reads "check mark", neither of which says
+                                          * pass or fail. */}
                                         <Chip
-                                            label={c.passed ? '✓' : '✕'}
+                                            label={c.passed ? t('score.passed') : t('score.failed')}
                                             color={c.passed ? 'success' : 'danger'}
                                         />
                                     </span>

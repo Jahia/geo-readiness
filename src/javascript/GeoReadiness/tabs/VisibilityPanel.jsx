@@ -60,7 +60,7 @@ export const VisibilityPanel = ({path, language}) => {
 
     return (
         <div className={styles.panel}>
-            <Typography variant="heading" className={styles.panelTitle}>{t('visibility.title')}</Typography>
+            <Typography variant="heading" component="h2" className={styles.panelTitle}>{t('visibility.title')}</Typography>
             <Typography variant="body" className={styles.panelIntro}>{t('visibility.intro')}</Typography>
 
             <div className={styles.actions}>
@@ -96,7 +96,7 @@ export const VisibilityPanel = ({path, language}) => {
 
             {result && (result.findings || []).length > 0 && (
                 <>
-                    <Typography variant="subheading" className={styles.panelSub}>
+                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
                         {t('visibility.findingsTitle')}
                     </Typography>
                     {rows(result.findings, true)}
@@ -106,7 +106,7 @@ export const VisibilityPanel = ({path, language}) => {
             {result && (result.deliberate || []).length > 0 && (
                 <>
                     <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" className={styles.panelSub}>
+                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
                         {t('visibility.deliberateTitle')}
                     </Typography>
                     <Typography variant="caption" className={styles.panelIntro}>

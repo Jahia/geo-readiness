@@ -95,7 +95,7 @@ export const ReportPanel = ({path, language, reportLanguage, siteKey, siteName})
 
     return (
         <div>
-            <Typography variant="subheading" className={styles.panelTitle}>
+            <Typography variant="subheading" component="h2" className={styles.panelTitle}>
                 {t('report.title')}
             </Typography>
             <Typography variant="caption" className={styles.panelIntro}>
@@ -201,7 +201,7 @@ const Report = ({report, language, reportLanguage, t}) => {
                 <p className={styles.reportSummary}>{report.summary}</p>
             )}
 
-            <Typography variant="subheading" className={styles.panelSub}>
+            <Typography variant="subheading" component="h3" className={styles.panelSub}>
                 {t('report.compliance')}
             </Typography>
             <ul className={styles.checkList}>
@@ -230,7 +230,7 @@ const Report = ({report, language, reportLanguage, t}) => {
             </ul>
 
             <Separator spacing="big" size="full"/>
-            <Typography variant="subheading" className={styles.panelSub}>
+            <Typography variant="subheading" component="h3" className={styles.panelSub}>
                 {t('report.priorities')}
             </Typography>
             {priorities.length === 0 && (
@@ -276,7 +276,7 @@ const Report = ({report, language, reportLanguage, t}) => {
             {wins.length > 0 && (
                 <>
                     <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" className={styles.panelSub}>
+                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
                         {t('report.quickWins')}
                     </Typography>
                     <ul className={styles.facts}>
@@ -288,7 +288,7 @@ const Report = ({report, language, reportLanguage, t}) => {
             {['now', 'next', 'later'].some(k => (roadmap[k] || []).length > 0) && (
                 <>
                     <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" className={styles.panelSub}>
+                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
                         {t('report.roadmap')}
                     </Typography>
                     <div className={styles.roadmap}>
