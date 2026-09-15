@@ -25,7 +25,12 @@ export const ScoreTab = ({report}) => {
     // author is not sent to fix something that is not theirs to fix.
     const rollup = report.templateRollup || {};
     const shared = new Set(rollup.sharedChecks || []);
-    const tone = criticalFailed > 0 ? 'bad' : (importantFailed > 0 ? 'warn' : 'good');
+    let tone = 'good';
+    if (criticalFailed > 0) {
+        tone = 'bad';
+    } else if (importantFailed > 0) {
+        tone = 'warn';
+    }
 
     return (
         <div>

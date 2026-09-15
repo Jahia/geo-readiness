@@ -27,6 +27,8 @@ export const LinksPanel = ({path, language}) => {
         try {
             setState(await scanStatus({path, language}));
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: the link graph could not be read', e);
             setError(true);
         }
     }, [path, language]);

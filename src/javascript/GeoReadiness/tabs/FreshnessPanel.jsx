@@ -49,6 +49,8 @@ export const FreshnessPanel = ({path, language}) => {
                 await checkFreshness({path, language, staleDays}) :
                 await scanStatus({path, language}));
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: freshness could not be read', e);
             setState(s => s || {});
         } finally {
             setBusy(false);
@@ -145,7 +147,7 @@ export const FreshnessPanel = ({path, language}) => {
                     <Histogram
                         axisLeft={t('freshness.axisOlder')}
                         axisRight={t('freshness.axisRecent')}
-                        format={v => String(v)}
+                        format={String}
                         tipFor={r => t(`freshness.bucket.${r.key}`)}
                         rows={BUCKETS.map(b => ({
                             key: b.key,

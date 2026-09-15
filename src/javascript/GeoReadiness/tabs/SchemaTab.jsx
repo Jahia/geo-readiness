@@ -29,7 +29,9 @@ export const SchemaTab = ({report}) => {
             navigator.clipboard.writeText(snippet);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (e) {
+        } catch {
+            // No clipboard here. The snippet stays selectable, which is the point
+            // of the comment above.
             setCopied(false);
         }
     }, [snippet]);

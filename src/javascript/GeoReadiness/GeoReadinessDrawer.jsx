@@ -20,24 +20,25 @@ const cacheKey = (path, language) => `geo-readiness:${CACHE_SCHEMA}:${language}:
 
 function loadCached(path, language) {
     try {
-        const raw = window.localStorage.getItem(cacheKey(path, language));
+        const raw = globalThis.localStorage.getItem(cacheKey(path, language));
         if (!raw) {
             return null;
         }
         const entry = JSON.parse(raw);
         return entry && entry.schema === CACHE_SCHEMA ? entry : null;
-    } catch (e) {
+    } catch {
+        // Unreadable or not ours. Either way there is no cached report.
         return null;
     }
 }
 
 function saveCached(path, language, report) {
     try {
-        window.localStorage.setItem(
+        globalThis.localStorage.setItem(
             cacheKey(path, language),
             JSON.stringify({schema: CACHE_SCHEMA, timestamp: Date.now(), report})
         );
-    } catch (e) {
+    } catch {
         // localStorage unavailable or full. Caching is a convenience, not a requirement.
     }
 }
@@ -102,6 +103,13 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
         return null;
     }
 
+    let runLabel = t('drawer.run');
+    if (phase === 'running') {
+        runLabel = t('drawer.running');
+    } else if (report) {
+        runLabel = t('drawer.rerun');
+    }
+
     return (
         <aside className={styles.drawer} aria-label={t('drawer.title')}>
             <header className={styles.header}>
@@ -117,7 +125,7 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                     size="big"
                     color="accent"
                     isDisabled={phase === 'running'}
-                    label={phase === 'running' ? t('drawer.running') : (report ? t('drawer.rerun') : t('drawer.run'))}
+                    label={runLabel}
                     onClick={run}
                 />
                 {ranAt && (

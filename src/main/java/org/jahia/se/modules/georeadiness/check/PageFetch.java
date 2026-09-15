@@ -63,16 +63,26 @@ public final class PageFetch {
     private static final Pattern EQUIV_REFRESH = is("http-equiv", "refresh");
     private static final Pattern REFRESH_URL = Pattern.compile("(?is)url=([^\"'>\\s]{1,2000})");
     private static final Pattern LD_JSON = Pattern.compile("(?is)application/ld\\+json");
-    private static final Pattern JSONLD_TYPE = Pattern.compile("(?is)[\"']@type[\"']\\s{0,20}:\\s{0,20}[\"'](" + SHORT + ")[\"']");
+    private static final Pattern JSONLD_TYPE = jsonValue("@type");
     /** Two spellings of the same fact, each simple enough to read. */
-    private static final Pattern MODIFIED_LD = Pattern.compile("(?is)[\"']dateModified[\"']\\s{0,20}:\\s{0,20}[\"'](" + SHORT + ")[\"']");
-    private static final Pattern MODIFIED_META = Pattern.compile("(?is)article:modified_time[\"'][^>]{0,400}content=[\"'](" + SHORT + ")[\"']");
+    private static final Pattern MODIFIED_LD = jsonValue("dateModified");
+    private static final Pattern MODIFIED_META = Pattern.compile("(?is)article:modified_time[\"'][^>]{0,400}content=" + quoted(SHORT));
     /** One pass, nothing to re-run: safe on any input. */
     private static final Pattern WS = Pattern.compile("\\s+");
 
+    /** A quoted value, captured. Single or double: markup uses both. */
+    private static String quoted(String bound) {
+        return "[\"'](" + bound + ")[\"']";
+    }
+
     /** `name="..."`, with the value captured. */
     private static Pattern value(String name, String bound) {
-        return Pattern.compile("(?is)\\b" + name + "=[\"'](" + bound + ")[\"']");
+        return Pattern.compile("(?is)\\b" + name + "=" + quoted(bound));
+    }
+
+    /** `"key": "value"` inside a JSON-LD block, with the value captured. */
+    private static Pattern jsonValue(String key) {
+        return Pattern.compile("(?is)[\"']" + key + "[\"']\\s{0,20}:\\s{0,20}" + quoted(SHORT));
     }
 
     /** `name="literal"`, for an attribute read only to recognise the tag. */

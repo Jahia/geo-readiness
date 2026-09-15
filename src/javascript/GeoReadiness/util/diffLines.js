@@ -9,13 +9,17 @@
 const MAX_LINES = 800;
 
 export function diffLines(before, after) {
+    // Each row carries the line it came from - `before` for a deletion or an
+    // unchanged line, `after` for an addition. That is a row's identity: it is
+    // what a key needs, and a position in the array is not, because the array is
+    // rebuilt whenever either side changes.
     const a = (before || '').split('\n');
     const b = (after || '').split('\n');
 
     if (a.length > MAX_LINES || b.length > MAX_LINES) {
         return [
-            ...a.map(text => ({type: 'del', text})),
-            ...b.map(text => ({type: 'add', text}))
+            ...a.map((text, n) => ({type: 'del', text, line: n + 1})),
+            ...b.map((text, n) => ({type: 'add', text, line: n + 1}))
         ];
     }
 
@@ -32,22 +36,22 @@ export function diffLines(before, after) {
     let j = 0;
     while (i < a.length && j < b.length) {
         if (a[i] === b[j]) {
-            out.push({type: 'ctx', text: a[i]});
+            out.push({type: 'ctx', text: a[i], line: i + 1});
             i++;
             j++;
         } else if (lcs[i + 1][j] >= lcs[i][j + 1]) {
-            out.push({type: 'del', text: a[i]});
+            out.push({type: 'del', text: a[i], line: i + 1});
             i++;
         } else {
-            out.push({type: 'add', text: b[j]});
+            out.push({type: 'add', text: b[j], line: j + 1});
             j++;
         }
     }
     while (i < a.length) {
-        out.push({type: 'del', text: a[i++]});
+        out.push({type: 'del', text: a[i], line: ++i});
     }
     while (j < b.length) {
-        out.push({type: 'add', text: b[j++]});
+        out.push({type: 'add', text: b[j], line: ++j});
     }
     return out;
 }
@@ -72,7 +76,7 @@ export function collapse(rows, context = 2) {
     rows.forEach((r, idx) => {
         if (keep[idx]) {
             if (skipped > 0) {
-                out.push({type: 'gap', count: skipped});
+                out.push({type: 'gap', count: skipped, line: r.line});
                 skipped = 0;
             }
             out.push(r);
@@ -81,7 +85,7 @@ export function collapse(rows, context = 2) {
         }
     });
     if (skipped > 0) {
-        out.push({type: 'gap', count: skipped});
+        out.push({type: 'gap', count: skipped, line: rows.length + 1});
     }
     return out;
 }

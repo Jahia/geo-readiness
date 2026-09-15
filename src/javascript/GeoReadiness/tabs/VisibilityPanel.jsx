@@ -28,6 +28,8 @@ export const VisibilityPanel = ({path, language}) => {
             setResult(await guestVisibility({path, language}));
             setPhase('done');
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: guest visibility could not be checked', e);
             setError(t('visibility.error'));
             setPhase('idle');
         }
@@ -58,6 +60,13 @@ export const VisibilityPanel = ({path, language}) => {
         </Paged>
     );
 
+    let scanLabel = t('visibility.scan');
+    if (phase === 'running') {
+        scanLabel = t('visibility.scanning');
+    } else if (result) {
+        scanLabel = t('visibility.rescan');
+    }
+
     return (
         <div className={styles.panel}>
             <Typography variant="heading" className={styles.panelTitle}>{t('visibility.title')}</Typography>
@@ -68,9 +77,7 @@ export const VisibilityPanel = ({path, language}) => {
                     size="big"
                     variant="outlined"
                     isDisabled={phase === 'running'}
-                    label={phase === 'running' ?
-                        t('visibility.scanning') :
-                        (result ? t('visibility.rescan') : t('visibility.scan'))}
+                    label={scanLabel}
                     onClick={scan}
                 />
                 {result && (
@@ -127,7 +134,8 @@ function formatDate(iso) {
 
     try {
         return new Date(iso).toLocaleDateString();
-    } catch (e) {
+    } catch {
+        // Not a date this browser can format. Showing it raw beats showing nothing.
         return iso;
     }
 }

@@ -37,7 +37,8 @@ export async function getStatus() {
     try {
         const res = await fetch(ENDPOINT, {credentials: 'same-origin'});
         return res.ok ? res.json() : {enabled: false};
-    } catch (e) {
+    } catch {
+        // Unreachable or refused: either way the drawer has nothing to offer.
         return {enabled: false};
     }
 }

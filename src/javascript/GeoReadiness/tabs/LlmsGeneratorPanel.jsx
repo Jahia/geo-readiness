@@ -45,6 +45,8 @@ export const LlmsGeneratorPanel = ({path, language}) => {
             setText(p.generated || '');
             setPhase('ready');
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: llms.txt could not be previewed', e);
             setError(t('files.llms.generate.error'));
             setPhase('idle');
         }
@@ -62,6 +64,8 @@ export const LlmsGeneratorPanel = ({path, language}) => {
             setPhase('applied');
             setConfirming(false);
         } catch (e) {
+            // The user is told it failed; the reason belongs in the console.
+            console.warn('geo-readiness: llms.txt could not be written', e);
             setError(t('files.llms.generate.error'));
             setPhase('ready');
             setConfirming(false);

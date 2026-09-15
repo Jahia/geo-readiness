@@ -18,8 +18,15 @@
     border-radius: 3px;
     white-space: nowrap;
 }
-.on    { background: #e1f1f9; color: #0086bf; }
-.off   { background: #f0f2f5; color: #8a97a3; text-decoration: line-through; }
+/*
+ * These marks are 11px, so they are held to 4.5:1 against their own ground. The
+ * blue was 3.5:1 and the grey 2.7:1, which is the sort of thing that reads fine
+ * on the machine it was chosen on and disappears on a laptop at an angle. The
+ * struck-through mark shares the plain grey on purpose: the line is what says
+ * "refused", and a colour on its own was never going to say it.
+ */
+.on    { background: #e1f1f9; color: #006494; }
+.off   { background: #f0f2f5; color: #5c6b7a; text-decoration: line-through; }
 .plain { background: #f0f2f5; color: #5c6b7a; }
 
 /* On white, with a rule rather than a fill: the only greys left are semantic. */
@@ -140,12 +147,8 @@
     border-left: 3px solid transparent;
 }
 
-/* Robots panel */
-
 /* Settings panels (dashboard) */
-.panel {
-    padding-top: 0.5rem;
-}
+
 
 .panelTitle {
     display: block;
