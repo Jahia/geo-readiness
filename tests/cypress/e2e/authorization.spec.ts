@@ -104,10 +104,13 @@ describe('geo-readiness endpoints — authorization', () => {
      * the operator's configuration: which AI provider and model this site's
      * content is sent to, and the full crawler user-agent list.
      *
-     * None of this was covered before. Every call in this suite was a POST, so
-     * the entire GET surface went unasserted and the finding survived three
-     * releases that edited these very files - including one whose message says
-     * it gated the ungated endpoint.
+     * The coverage before this was worse than none. `crawler-check`'s GET was
+     * never called by any spec. `report`'s GET was called by three tests in
+     * report.spec.ts, and one of them asserted that a contributor MAY read the
+     * status - so the defect was not merely uncovered, it was pinned as
+     * intended behaviour by a passing test. That assertion was written from
+     * what the endpoint did rather than from what it should do, which is how a
+     * characterisation test becomes a specification by accident.
      *
      * All three actors are asserted, and the middle one is the point. The
      * endpoints were never open to anonymous callers, so a suite checking only

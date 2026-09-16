@@ -9,7 +9,7 @@
  */
 
 import {asGuest, asUser} from '../support/auth';
-import {ENDPOINTS, expectJsonOk, expectRefusal, geoPost, jahiaOrigin} from '../support/geo';
+import {ENDPOINTS, expectJsonOk, expectRefusal, geoGet, geoPost} from '../support/geo';
 import {configureModuleForTests, geoFixture, setupGeoFixture, teardownGeoFixture} from '../support/fixtures';
 
 describe('geo-readiness report endpoint', () => {
@@ -28,16 +28,27 @@ describe('geo-readiness report endpoint', () => {
     describe('status', () => {
         it('refuses a guest', () => {
             asGuest();
-            cy.request({url: ENDPOINTS.report, headers: {Origin: jahiaOrigin()}, failOnStatusCode: false})
-                .then(response => {
-                    expectRefusal(response, 401, 'authentication required', 'the status is not public');
-                });
+            geoGet(ENDPOINTS.report, {path: fixture.sitePath, language: 'en'}).then(response => {
+                expectRefusal(response, 401, 'authentication required', 'the status is not public');
+            });
+        });
+
+        it('refuses a guest before it looks at what was asked for', () => {
+            // 401 rather than 400, with no site named at all. Authentication is
+            // settled first, so an anonymous caller cannot use the difference
+            // between "that path is malformed" and "you may not have it" to
+            // learn which sites exist.
+            asGuest();
+            geoGet(ENDPOINTS.report).then(response => {
+                expectRefusal(response, 401, 'authentication required',
+                    'authentication is decided before the query string is read');
+            });
         });
 
         it('says whether a provider is configured, and nothing else', () => {
             asUser(fixture.publisher);
-            cy.request({url: ENDPOINTS.report, headers: {Origin: jahiaOrigin()}}).then(response => {
-                expectJsonOk(response, 'the status answers an authenticated user');
+            geoGet(ENDPOINTS.report, {path: fixture.sitePath, language: 'en'}).then(response => {
+                expectJsonOk(response, 'the status answers a caller who holds publish');
                 expect(response.body.enabled, 'no provider is configured in this run').to.eq(false);
                 expect(Object.keys(response.body).sort(), 'the status carries no key and no url')
                     .to.deep.eq(['enabled', 'model', 'provider']);
@@ -103,9 +114,18 @@ describe('geo-readiness report endpoint', () => {
             asUser(fixture.contributor);
         });
 
-        it('may read the status', () => {
-            cy.request({url: ENDPOINTS.report, headers: {Origin: jahiaOrigin()}}).then(response => {
-                expectJsonOk(response, 'the status only says whether a provider exists');
+        it('is refused the status with 403, because it names the provider', () => {
+            // This test asserted the OPPOSITE until JAHIA-SEC-432. It read "the
+            // status only says whether a provider exists", and that was wrong on
+            // its own terms: the body also carries the provider and model names,
+            // which say which third party this site's content is sent to. The
+            // test passed, so the endpoint's gate was never the thing under
+            // test - the assertion was written from the endpoint's behaviour
+            // rather than from what it ought to be.
+            geoGet(ENDPOINTS.report, {path: fixture.sitePath, language: 'en'}).then(response => {
+                expectRefusal(response, 403, 'cannot read node',
+                    'the status names the configured provider, so it is site settings');
+                expect(response.body.provider, 'nothing is disclosed while refusing').to.be.undefined;
             });
         });
 
