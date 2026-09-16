@@ -1,5 +1,19 @@
 # geo-readiness Changelog
 
+## 1.3.2
+
+A maintenance release with no change a user of the module will see. It clears the quality gate that had been red on `main` since before 1.3.1 was prepared, and removes the first of the obstacles that stop the release running in CI. An existing install upgrades in place.
+
+* Cleared the eight maintainability issues and the reliability rating holding `main`'s quality gate red. A field left dead when 1.3.1 stopped reading JSON-LD with a regex and started parsing it; fifteen private helpers moved into the nested classes they actually serve, in `GeoScore`, `LinkGraph` and `SiteScorer`; and `Snapshot`'s thirteen-parameter constructor replaced by one that reads the configuration map, which is also what lets its defaults be an empty map instead of a second copy of the same thirteen values that had to be kept in step by hand. Behaviour is unchanged — sorting the stripped lines of `SiteScorer` before and after gives the same 612 lines, nothing added and nothing removed, and the 354 unit tests pass.
+
+* The four chart boxes that carry the pointer tooltip now declare `role="none"`. The accessibility work in 1.3.1 took the tab stops off them and moved their numbers into the surrounding table and list structures, which is the right shape, but left them reading as interactive elements a keyboard could not reach. The role says what is true: the box draws, and the value spans inside it are what assistive tech reads. Nothing is hidden.
+
+* `languageFlag` now reads a code point where it read a code unit. The two agree for every region letter that reaches this line, so no flag changes — the premise was wrong, not the answer.
+
+* Two control characters in `SiteScopeTest` were stored as raw bytes rather than escapes, which made git classify the whole file as binary. Four kilobytes of tests had merged with no diff anyone could read. Same inputs, same cases, readable file.
+
+* The release workflow declares the checked-out workspace trusted, so the release action's git commands can run as root inside the build container instead of failing on `detected dubious ownership` before anything is released. This is necessary but not sufficient: a CI release also needs the CI identity added as a bypass actor on the `Prevent tag deletion` and `support-baseline` rulesets, neither of which can be changed from a workflow file. Until then the release stays a manual job.
+
 ## 1.3.1
 
 * The dashboard and the drawer now meet WCAG 2.2 AAA on contrast, carry real headings, and announce a running scan to a screen reader. The charts stopped making every data mark a tab stop — a full failure matrix was upwards of three hundred of them — and instead carry their numbers as text inside the table and list structures they already had, so assistive tech reads the figures and the keyboard passes through in one stop. The drawer is a real `<dialog>`, and every control that had no accessible name has one.
