@@ -117,20 +117,19 @@ class RobotsEditorTest {
             assertThat(out).isEqualTo(original);
         }
 
+        // WAS SUSPECT, NOW FIXED. The agent line kept its own "\r" because it is
+        // untouched raw text, while the inserted rule had none and render always
+        // appended a plain "\n" - so one edit left a customer's CRLF file mixing
+        // both endings. render now takes the file's own ending and every line
+        // gets it.
         @Test
-        @DisplayName("SUSPECT: replacing a rule in a CRLF file leaves the agent line CRLF but the new rule line LF-only")
-        void replacingRuleInCrlfFile_producesMixedLineEndings() {
-            // RobotsEditor.java:82-111 (applyOne) and :234-248 (replaceRules): the
-            // agent line is untouched raw text, so it keeps its original "\r", but
-            // the inserted literal "Disallow: /" has no "\r" of its own, and
-            // render() always appends a plain "\n". A single-decision edit on an
-            // otherwise-CRLF file therefore silently produces a file mixing CRLF
-            // and LF line endings.
+        @DisplayName("an edit to a CRLF file keeps CRLF on every line, including the inserted one")
+        void replacingRuleInCrlfFile_keepsCrlfThroughout() {
             String original = "User-agent: A\r\nDisallow: /old\r\n";
 
             String out = RobotsEditor.apply(original, decision("A", RobotsEditor.BLOCK));
 
-            assertThat(out).isEqualTo("User-agent: A\r\nDisallow: /\n");
+            assertThat(out).isEqualTo("User-agent: A\r\nDisallow: /\r\n");
         }
 
         @Test
@@ -143,34 +142,29 @@ class RobotsEditorTest {
             assertThat(out).isEqualTo("# just a comment\n\nUser-agent: NewBot\nDisallow: /\n");
         }
 
+        // WAS SUSPECT, NOW FIXED. This class documents that it leaves blank
+        // lines "byte for byte as it found it". A body of nothing but blank
+        // lines contradicted that completely: the trailing-newline
+        // normalisation matched the whole thing and returned an empty string.
+        // A no-op merge now returns the input untouched.
         @Test
-        @DisplayName("SUSPECT: a purely blank-line body, with no decisions, collapses to a completely empty result")
-        void blankLineOnlyBody_noDecisions_collapsesToEmpty() {
-            // RobotsEditor.java:14-15 documents that blank lines are left "byte for
-            // byte as it found it". A body made only of blank lines contradicts
-            // that: parse() folds them into a single trailing Raw block, and the
-            // final trailing-newline normalisation (RobotsEditor.java:66-69)
-            // strips every one of them, because "\n+$" matches the whole thing.
-            // The result is not "unchanged blank lines" but total loss of them.
+        @DisplayName("a body of blank lines survives a no-op merge unchanged")
+        void blankLineOnlyBody_noDecisions_isUnchanged() {
             String original = "\n\n\n";
 
-            String out = RobotsEditor.apply(original, NO_DECISIONS);
-
-            assertThat(out).isEmpty();
+            assertThat(RobotsEditor.apply(original, NO_DECISIONS)).isEqualTo(original);
         }
 
+        // WAS SUSPECT, NOW FIXED. parse("") yielded one empty line, which became
+        // a Raw block of one blank line, and the appended group added a spacer on
+        // top - so a brand-new robots.txt opened with two blank lines nobody
+        // wrote. An empty body now parses to no blocks at all.
         @Test
-        @DisplayName("SUSPECT: adding a new token to an originally-empty file produces two leading blank lines")
-        void newTokenOnEmptyOriginal_producesTwoLeadingBlankLines() {
-            // parse("") still yields one Raw block holding a single empty-string
-            // line (RobotsEditor.java:123-159), which renders as one "\n". The
-            // newly appended group then adds its OWN separating "\n" on top
-            // (RobotsEditor.java:250-261), because that render sees a
-            // non-empty buffer not yet ending in "\n\n". The two mechanisms stack,
-            // leaving two blank lines before the new group instead of zero.
+        @DisplayName("a new token on an empty file starts at the first line")
+        void newTokenOnEmptyOriginal_startsAtTheFirstLine() {
             String out = RobotsEditor.apply("", decision("NewBot", RobotsEditor.BLOCK));
 
-            assertThat(out).isEqualTo("\n\nUser-agent: NewBot\nDisallow: /\n");
+            assertThat(out).isEqualTo("User-agent: NewBot\nDisallow: /\n");
         }
     }
 
@@ -192,12 +186,16 @@ class RobotsEditorTest {
             assertThat(RobotsEditor.apply("", NO_DECISIONS)).isEmpty();
         }
 
+        // Not on the SUSPECT list; fixing the byte-for-byte promise properly is
+        // what surfaced it. A no-op merge used to ADD a trailing newline to a
+        // file the caller never asked to change, which is a diff on an untouched
+        // file. Normalisation still applies when a decision is really merged.
         @Test
-        @DisplayName("a missing trailing newline on the original is normalised to exactly one")
-        void missingTrailingNewline_isNormalisedToExactlyOne() {
-            String out = RobotsEditor.apply("User-agent: *\nDisallow: /admin", NO_DECISIONS);
+        @DisplayName("a no-op merge does not add a trailing newline the file did not have")
+        void missingTrailingNewline_isLeftAloneWhenNothingChanges() {
+            String original = "User-agent: *\nDisallow: /admin";
 
-            assertThat(out).isEqualTo("User-agent: *\nDisallow: /admin\n");
+            assertThat(RobotsEditor.apply(original, NO_DECISIONS)).isEqualTo(original);
         }
 
         @Test

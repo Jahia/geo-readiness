@@ -47,8 +47,10 @@ public final class RobotsEditor {
      * @return the merged file
      */
     public static String apply(String original, Map<String, String> decisions) {
-        List<Block> blocks = parse(original == null ? "" : original);
+        String text = original == null ? "" : original;
+        List<Block> blocks = parse(text);
 
+        boolean changed = false;
         for (Map.Entry<String, String> d : decisions.entrySet()) {
             String token = d.getKey();
             String want = d.getValue();
@@ -56,17 +58,41 @@ public final class RobotsEditor {
                     || (!ALLOW.equals(want) && !BLOCK.equals(want))) {
                 continue;
             }
-            applyOne(blocks, token.trim(), want);
+            changed |= applyOne(blocks, token.trim(), want);
         }
 
+        // Nothing to merge means the file comes back exactly as it arrived.
+        //
+        // This class promises above to leave what it was not asked about "byte
+        // for byte", and rendering could not keep that promise: the trailing
+        // newline normalisation below collapsed a file of nothing but blank
+        // lines to an empty string - a diff on a file nobody edited. Returning
+        // the input is the only way to mean byte for byte.
+        if (!changed) {
+            return text;
+        }
+
+        // The file's own line ending, so an inserted rule does not leave one LF
+        // line in the middle of a CRLF file.
+        String eol = text.contains("\r\n") ? "\r\n" : "\n";
         StringBuilder sb = new StringBuilder();
         for (Block b : blocks) {
-            b.render(sb);
+            b.render(sb, eol);
         }
-        // Exactly one trailing newline. Without this, a no-op merge would append
-        // one every time it ran, and "nothing changed" would still show a diff.
-        String out = sb.toString().replaceAll("\\n+$", "");
-        return out.isEmpty() ? out : out + "\n";
+        // Exactly one trailing newline, so merging the same decisions twice does
+        // not append another and read as a change.
+        //
+        // A loop, not replaceAll("(\\r?\\n)+$", ""). That is a repetition
+        // anchored at the end of the input, and the engine can recurse once per
+        // repetition - a stack overflow on a file that is mostly blank lines.
+        // Which would be a poor way to fix one catastrophic regex by writing
+        // another. Sonar java:S5998.
+        int end = sb.length();
+        while (end > 0 && (sb.charAt(end - 1) == '\n' || sb.charAt(end - 1) == '\r')) {
+            end--;
+        }
+        String out = sb.substring(0, end);
+        return out.isEmpty() ? out : out + eol;
     }
 
     /** What the file says today for each token, so the UI can show the starting point. */
@@ -79,7 +105,8 @@ public final class RobotsEditor {
         return out;
     }
 
-    private static void applyOne(List<Block> blocks, String token, String want) {
+    /** True when the file actually changed, which is what lets a no-op return the input. */
+    private static boolean applyOne(List<Block> blocks, String token, String want) {
         Group owner = null;
         for (Block b : blocks) {
             if (b instanceof Group && ((Group) b).names(token)) {
@@ -92,22 +119,23 @@ public final class RobotsEditor {
             // Not named anywhere. Blocking needs a group; allowing gets one too,
             // because naming the crawler explicitly is the point of the feature.
             blocks.add(newGroup(token, want));
-            return;
+            return true;
         }
 
         if (ALLOW.equals(want) && !owner.blocksEverything()) {
             // Already allowed, possibly with path rules we must not flatten.
-            return;
+            return false;
         }
 
         if (owner.agentCount() == 1) {
             owner.replaceRules(want);
-            return;
+            return true;
         }
 
         // Shared group. Take this token out so its siblings keep their rules.
         owner.removeAgent(token);
         blocks.add(newGroup(token, want));
+        return true;
     }
 
     private static Group newGroup(String token, String want) {
@@ -122,6 +150,12 @@ public final class RobotsEditor {
 
     private static List<Block> parse(String text) {
         List<Block> blocks = new ArrayList<>();
+        if (text.isEmpty()) {
+            // Otherwise the split yields one empty line, which becomes a Raw
+            // block of one blank line - and a group appended after it opens the
+            // file with two blank lines nobody wrote.
+            return blocks;
+        }
         String[] lines = text.split("\n", -1);
         Cursor at = new Cursor();
         Raw pending = new Raw();
@@ -175,6 +209,14 @@ public final class RobotsEditor {
         return stripComment(line).toLowerCase(Locale.ROOT).startsWith(UA);
     }
 
+    /**
+     * A line without the carriage return the split on '\n' left on it, so that
+     * render owns the line ending and every line in the output has the same one.
+     */
+    private static String withoutCr(String line) {
+        return line.endsWith("\r") ? line.substring(0, line.length() - 1) : line;
+    }
+
     private static String stripComment(String line) {
         int h = line.indexOf('#');
         return (h >= 0 ? line.substring(0, h) : line).trim();
@@ -194,7 +236,7 @@ public final class RobotsEditor {
     // ---- blocks ----
 
     private interface Block {
-        void render(StringBuilder sb);
+        void render(StringBuilder sb, String eol);
     }
 
     /** Comments, blanks, Sitemap lines: anything outside a group. Never modified. */
@@ -202,9 +244,9 @@ public final class RobotsEditor {
         final List<String> lines = new ArrayList<>();
 
         @Override
-        public void render(StringBuilder sb) {
+        public void render(StringBuilder sb, String eol) {
             for (String l : lines) {
-                sb.append(l).append("\n");
+                sb.append(withoutCr(l)).append(eol);
             }
         }
     }
@@ -261,15 +303,15 @@ public final class RobotsEditor {
         }
 
         @Override
-        public void render(StringBuilder sb) {
-            if (appended && sb.length() > 0 && !sb.toString().endsWith("\n\n")) {
-                sb.append("\n");
+        public void render(StringBuilder sb, String eol) {
+            if (appended && sb.length() > 0 && !sb.toString().endsWith(eol + eol)) {
+                sb.append(eol);
             }
             for (String l : agentLines) {
-                sb.append(l).append("\n");
+                sb.append(withoutCr(l)).append(eol);
             }
             for (String l : ruleLines) {
-                sb.append(l).append("\n");
+                sb.append(withoutCr(l)).append(eol);
             }
         }
     }
