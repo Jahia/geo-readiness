@@ -33,9 +33,19 @@ export async function runCrawlerCheck({path, language}) {
     return res.json();
 }
 
-export async function getStatus() {
+/**
+ * The crawler user agents the server knows about.
+ *
+ * The site and language are sent although the list is the same for every site:
+ * they are what the server resolves to decide whether this caller may be told.
+ * The endpoint used to answer any logged-in account (JAHIA-SEC-432).
+ *
+ * @param {{path: string, language: string}} where the site to answer for.
+ */
+export async function getStatus({path, language}) {
     try {
-        const res = await fetch(ENDPOINT, {credentials: 'same-origin'});
+        const query = `?path=${encodeURIComponent(path)}&language=${encodeURIComponent(language)}`;
+        const res = await fetch(ENDPOINT + query, {credentials: 'same-origin'});
         return res.ok ? res.json() : {enabled: false};
     } catch (e) {
         return {enabled: false};

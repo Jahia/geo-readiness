@@ -5,7 +5,12 @@ import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.usermanager.JahiaUser;
 import org.jahia.services.usermanager.JahiaUserManagerService;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.jcr.AccessDeniedException;
+import javax.jcr.PathNotFoundException;
+import javax.jcr.RepositoryException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -48,6 +53,8 @@ public abstract class GeoServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
+    private static final Logger logger = LoggerFactory.getLogger(GeoServlet.class);
+
     /**
      * Per servlet instance, deliberately not shared between them. One map per
      * endpoint means a burst against the crawler check does not spend the
@@ -67,12 +74,6 @@ public abstract class GeoServlet extends HttpServlet {
         } catch (Exception e) {
             return null;
         }
-    }
-
-    /** True when nobody is logged in, guest included. */
-    protected static boolean isGuest() {
-        JahiaUser u = currentUser();
-        return u == null || JahiaUserManagerService.GUEST_USERNAME.equals(u.getName());
     }
 
     /**
@@ -148,6 +149,53 @@ public abstract class GeoServlet extends HttpServlet {
             return false;
         }
         return true;
+    }
+
+    /**
+     * The site a GET names in its query string, returned only when the caller
+     * holds the dashboard permission on it; null once the refusal is written.
+     *
+     * A GET carries no body, so the two values that a POST reads out of its JSON
+     * arrive as query parameters instead. Everything after that is deliberately
+     * the same: the same {@link #isWellFormed} check, and the same
+     * {@link SiteScope#DASHBOARD} permission resolved in the caller's own
+     * session.
+     *
+     * <p>This exists because the two GET handlers asked the wrong question. They
+     * asked whether the caller was the guest user, which is a question about
+     * AUTHENTICATION. What they serve is operator configuration: which third
+     * party the site's content is sent to, and which user agents it treats as
+     * crawlers. Deciding who may see that is a question about AUTHORISATION,
+     * and every other entry point in this module already asked it. An account
+     * holding no role on any site read both.</p>
+     *
+     * <p>Reported as JAHIA-SEC-432 (YWH 892184), confirmed live on 8.2.4.0 with
+     * canary values planted in the module's OSGi configuration, read by an
+     * account that answers 403 on /jahia/jcontent.</p>
+     */
+    protected static String requireDashboard(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+        if (requireUser(resp) == null) {
+            return null;
+        }
+        String path = req.getParameter("path");
+        String language = req.getParameter("language");
+        if (!isWellFormed(path, language, resp)) {
+            return null;
+        }
+        try {
+            return SiteScope.require(path, language, SiteScope.DASHBOARD);
+        } catch (PathNotFoundException | AccessDeniedException e) {
+            // One answer for "no such node" and "no permission" on purpose: told
+            // apart, they say whether a site exists to someone not allowed to
+            // know. That is the same shape the POST paths already answer with.
+            logger.debug("no dashboard permission on {}", path, e);
+            deny(resp, HttpServletResponse.SC_FORBIDDEN, "cannot read node");
+        } catch (RepositoryException e) {
+            logger.warn("dashboard gate failed for {}: {}", path, e.getMessage());
+            deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "operation failed");
+        }
+        return null;
     }
 
     /**

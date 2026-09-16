@@ -69,11 +69,24 @@ public class GeoReportServlet extends GeoServlet {
         this.config = config;
     }
 
+    /**
+     * Whether a written report can be asked for at all, for a site the caller
+     * may administer.
+     *
+     * The gate is {@link #requireDashboard}, not a guest check. The answer names
+     * the AI provider and model the operator configured - which third party this
+     * site's content is sent to - so it is site settings, and it is read with
+     * the same `publish` permission the POST below requires. Before
+     * JAHIA-SEC-432 this asked only whether the caller was logged in, and any
+     * account on the platform could read it.
+     *
+     * The values are global to the module rather than per-site, so the site here
+     * is what the caller must hold the permission ON, not what is looked up.
+     */
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
         try {
-            if (guest()) {
-                deny(resp, HttpServletResponse.SC_UNAUTHORIZED, AUTH_REQUIRED);
+            if (requireDashboard(req, resp) == null) {
                 return;
             }
             JSONObject out = new JSONObject();
@@ -239,8 +252,4 @@ public class GeoReportServlet extends GeoServlet {
         return m.length() > 300 ? m.substring(0, 300) + "..." : m;
     }
 
-    private static boolean guest() {
-        JahiaUser u = currentUser();
-        return u == null || JahiaUserManagerService.GUEST_USERNAME.equals(u.getName());
-    }
 }

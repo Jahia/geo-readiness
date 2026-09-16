@@ -33,7 +33,10 @@ export const ReportPanel = ({path, language, reportLanguage, siteKey, siteName})
         let alive = true;
         (async () => {
             try {
-                const [s, r] = await Promise.all([fetchReportStatus(), readReport({path, language})]);
+                const [s, r] = await Promise.all([
+                    fetchReportStatus({path, language}),
+                    readReport({path, language})
+                ]);
                 if (alive) {
                     setStatus(s);
                     setReport(r.report || null);

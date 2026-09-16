@@ -132,11 +132,24 @@ public class CrawlerCheckServlet extends GeoServlet {
         this.config = config;
     }
 
+    /**
+     * The crawler user agents this module knows about, for a site the caller may
+     * administer.
+     *
+     * The gate is {@link #requireDashboard}, not a guest check. The list names
+     * the exact user agents the site treats specially, which is reconnaissance
+     * for anyone shaping a request to be handled as a crawler, and it is
+     * operator configuration like every other value in this module's OSGi
+     * config. Before JAHIA-SEC-432 this asked only whether the caller was logged
+     * in, so an account holding no role on any site read the whole list.
+     *
+     * The list is global to the module rather than per-site, so the site here is
+     * what the caller must hold the permission ON, not what is looked up.
+     */
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
         try {
-            if (isGuest()) {
-                deny(resp, HttpServletResponse.SC_UNAUTHORIZED, "authentication required");
+            if (requireDashboard(req, resp) == null) {
                 return;
             }
             JSONObject out = new JSONObject();

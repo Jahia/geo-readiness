@@ -56,17 +56,25 @@ export const GeoDashboard = () => {
     const [tab, setTab] = useState(GROUPS[0].tabs[0]);
     const [reportEnabled, setReportEnabled] = useState(false);
 
-    // The written report needs a configured provider. Asked once; the answer
-    // never carries the key, only whether there is one.
+    // The written report needs a configured provider. The answer never carries
+    // the key, only whether there is one.
+    //
+    // Asked per site rather than once, because the server now resolves the site
+    // to decide whether this caller may be told at all (JAHIA-SEC-432). A
+    // caller without `publish` on it gets a 403, which the catch below reads the
+    // same way as "no provider": the tab is not offered.
     useEffect(() => {
+        if (!siteKey) {
+            return undefined;
+        }
         let alive = true;
-        fetchReportStatus()
+        fetchReportStatus({path: `/sites/${siteKey}`, language})
             .then(s => alive && setReportEnabled(Boolean(s && s.enabled)))
             .catch(() => alive && setReportEnabled(false));
         return () => {
             alive = false;
         };
-    }, []);
+    }, [siteKey, language]);
 
     const groups = useMemo(() => GROUPS.map(g => (
         g.id === 'overview' && reportEnabled ? {...g, tabs: [...g.tabs, 'report']} : g
