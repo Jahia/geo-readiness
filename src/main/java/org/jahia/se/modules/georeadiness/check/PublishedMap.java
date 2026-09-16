@@ -114,7 +114,7 @@ public final class PublishedMap {
             while (it.hasNext()) {
                 JCRNodeWrapper n = (JCRNodeWrapper) it.nextNode();
                 if (seen.add(n.getPath())) {
-                    record(n, base, lang, out);
+                    addEntry(n, base, lang, out);
                 }
             }
         }
@@ -137,7 +137,7 @@ public final class PublishedMap {
      * address is what this is keyed by, so there is nothing to file it under,
      * and one unaddressable node must not cost the other fifty thousand.
      */
-    private static void record(JCRNodeWrapper n, String base, String lang, Map<String, Entry> out) {
+    private static void addEntry(JCRNodeWrapper n, String base, String lang, Map<String, Entry> out) {
         try {
             out.put(pathOf(PublicUrls.forNode(n, base)), new Entry(
                     n.getPath(), titleOf(n), modifiedOn(n), modifiedAt(n),
