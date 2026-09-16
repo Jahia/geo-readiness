@@ -3,6 +3,7 @@ package org.jahia.se.modules.georeadiness.check;
 import org.jahia.se.modules.georeadiness.util.PublicUrls;
 import org.jahia.services.content.JCRCallback;
 import org.jahia.services.content.JCRNodeWrapper;
+import org.jahia.services.content.JCRSessionWrapper;
 import org.jahia.services.content.JCRTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,34 +90,62 @@ public final class PublishedMap {
     public static Map<String, Entry> forSite(String sitePath, String base) throws RepositoryException {
         Map<String, Entry> out = new LinkedHashMap<>();
         for (String lang : languagesOf(sitePath)) {
-            GuestVisibility.inGuestSession(lang, guest -> {
-                Set<String> seen = new LinkedHashSet<>();
-                for (String type : new String[]{"jnt:page", "jmix:mainResource"}) {
-                    String sql = "select * from [" + type + "] as n where isdescendantnode(n, '"
-                            + sitePath.replace("'", "''") + "')";
-                    Query q = guest.getWorkspace().getQueryManager().createQuery(sql, Query.JCR_SQL2);
-                    q.setLimit(MAX_ENTRIES);
-                    NodeIterator it = q.execute().getNodes();
-                    while (it.hasNext()) {
-                        JCRNodeWrapper n = (JCRNodeWrapper) it.nextNode();
-                        if (!seen.add(n.getPath())) {
-                            continue;
-                        }
-                        try {
-                            // Read now, inside the session, never after it closes.
-                            out.put(pathOf(PublicUrls.forNode(n, base)), new Entry(
-                                    n.getPath(), titleOf(n), modifiedOn(n), modifiedAt(n),
-                                    n.getPrimaryNodeTypeName(), isNoindex(n),
-                                    n.isNodeType("jnt:page"), lang));
-                        } catch (Exception e) {
-                            logger.debug("no public url for {}", n.getPath(), e);
-                        }
-                    }
-                }
-                return null;
-            });
+            // As GUEST, in each language. A system session would see pages a
+            // crawler never will, which is the opposite of what this map is for.
+            GuestVisibility.inGuestSession(lang, guest -> collect(guest, sitePath, base, lang, out));
         }
         return out;
+    }
+
+    /**
+     * Everything one guest session can reach in one language, added to
+     * {@code out}.
+     *
+     * Deduplicated across the two queries: a node can be both a page and a main
+     * resource, and the same item listed twice would double-count it everywhere
+     * this map is consumed - the freshness distribution, the sitemap comparison,
+     * the link graph.
+     */
+    private static Void collect(JCRSessionWrapper guest, String sitePath, String base,
+            String lang, Map<String, Entry> out) throws RepositoryException {
+        Set<String> seen = new LinkedHashSet<>();
+        for (String type : new String[]{"jnt:page", "jmix:mainResource"}) {
+            NodeIterator it = itemsOfType(guest, sitePath, type);
+            while (it.hasNext()) {
+                JCRNodeWrapper n = (JCRNodeWrapper) it.nextNode();
+                if (seen.add(n.getPath())) {
+                    addEntry(n, base, lang, out);
+                }
+            }
+        }
+        return null;
+    }
+
+    private static NodeIterator itemsOfType(JCRSessionWrapper guest, String sitePath, String type)
+            throws RepositoryException {
+        String sql = "select * from [" + type + "] as n where isdescendantnode(n, '"
+                + sitePath.replace("'", "''") + "')";
+        Query q = guest.getWorkspace().getQueryManager().createQuery(sql, Query.JCR_SQL2);
+        q.setLimit(MAX_ENTRIES);
+        return q.execute().getNodes();
+    }
+
+    /**
+     * One item, read INSIDE the session and never after it closes.
+     *
+     * An item with no public url is skipped rather than failing the map: the
+     * address is what this is keyed by, so there is nothing to file it under,
+     * and one unaddressable node must not cost the other fifty thousand.
+     */
+    private static void addEntry(JCRNodeWrapper n, String base, String lang, Map<String, Entry> out) {
+        try {
+            out.put(pathOf(PublicUrls.forNode(n, base)), new Entry(
+                    n.getPath(), titleOf(n), modifiedOn(n), modifiedAt(n),
+                    n.getPrimaryNodeTypeName(), isNoindex(n),
+                    n.isNodeType("jnt:page"), lang));
+        } catch (Exception e) {
+            logger.debug("no public url for {}", n.getPath(), e);
+        }
     }
 
     /**
