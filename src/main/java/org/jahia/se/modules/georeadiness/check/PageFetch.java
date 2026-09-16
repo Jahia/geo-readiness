@@ -70,7 +70,6 @@ public final class PageFetch {
     private static final Pattern EQUIV_REFRESH = is("http-equiv", "refresh");
     private static final Pattern REFRESH_URL = Pattern.compile("(?is)url=([^\"'>\\s]{1,2000})");
     private static final Pattern LD_JSON = Pattern.compile("(?is)application/ld\\+json");
-    private static final Pattern JSONLD_TYPE = Pattern.compile("(?is)[\"']@type[\"']\\s{0,20}:\\s{0,20}[\"']" + captured(SHORT));
     /** Two spellings of the same fact, each simple enough to read. */
     private static final Pattern MODIFIED_LD = Pattern.compile("(?is)[\"']dateModified[\"']\\s{0,20}:\\s{0,20}[\"']" + captured(SHORT));
     private static final Pattern MODIFIED_META = Pattern.compile("(?is)article:modified_time[\"'][^>]{0,400}content=[\"']" + captured(SHORT));

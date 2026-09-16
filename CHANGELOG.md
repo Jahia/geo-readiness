@@ -34,7 +34,11 @@
 
 * The module has unit tests for the first time: JUnit 5, AssertJ and JaCoCo, with 189 characterisation tests pinning the scoring engine, the robots.txt matcher, the llms.txt freshness comparison and the two security guards. They exist so the decomposition that follows cannot change a score silently — the existing Cypress suite asserts that a scan happened and that the UI reads "n of m checks passed", never which n or which m.
 
-* Removed ten imports left behind by the decomposition, which were the last thing keeping the quality gate red on the main branch.
+* Removed ten imports left behind by the decomposition.
+
+* Cleared what was still keeping the quality gate red on the main branch: a pattern left dead when JSON-LD types stopped being read with a regex, six helpers that belonged inside the class that was already their only caller, and a thirteen-argument constructor that now reads its thirteen defaults out of an empty map instead of a second list of the same values kept in step by hand. In the dashboard, four chart boxes carried a mouse handler with no role to say they are decorative, and the flag helper read a code unit where it meant a code point.
+
+* Two test inputs wrote their control characters as raw bytes rather than escapes, which made git classify the whole file as binary - four kilobytes of tests that no reviewer could see a diff of, and that no later change to them would show either.
 
 ## 1.3.0
 

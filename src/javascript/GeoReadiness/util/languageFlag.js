@@ -29,7 +29,7 @@ export function flagOf(locale) {
     }
 
     // A flag emoji is the two letters of the country code as regional indicators.
-    return String.fromCodePoint(...[...region].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+    return String.fromCodePoint(...[...region].map(c => 0x1F1E6 + c.codePointAt(0) - 65));
 }
 
 /** "Français 🇫🇷", or just the name when we have no flag for it. */

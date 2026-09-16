@@ -283,6 +283,16 @@ public final class LinkGraph {
             this.notListed = notListed;
         }
 
+        private static JSONObject row(PublishedMap.Entry node, String path, String why) {
+            JSONObject o = new JSONObject();
+            o.put("path", path);
+            o.put("jcrPath", node.jcrPath);
+            o.put("title", node.title);
+            o.put("language", node.language);
+            o.put("why", why == null ? JSONObject.NULL : why);
+            return o;
+        }
+
         private void add(Accumulator acc, String path, PublishedMap.Entry node) {
             int[] in = acc.inbound.get(path);
             int nav = in == null ? 0 : in[NAV];
@@ -333,16 +343,6 @@ public final class LinkGraph {
         }
         JSONObject counts = report.optJSONObject("counts");
         return counts == null ? null : counts.optJSONObject(jcrPath + "@" + language);
-    }
-
-    private static JSONObject row(PublishedMap.Entry node, String path, String why) {
-        JSONObject o = new JSONObject();
-        o.put("path", path);
-        o.put("jcrPath", node.jcrPath);
-        o.put("title", node.title);
-        o.put("language", node.language);
-        o.put("why", why == null ? JSONObject.NULL : why);
-        return o;
     }
 
     private static String stripQuery(String href) {

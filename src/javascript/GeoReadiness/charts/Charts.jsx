@@ -117,6 +117,7 @@ export const BarList = ({rows, max, format, tipFor}) => {
                           */}
                         <div
                             className={styles.track}
+                            role="none"
                             onMouseEnter={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
                             onMouseLeave={hide}
                         >
@@ -167,6 +168,7 @@ export const Histogram = ({rows, format, tipFor, axisLeft, axisRight}) => {
                     <div
                         key={r.key}
                         className={styles.histColumn}
+                        role="none"
                         onMouseEnter={e => show(e, tipText(format(r.value), tipFor ? tipFor(r) : r.label))}
                         onMouseLeave={hide}
                     >
@@ -242,6 +244,7 @@ export const StackedBar = ({segments, total, format, restLabel, label}) => {
                         key={s.key}
                         className={`${styles.segment} ${s.rest ? styles.segmentRest : ''} ${s.tone ? styles[s.tone] : ''}`}
                         style={{flexGrow: s.value, flexBasis: 0}}
+                        role="none"
                         onMouseEnter={s.rest ? undefined : e => show(e, tipText(format(s.value), s.label))}
                         onMouseLeave={hide}
                     >
@@ -313,6 +316,7 @@ export const PairedBars = ({rows, series, format, missingLabel}) => {
                                 <div
                                     key={s.key}
                                     className={`${styles.track} ${styles.trackThin}`}
+                                    role="none"
                                     onMouseEnter={has ? e => show(e, tipText(format(v), `${s.label} · ${r.tipLabel || ''}`)) : undefined}
                                     onMouseLeave={hide}
                                 >
