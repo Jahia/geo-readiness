@@ -123,39 +123,52 @@ public final class RobotsEditor {
     private static List<Block> parse(String text) {
         List<Block> blocks = new ArrayList<>();
         String[] lines = text.split("\n", -1);
-        int i = 0;
+        Cursor at = new Cursor();
         Raw pending = new Raw();
 
-        while (i < lines.length) {
-            if (isAgentLine(lines[i])) {
-                if (!pending.lines.isEmpty()) {
-                    blocks.add(pending);
-                    pending = new Raw();
-                }
-                Group g = new Group();
-                while (i < lines.length && isAgentLine(lines[i])) {
-                    g.agentLines.add(lines[i]);
-                    i++;
-                }
-                // Everything up to the next User-agent line belongs to this group.
-                // Comments and blanks inside it are kept where they are.
-                while (i < lines.length && !isAgentLine(lines[i])) {
-                    g.ruleLines.add(lines[i]);
-                    i++;
-                }
-                // Blank lines are NOT trimmed here. They are the separators between
-                // groups, and dropping them makes a second merge differ from the
-                // first, which would show as a phantom diff.
-                blocks.add(g);
-            } else {
-                pending.lines.add(lines[i]);
-                i++;
+        while (at.i < lines.length) {
+            if (!isAgentLine(lines[at.i])) {
+                pending.lines.add(lines[at.i]);
+                at.i++;
+                continue;
             }
+            if (!pending.lines.isEmpty()) {
+                blocks.add(pending);
+                pending = new Raw();
+            }
+            blocks.add(group(lines, at));
         }
         if (!pending.lines.isEmpty()) {
             blocks.add(pending);
         }
         return blocks;
+    }
+
+    /**
+     * One group: its run of consecutive User-agent lines, then everything up to
+     * the next one.
+     *
+     * Blank lines are NOT trimmed. They are the separators between groups, and
+     * dropping them would make a second merge differ from the first, which shows
+     * as a phantom diff on a file nobody changed. Comments and blanks inside the
+     * group are kept exactly where they sit.
+     */
+    private static Group group(String[] lines, Cursor at) {
+        Group g = new Group();
+        while (at.i < lines.length && isAgentLine(lines[at.i])) {
+            g.agentLines.add(lines[at.i]);
+            at.i++;
+        }
+        while (at.i < lines.length && !isAgentLine(lines[at.i])) {
+            g.ruleLines.add(lines[at.i]);
+            at.i++;
+        }
+        return g;
+    }
+
+    /** How far through the file the parse has got, shared with {@link #group}. */
+    private static final class Cursor {
+        private int i;
     }
 
     private static boolean isAgentLine(String line) {
