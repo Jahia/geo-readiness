@@ -50,6 +50,15 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.GH_SSH_PRIVATE_KEY_JAHIACI }}
 
+      # The release action's first git command is a fetch, and git refuses to
+      # run in a working copy owned by another user. The checkout above is
+      # written as the runner user; the steps below run as root inside the
+      # build container, so every git call in the release fails with "detected
+      # dubious ownership" before anything is released. Declaring the workspace
+      # trusted is what makes the release action usable from a container.
+      - name: Trust the checked-out workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       - uses: jahia/jahia-modules-action/release@v2
         name: Release Module
         with:
