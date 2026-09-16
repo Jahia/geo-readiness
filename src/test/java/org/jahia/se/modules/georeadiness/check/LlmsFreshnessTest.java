@@ -108,38 +108,27 @@ class LlmsFreshnessTest {
         }
 
         /**
-         * SUSPECT (LlmsFreshness.java:58): the empty-generated guard is
-         * `generated == null || generated.isEmpty()` - it does NOT trim, unlike the
-         * `served` check three lines above which uses `served.trim().isEmpty()`. A
-         * generated value that is whitespace-only (e.g. a single space) is therefore
-         * treated as "present" content and falls through to full comparison, where
-         * the regex simply finds zero links in it. The practical effect: every
-         * link in `served` is then reported "stale" with why="gone", because
-         * `current` silently becomes an empty map instead of the method reporting
-         * "not outdated" the way it does for a null/empty generated value. This
-         * test pins that inconsistency exactly as it stands today.
+         * WAS SUSPECT, NOW FIXED. The two emptiness guards disagreed: served used
+         * trim(), generated did not. A generated body of nothing but whitespace
+         * therefore counted as content, the link scan found nothing in it, and
+         * every page llms.txt lists came back stale with why="gone" - the
+         * loudest answer the report has, for what is really "we could not
+         * generate anything". Both sides trim now, so it takes the same early
+         * return as a null or empty one.
          */
         @Test
-        @DisplayName("SUSPECT: whitespace-only generated is NOT treated as absent, unlike whitespace-only served")
-        void generatedWhitespaceOnly_isTreatedAsPresentContentWithZeroLinks() {
+        @DisplayName("a whitespace-only generated body is absent, exactly as an empty one is")
+        void generatedWhitespaceOnly_isTreatedAsAbsent() {
             String served = link("Home", "/index.html");
+
             JSONObject out = LlmsFreshness.check(served, "   ", null, SITE);
 
             assertThat(out.getBoolean("present")).isTrue();
-            assertThat(out.get("current")).isInstanceOf(Integer.class);
-            assertThat(out.getInt("current")).isZero();
-            assertThat(out.get("listed")).isInstanceOf(Integer.class);
-            assertThat(out.getInt("listed")).isEqualTo(1);
-
-            assertThat(out.get("stale")).isInstanceOf(JSONArray.class);
-            JSONArray stale = out.getJSONArray("stale");
-            assertThat(stale.length()).isEqualTo(1);
-            JSONObject staleEntry = stale.getJSONObject(0);
-            assertThat(staleEntry.getString("path")).isEqualTo("/index.html");
-            assertThat(staleEntry.getString("why")).isEqualTo("gone");
-
-            assertThat(out.get("outdated")).isInstanceOf(Boolean.class);
-            assertThat(out.getBoolean("outdated")).isTrue();
+            assertThat(out.getBoolean("outdated")).isFalse();
+            // The early return emits only these two keys, which a reader depends on.
+            assertThat(out.has("current")).isFalse();
+            assertThat(out.has("stale")).isFalse();
+            assertThat(out.has("listed")).isFalse();
         }
     }
 
@@ -404,26 +393,25 @@ class LlmsFreshnessTest {
         }
 
         /**
-         * SUSPECT (LlmsFreshness.java:109): `listedPaths` is built from the full
-         * `listed` map with no cap at all, unlike `stale`/`missing` which are
-         * capped at MAX_REPORTED (100). The class comment says this is "capped by
-         * the generator's own link budget", i.e. it relies on the generator never
-         * producing more than ~100 links in practice - it is not enforced here.
-         * This test pins that 150 served links all surface in listedPaths
-         * uncapped.
+         * WAS SUSPECT, NOW FIXED. listedPaths was the one array with no cap. It
+         * relied on the generator's own link budget to stay small, which says
+         * nothing about the SERVED file - that one is written by whoever wrote
+         * it, so a file listing ten thousand paths put all ten thousand into
+         * every report, every scan.
          */
         @Test
-        @DisplayName("SUSPECT: listedPaths is not capped at 100, unlike stale/missing")
-        void listedPaths_isNotCappedUnlikeStaleAndMissing() {
+        @DisplayName("listedPaths is capped like stale and missing are")
+        void listedPaths_isCapped() {
             String served = links(150, "page");
 
             JSONObject out = LlmsFreshness.check(served, served, null, SITE);
 
+            // The COUNT still reports the truth; only the listing is cut.
             assertThat(out.getInt("listed")).isEqualTo(150);
             JSONArray listedPaths = out.getJSONArray("listedPaths");
-            assertThat(listedPaths.length()).isEqualTo(150);
+            assertThat(listedPaths.length()).isEqualTo(100);
             assertThat(listedPaths.getString(0)).isEqualTo("/page-0.html");
-            assertThat(listedPaths.getString(149)).isEqualTo("/page-149.html");
+            assertThat(listedPaths.getString(99)).isEqualTo("/page-99.html");
         }
     }
 

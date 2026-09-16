@@ -256,8 +256,8 @@ public final class GeoScore {
         JSONObject c = new JSONObject();
         c.put("id", id);
         c.put("group", group);
-        c.put("severity", severity);
-        c.put("passed", passed);
+        c.put(SEVERITY, severity);
+        c.put(PASSED, passed);
         c.put("value", value == null ? JSONObject.NULL : value);
         checks.put(c);
     }

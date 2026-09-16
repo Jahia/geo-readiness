@@ -7,6 +7,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -70,7 +73,12 @@ public final class LlmsFreshness {
         JSONObject out = new JSONObject();
         boolean present = served != null && !served.trim().isEmpty();
         out.put(PRESENT, present);
-        if (!present || generated == null || generated.isEmpty()) {
+        // Both sides trimmed, which they were not: served used trim() and
+        // generated did not, so a generated body of nothing but whitespace fell
+        // through to the comparison, found no links in it, and reported every
+        // page llms.txt lists as stale with why="gone" - the loudest possible
+        // answer to "we could not generate anything".
+        if (!present || generated == null || generated.trim().isEmpty()) {
             // Absent is already reported as its own check on the site files. Not
             // being able to generate is not a staleness finding either. Only
             // these two keys are written on this path, which a reader depends on.
@@ -88,12 +96,22 @@ public final class LlmsFreshness {
 
         // The listed paths themselves, so the drawer can answer "is this page in
         // llms.txt" definitively rather than inferring it from the findings.
-        // Capped by the generator's own link budget, so this stays small.
-        out.put("listedPaths", new JSONArray(listed.keySet()));
+        //
+        // Capped like stale and missing are. It used to rely on the generator's
+        // own link budget to keep it small, which says nothing about the SERVED
+        // file - that one is written by whoever wrote it, and a file listing ten
+        // thousand paths would have put all ten thousand in every report.
+        out.put("listedPaths", new JSONArray(capped(listed.keySet())));
         out.put("stale", stale);
         out.put("missing", missing);
         out.put(OUTDATED, stale.length() > 0 || missing.length() > 0);
         return out;
+    }
+
+    /** At most MAX_REPORTED entries, in the order the file listed them. */
+    private static List<String> capped(Collection<String> paths) {
+        List<String> out = new ArrayList<>(paths);
+        return out.size() <= MAX_REPORTED ? out : out.subList(0, MAX_REPORTED);
     }
 
     /**
@@ -161,7 +179,7 @@ public final class LlmsFreshness {
      * index - and telling an author to act on that would be wrong.
      */
     public static JSONObject listingFor(JSONObject report, String path) {
-        if (report == null || !report.optBoolean("present", false) || path == null) {
+        if (report == null || !report.optBoolean(PRESENT, false) || path == null) {
             return null;
         }
         JSONArray listed = report.optJSONArray("listedPaths");
