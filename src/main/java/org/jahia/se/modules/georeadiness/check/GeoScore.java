@@ -39,116 +39,183 @@ public final class GeoScore {
     private static final String CONTENT = "content";
     private static final String FILES = "files";
 
+    private static final String GUEST_READABLE = "guestReadable";
+    private static final String TITLE = "title";
+    private static final String PASSED = "passed";
+    private static final String SEVERITY = "severity";
+
     private GeoScore() {
     }
 
     public static JSONObject compute(JSONObject report) {
         JSONArray checks = new JSONArray();
+        Facts facts = Facts.of(report);
+        access(checks, facts);
+        content(checks, facts);
+        files(checks, facts);
+        return tally(checks);
+    }
 
-        JSONArray agents = report.optJSONArray("agents");
-        JSONObject control = controlHtml(agents);
-        int controlWords = report.optInt("controlWords", 0);
-        JSONObject files = report.optJSONObject("siteFiles");
-        JSONObject robots = files == null ? null : files.optJSONObject("robots");
-        JSONObject llms = files == null ? null : files.optJSONObject("llms");
+    /**
+     * Everything the checks read, pulled out of the report once.
+     *
+     * compute used to open with a dozen lines doing this and then keep all of it
+     * as locals, which is most of why Sonar called it a Brain Method with 34
+     * variables. Reading it once and passing it around lets each group of checks
+     * be its own method without re-deriving the control or re-walking the agents.
+     */
+    private static final class Facts {
+        private final JSONArray agents;
+        /** The first agent that answered 200 with html, or null when none did. */
+        private final JSONObject control;
+        private final int controlWords;
+        private final JSONObject robots;
+        private final JSONObject llms;
+        private final JSONObject visibility;
+        private final int blocked;
+        private final int mismatches;
 
-        // ---- Access: can a crawler get the bytes at all ----
-        int blocked = report.optInt("blockedCount", 0);
-        add(checks, "reachable", ACCESS, CRITICAL, blocked == 0, blocked);
+        private Facts(JSONObject report) {
+            this.agents = report.optJSONArray("agents");
+            this.control = controlHtml(agents);
+            this.controlWords = report.optInt("controlWords", 0);
+            JSONObject siteFiles = report.optJSONObject("siteFiles");
+            this.robots = siteFiles == null ? null : siteFiles.optJSONObject("robots");
+            this.llms = siteFiles == null ? null : siteFiles.optJSONObject("llms");
+            this.visibility = report.optJSONObject("visibility");
+            this.blocked = report.optInt("blockedCount", 0);
+            this.mismatches = report.optInt("blockedButAllowedCount", 0)
+                    + report.optInt("reachableButDisallowedCount", 0);
+        }
 
-        int mismatches = report.optInt("blockedButAllowedCount", 0)
-                + report.optInt("reachableButDisallowedCount", 0);
-        add(checks, "policyMatchesReality", ACCESS, IMPORTANT, mismatches == 0, mismatches);
+        static Facts of(JSONObject report) {
+            return new Facts(report);
+        }
 
-        boolean redirect = control != null && !control.isNull("metaRefresh");
+        /** A field of the control's html, or null when there is no control at all. */
+        private String text(String key) {
+            return control == null || control.isNull(key) ? null : control.optString(key);
+        }
+
+        private int number(String key) {
+            return control == null ? 0 : control.optInt(key, 0);
+        }
+
+        private boolean flag(String key) {
+            return control != null && control.optBoolean(key, false);
+        }
+
+        private boolean has(String key) {
+            return control != null && !control.isNull(key);
+        }
+    }
+
+    /** Can a crawler get the bytes at all. */
+    private static void access(JSONArray checks, Facts f) {
+        add(checks, "reachable", ACCESS, CRITICAL, f.blocked == 0, f.blocked);
+        add(checks, "policyMatchesReality", ACCESS, IMPORTANT, f.mismatches == 0, f.mismatches);
+
+        boolean redirect = f.has("metaRefresh");
         add(checks, "noClientRedirect", ACCESS, CRITICAL, !redirect,
-                redirect ? control.optString("metaRefresh") : null);
+                redirect ? f.text("metaRefresh") : null);
 
-        int named = robots == null ? 0 : robots.optInt("namedAiBotCount", 0);
+        int named = f.robots == null ? 0 : f.robots.optInt("namedAiBotCount", 0);
         add(checks, "namedInRobots", ACCESS, ADVISORY, named > 0, named);
 
         // GEO-19. A page a guest cannot read is unreadable to every crawler for
         // good, whatever the fetch returned: some servers answer a gated page
-        // with a login form and a cheerful 200. Only added when the repository
-        // actually answered, so an unavailable check never reads as a failure.
-        JSONObject vis = report.optJSONObject("visibility");
-        if (vis != null && vis.has("guestReadable")) {
-            boolean guestReadable = vis.optBoolean("guestReadable", true);
-            add(checks, "guestReadable", ACCESS, CRITICAL, guestReadable,
-                    guestReadable ? null : vis.optString("kind", null));
+        // with a login form and a cheerful 200. Added only when the repository
+        // actually answered, so an unavailable check never reads as a failure -
+        // which is why this asks has() rather than taking a default.
+        if (f.visibility != null && f.visibility.has(GUEST_READABLE)) {
+            boolean guestReadable = f.visibility.optBoolean(GUEST_READABLE, true);
+            add(checks, GUEST_READABLE, ACCESS, CRITICAL, guestReadable,
+                    guestReadable ? null : f.visibility.optString("kind", null));
         }
+    }
 
-        // ---- Content: is what arrives actually usable ----
-        add(checks, "contentInInitialHtml", CONTENT, CRITICAL, controlWords >= MIN_WORDS, controlWords);
+    /** Is what arrives actually usable. */
+    private static void content(JSONArray checks, Facts f) {
+        add(checks, "contentInInitialHtml", CONTENT, CRITICAL, f.controlWords >= MIN_WORDS, f.controlWords);
 
-        int thin = 0;
-        if (agents != null && controlWords > 0) {
-            for (int i = 0; i < agents.length(); i++) {
-                JSONObject h = agents.getJSONObject(i).optJSONObject("html");
-                if (h != null && h.optInt("words", 0) < controlWords * THIN_RATIO) {
-                    thin++;
-                }
-            }
-        }
+        int thin = thinCount(f);
         add(checks, "sameContentForCrawlers", CONTENT, CRITICAL, thin == 0, thin);
 
-        String title = control == null || control.isNull("title") ? null : control.optString("title");
+        String title = f.text(TITLE);
         int titleLen = title == null ? 0 : title.length();
-        add(checks, "title", CONTENT, IMPORTANT,
+        add(checks, TITLE, CONTENT, IMPORTANT,
                 title != null && titleLen >= TITLE_MIN && titleLen <= TITLE_MAX, titleLen);
 
-        int h1 = control == null ? 0 : control.optInt("h1Count", 0);
+        int h1 = f.number("h1Count");
         add(checks, "singleH1", CONTENT, IMPORTANT, h1 == 1, h1);
 
-        int h2 = control == null ? 0 : control.optInt("h2Count", 0);
+        int h2 = f.number("h2Count");
         add(checks, "headingOutline", CONTENT, ADVISORY, h2 > 0, h2);
 
-        add(checks, "metaDescription", CONTENT, IMPORTANT,
-                control != null && control.optBoolean("metaDescription", false), null);
+        add(checks, "metaDescription", CONTENT, IMPORTANT, f.flag("metaDescription"), null);
+        add(checks, "canonical", CONTENT, IMPORTANT, f.flag("canonical"), null);
 
-        add(checks, "canonical", CONTENT, IMPORTANT,
-                control != null && control.optBoolean("canonical", false), null);
-
-        String lang = control == null || control.isNull("lang") ? null : control.optString("lang");
+        String lang = f.text("lang");
         add(checks, "langDeclared", CONTENT, IMPORTANT, lang != null, lang);
 
-        JSONArray types = control == null ? null : control.optJSONArray("jsonLdTypes");
+        JSONArray types = f.control == null ? null : f.control.optJSONArray("jsonLdTypes");
         boolean hasSchema = types != null && types.length() > 0;
-        add(checks, "structuredData", CONTENT, IMPORTANT, hasSchema,
-                hasSchema ? join(types) : null);
+        add(checks, "structuredData", CONTENT, IMPORTANT, hasSchema, hasSchema ? join(types) : null);
 
-        boolean fresh = control != null && !control.isNull("dateModified");
-        add(checks, "freshness", CONTENT, ADVISORY, fresh,
-                fresh ? control.optString("dateModified") : null);
+        boolean fresh = f.has("dateModified");
+        add(checks, "freshness", CONTENT, ADVISORY, fresh, fresh ? f.text("dateModified") : null);
 
-        int images = control == null ? 0 : control.optInt("images", 0);
-        int withAlt = control == null ? 0 : control.optInt("imagesWithAlt", 0);
-        // No images is not a failure. It is simply nothing to describe.
+        imageAlt(checks, f);
+    }
+
+    /** No images is not a failure. It is simply nothing to describe. */
+    private static void imageAlt(JSONArray checks, Facts f) {
+        int images = f.number("images");
+        int withAlt = f.number("imagesWithAlt");
         boolean altOk = images == 0 || withAlt >= images * ALT_COVERAGE;
         add(checks, "imageAlt", CONTENT, ADVISORY, altOk, images == 0 ? null : withAlt + "/" + images);
+    }
 
-        // ---- Site files ----
+    /** How many agents received materially less text than the control did. */
+    private static int thinCount(Facts f) {
+        if (f.agents == null || f.controlWords <= 0) {
+            return 0;
+        }
+        int thin = 0;
+        for (int i = 0; i < f.agents.length(); i++) {
+            JSONObject h = f.agents.getJSONObject(i).optJSONObject("html");
+            if (h != null && h.optInt("words", 0) < f.controlWords * THIN_RATIO) {
+                thin++;
+            }
+        }
+        return thin;
+    }
+
+    private static void files(JSONArray checks, Facts f) {
         add(checks, "robotsPresent", FILES, IMPORTANT,
-                robots != null && robots.optBoolean("present", false), null);
+                f.robots != null && f.robots.optBoolean("present", false), null);
         add(checks, "llmsPresent", FILES, ADVISORY,
-                llms != null && llms.optBoolean("present", false), null);
+                f.llms != null && f.llms.optBoolean("present", false), null);
+    }
 
+    /** The counts the dashboard and the drawer both quote. */
+    private static JSONObject tally(JSONArray checks) {
         int passed = 0;
         int criticalFailed = 0;
         int importantFailed = 0;
         for (int i = 0; i < checks.length(); i++) {
             JSONObject c = checks.getJSONObject(i);
-            if (c.getBoolean("passed")) {
+            if (c.getBoolean(PASSED)) {
                 passed++;
-            } else if (CRITICAL.equals(c.getString("severity"))) {
+            } else if (CRITICAL.equals(c.getString(SEVERITY))) {
                 criticalFailed++;
-            } else if (IMPORTANT.equals(c.getString("severity"))) {
+            } else if (IMPORTANT.equals(c.getString(SEVERITY))) {
                 importantFailed++;
             }
         }
 
         JSONObject out = new JSONObject();
-        out.put("passed", passed);
+        out.put(PASSED, passed);
         out.put("total", checks.length());
         out.put("criticalFailed", criticalFailed);
         out.put("importantFailed", importantFailed);

@@ -42,6 +42,21 @@ public final class LlmsFreshness {
 
     private static final int MAX_REPORTED = 100;
 
+    /**
+     * One key name, two shapes, which is worth naming once rather than four
+     * times. check() writes it as a COUNT of the pages llms.txt lists;
+     * listingFor() writes it as a BOOLEAN saying whether one page is among them.
+     * Different objects, read by different callers - but a reader that confuses
+     * them gets a silent wrong answer, which is exactly what happened to this
+     * class's "stale" and "outdated" in GeoReport.
+     */
+    private static final String LISTED = "listed";
+
+    private static final String PRESENT = "present";
+    private static final String OUTDATED = "outdated";
+    private static final String PATH = "path";
+    private static final String TITLE = "title";
+
     private LlmsFreshness() {
     }
 
@@ -54,22 +69,43 @@ public final class LlmsFreshness {
             String sitePath) {
         JSONObject out = new JSONObject();
         boolean present = served != null && !served.trim().isEmpty();
-        out.put("present", present);
+        out.put(PRESENT, present);
         if (!present || generated == null || generated.isEmpty()) {
             // Absent is already reported as its own check on the site files. Not
-            // being able to generate is not a staleness finding either.
-            out.put("outdated", false);
+            // being able to generate is not a staleness finding either. Only
+            // these two keys are written on this path, which a reader depends on.
+            out.put(OUTDATED, false);
             return out;
         }
 
         Map<String, String> current = linksOf(generated);
         Map<String, String> listed = linksOf(served);
-        out.put("listed", listed.size());
+        out.put(LISTED, listed.size());
         out.put("current", current.size());
 
-        JSONArray stale = new JSONArray();
-        JSONArray missing = new JSONArray();
+        JSONArray stale = staleOf(listed, current, published, sitePath);
+        JSONArray missing = missingOf(listed, current);
 
+        // The listed paths themselves, so the drawer can answer "is this page in
+        // llms.txt" definitively rather than inferring it from the findings.
+        // Capped by the generator's own link budget, so this stays small.
+        out.put("listedPaths", new JSONArray(listed.keySet()));
+        out.put("stale", stale);
+        out.put("missing", missing);
+        out.put(OUTDATED, stale.length() > 0 || missing.length() > 0);
+        return out;
+    }
+
+    /**
+     * Pages the served file lists that the generator would no longer produce.
+     *
+     * Each carries WHY, because why it is no longer right decides what an editor
+     * does about it: a page that still exists was dropped from the map, one that
+     * moved needs the new address, and one that is gone needs the line removed.
+     */
+    private static JSONArray staleOf(Map<String, String> listed, Map<String, String> current,
+            Map<String, PublishedMap.Entry> published, String sitePath) {
+        JSONArray stale = new JSONArray();
         for (Map.Entry<String, String> e : listed.entrySet()) {
             if (current.containsKey(e.getKey())) {
                 continue;
@@ -77,40 +113,42 @@ public final class LlmsFreshness {
             if (stale.length() >= MAX_REPORTED) {
                 break;
             }
-            // Why it is no longer right decides what an editor does about it.
-            PublishedMap.Entry node = published == null ? null : published.get(e.getKey());
-            String why;
-            if (node != null) {
-                why = "noLongerListed";
-            } else if (PublishedMap.movedFrom(published, sitePath, e.getKey()) != null) {
-                why = "addressChanged";
-            } else {
-                why = "gone";
-            }
             JSONObject r = new JSONObject();
-            r.put("path", e.getKey());
-            r.put("title", e.getValue());
-            r.put("why", why);
+            r.put(PATH, e.getKey());
+            r.put(TITLE, e.getValue());
+            r.put("why", whyStale(published, sitePath, e.getKey()));
             stale.put(r);
         }
+        return stale;
+    }
 
+    private static String whyStale(Map<String, PublishedMap.Entry> published, String sitePath, String path) {
+        if (published != null && published.get(path) != null) {
+            return "noLongerListed";
+        }
+        if (PublishedMap.movedFrom(published, sitePath, path) != null) {
+            return "addressChanged";
+        }
+        return "gone";
+    }
+
+    /**
+     * Pages the generator would produce that the served file does not list.
+     *
+     * A pure diff of the two link sets: the published map is not consulted here,
+     * only in {@link #whyStale}.
+     */
+    private static JSONArray missingOf(Map<String, String> listed, Map<String, String> current) {
+        JSONArray missing = new JSONArray();
         for (Map.Entry<String, String> e : current.entrySet()) {
             if (!listed.containsKey(e.getKey()) && missing.length() < MAX_REPORTED) {
                 JSONObject r = new JSONObject();
-                r.put("path", e.getKey());
-                r.put("title", e.getValue());
+                r.put(PATH, e.getKey());
+                r.put(TITLE, e.getValue());
                 missing.put(r);
             }
         }
-
-        // The listed paths themselves, so the drawer can answer "is this page
-        // in llms.txt" definitively rather than inferring it from the findings.
-        // Capped by the generator's own link budget, so this stays small.
-        out.put("listedPaths", new JSONArray(listed.keySet()));
-        out.put("stale", stale);
-        out.put("missing", missing);
-        out.put("outdated", stale.length() > 0 || missing.length() > 0);
-        return out;
+        return missing;
     }
 
     /**
@@ -130,7 +168,7 @@ public final class LlmsFreshness {
         for (int i = 0; listed != null && i < listed.length(); i++) {
             if (path.equals(listed.optString(i))) {
                 JSONObject out = new JSONObject();
-                out.put("listed", true);
+                out.put(LISTED, true);
                 return out;
             }
         }
@@ -139,13 +177,13 @@ public final class LlmsFreshness {
             JSONObject r = wouldAdd.optJSONObject(i);
             if (r != null && path.equals(r.optString("path", null))) {
                 JSONObject out = new JSONObject();
-                out.put("listed", false);
+                out.put(LISTED, false);
                 out.put("wouldAdd", true);
                 return out;
             }
         }
         JSONObject out = new JSONObject();
-        out.put("listed", false);
+        out.put(LISTED, false);
         out.put("wouldAdd", false);
         return out;
     }

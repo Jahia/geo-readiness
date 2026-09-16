@@ -67,53 +67,73 @@ public final class RobotsRules {
         if (body == null) {
             return r;
         }
-        List<String> currentAgents = new ArrayList<>();
-        boolean lastLineWasAgent = false;
-
+        // Consecutive User-agent lines share one rule block, which is what this
+        // flag tracks: a directive between them ends the run and the next agent
+        // line starts a fresh group.
+        Parsing state = new Parsing();
         for (String raw : body.split("\r?\n")) {
-            String line = raw;
-            int hash = line.indexOf('#');
-            if (hash >= 0) {
-                line = line.substring(0, hash);
-            }
-            line = line.trim();
-            if (line.isEmpty()) {
-                continue;
-            }
+            String line = strip(raw);
             int colon = line.indexOf(':');
             if (colon < 0) {
                 continue;
             }
             String field = line.substring(0, colon).trim().toLowerCase(Locale.ROOT);
             String value = line.substring(colon + 1).trim();
-
-            switch (field) {
-                case "user-agent":
-                    if (!lastLineWasAgent) {
-                        currentAgents = new ArrayList<>();
-                    }
-                    currentAgents.add(value.toLowerCase(Locale.ROOT));
-                    r.declaredAgents.add(value);
-                    r.groups.computeIfAbsent(value.toLowerCase(Locale.ROOT), k -> new ArrayList<>());
-                    lastLineWasAgent = true;
-                    break;
-                case "allow":
-                case "disallow":
-                    boolean allow = "allow".equals(field);
-                    for (String a : currentAgents) {
-                        r.groups.computeIfAbsent(a, k -> new ArrayList<>()).add(new Rule(allow, value));
-                    }
-                    lastLineWasAgent = false;
-                    break;
-                case "sitemap":
-                    r.sitemaps.add(value);
-                    lastLineWasAgent = false;
-                    break;
-                default:
-                    lastLineWasAgent = false;
-            }
+            directive(r, state, field, value);
         }
         return r;
+    }
+
+    /** A line with its comment removed and its edges trimmed; empty when there is nothing left. */
+    private static String strip(String raw) {
+        String line = raw;
+        int hash = line.indexOf('#');
+        if (hash >= 0) {
+            line = line.substring(0, hash);
+        }
+        return line.trim();
+    }
+
+    /** What carries between lines: which agents the next rule applies to. */
+    private static final class Parsing {
+        private List<String> agents = new ArrayList<>();
+        private boolean lastLineWasAgent;
+    }
+
+    private static void directive(RobotsRules r, Parsing state, String field, String value) {
+        switch (field) {
+            case "user-agent":
+                agentLine(r, state, value);
+                break;
+            case "allow":
+            case "disallow":
+                ruleLine(r, state, "allow".equals(field), value);
+                break;
+            case "sitemap":
+                r.sitemaps.add(value);
+                state.lastLineWasAgent = false;
+                break;
+            default:
+                state.lastLineWasAgent = false;
+        }
+    }
+
+    private static void agentLine(RobotsRules r, Parsing state, String value) {
+        if (!state.lastLineWasAgent) {
+            state.agents = new ArrayList<>();
+        }
+        String token = value.toLowerCase(Locale.ROOT);
+        state.agents.add(token);
+        r.declaredAgents.add(value);
+        r.groups.computeIfAbsent(token, k -> new ArrayList<>());
+        state.lastLineWasAgent = true;
+    }
+
+    private static void ruleLine(RobotsRules r, Parsing state, boolean allow, String value) {
+        for (String a : state.agents) {
+            r.groups.computeIfAbsent(a, k -> new ArrayList<>()).add(new Rule(allow, value));
+        }
+        state.lastLineWasAgent = false;
     }
 
     public boolean isParsed() {
@@ -145,44 +165,72 @@ public final class RobotsRules {
         }
         String lower = token.toLowerCase(Locale.ROOT);
 
+        String own = ownGroup(lower);
+        boolean named = own != null;
+        String group = named ? own : wildcardGroup();
+        if (group == null) {
+            return new Verdict(true, null, null, false);
+        }
+
+        Rule best = longestMatch(groups.get(group), path);
+        if (best == null) {
+            return new Verdict(true, group, null, named);
+        }
+        return new Verdict(best.allow, group, (best.allow ? "Allow: " : "Disallow: ") + best.pattern, named);
+    }
+
+    /**
+     * The group that names this agent, or null when only '*' covers it.
+     *
+     * A robots token matches when the declared name is a prefix of the crawler
+     * token, or the reverse: crawlers are lenient here and so are we. The
+     * longest match wins, so a file naming both 'gpt' and 'gptbot' gives GPTBot
+     * the more specific of the two.
+     */
+    private String ownGroup(String lower) {
         String group = null;
         for (String candidate : groups.keySet()) {
             if ("*".equals(candidate)) {
                 continue;
             }
-            // A robots token matches when the declared name is a prefix of the crawler
-            // token, or the reverse. Crawlers are lenient here and so are we.
-            if (lower.startsWith(candidate) || candidate.startsWith(lower)) {
-                if (group == null || candidate.length() > group.length()) {
-                    group = candidate;
-                }
+            boolean matches = lower.startsWith(candidate) || candidate.startsWith(lower);
+            if (matches && (group == null || candidate.length() > group.length())) {
+                group = candidate;
             }
         }
-        boolean named = group != null;
-        if (group == null) {
-            group = groups.containsKey("*") ? "*" : null;
-        }
-        if (group == null) {
-            return new Verdict(true, null, null, false);
-        }
+        return group;
+    }
 
+    private String wildcardGroup() {
+        return groups.containsKey("*") ? "*" : null;
+    }
+
+    /**
+     * The rule that decides, by the spec's own tie-breaks: the longest pattern
+     * wins, and Allow wins a tie against Disallow.
+     */
+    private static Rule longestMatch(List<Rule> rules, String path) {
         Rule best = null;
-        for (Rule rule : groups.get(group)) {
+        for (Rule rule : rules) {
             if (rule.pattern.isEmpty()) {
-                continue;   // "Disallow:" with no value means allow everything
+                // "Disallow:" with no value means allow everything.
+                continue;
             }
-            if (matches(rule.pattern, path)) {
-                if (best == null
-                        || rule.pattern.length() > best.pattern.length()
-                        || (rule.pattern.length() == best.pattern.length() && rule.allow)) {
-                    best = rule;
-                }
+            if (matches(rule.pattern, path) && beats(rule, best)) {
+                best = rule;
             }
         }
+        return best;
+    }
+
+    private static boolean beats(Rule rule, Rule best) {
         if (best == null) {
-            return new Verdict(true, group, null, named);
+            return true;
         }
-        return new Verdict(best.allow, group, (best.allow ? "Allow: " : "Disallow: ") + best.pattern, named);
+        if (rule.pattern.length() != best.pattern.length()) {
+            return rule.pattern.length() > best.pattern.length();
+        }
+        return rule.allow;
     }
 
     /**
