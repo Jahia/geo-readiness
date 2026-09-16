@@ -1,25 +1,16 @@
 package org.jahia.se.modules.georeadiness.check;
 
 import org.jahia.se.modules.georeadiness.util.Markup;
-import org.jahia.se.modules.georeadiness.util.PublicUrls;
-import org.jahia.services.content.JCRCallback;
-import org.jahia.services.content.JCRNodeWrapper;
-import org.jahia.services.content.JCRSessionWrapper;
-import org.jahia.services.content.JCRTemplate;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.jcr.NodeIterator;
 import javax.jcr.RepositoryException;
-import javax.jcr.query.Query;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
