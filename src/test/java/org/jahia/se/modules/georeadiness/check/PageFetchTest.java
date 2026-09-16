@@ -226,25 +226,18 @@ class PageFetchTest {
             assertThat(o.getBoolean("metaDescription")).isFalse();
         }
 
-        @Test
-        @DisplayName("present with empty content -> still boolean true (presence only, content not inspected)")
-        void emptyContentStillTrue() {
-            JSONObject o = PageFetch.analyse("<meta name=\"description\" content=\"\">");
-            assertThat(o.getBoolean("metaDescription")).isTrue();
-        }
-
-        @Test
-        @DisplayName("unusual attribute order (content before name) still matches")
-        void unusualAttributeOrder() {
-            JSONObject o = PageFetch.analyse("<meta content=\"a page\" name=\"description\">");
-            assertThat(o.getBoolean("metaDescription")).isTrue();
-        }
-
-        @Test
-        @DisplayName("single-quoted name attribute still matches")
-        void singleQuoted() {
-            JSONObject o = PageFetch.analyse("<meta name='description' content='a page'>");
-            assertThat(o.getBoolean("metaDescription")).isTrue();
+        @ParameterizedTest(name = "{0}")
+        @ValueSource(strings = {
+            // presence only: the content is never inspected
+            "<meta name=\"description\" content=\"\">",
+            // attribute order is not fixed
+            "<meta content=\"a page\" name=\"description\">",
+            // either quoting style
+            "<meta name='description' content='a page'>"
+        })
+        @DisplayName("any well-formed description meta counts as present")
+        void variantsAllCountAsPresent(String html) {
+            assertThat(PageFetch.analyse(html).getBoolean("metaDescription")).isTrue();
         }
     }
 
@@ -783,9 +776,10 @@ class PageFetchTest {
         @DisplayName("unclosed tags do not throw; unmatched constructs are simply not counted")
         void unclosedTags() {
             JSONObject o = PageFetch.analyse("<div><p>unclosed everything<h1>oops");
-            // <h1> has no closing </h1>, so H1 never matches it (h1Count 0);
-            // TAGS still strips every "<...>" it can find on its own, so
-            // "unclosed", "everything" and "oops" all remain as plain text.
+            // The heading never closes, so the h1 pattern does not match it and
+            // the count stays at zero. The tag-stripping pass still removes
+            // every angle-bracket run it can find, so all three words survive
+            // as plain text.
             assertThat(o.getInt("h1Count")).isZero();
             assertThat(o.getInt("words")).isEqualTo(3);
         }

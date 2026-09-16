@@ -56,24 +56,25 @@ public final class PageFetch {
 
     private static final Pattern JSONLD_TYPE = Pattern.compile("(?is)[\"']@type[\"']\\s*:\\s*[\"']([^\"']+)[\"']");
     /**
-     * The attribute run is BOUNDED, and that is not style.
+     * Two patterns rather than one alternation, for two reasons.
      *
-     * `[^>]*` followed by `content=` backtracks: the engine scans to the end of
-     * the tag, fails to find content=, then retries from the next position, and
-     * does that again at every occurrence of the prefix. On a page carrying many
-     * repetitions of `article:modified_time"` with no closing `>` that is
-     * quadratic in the page size - and this regex runs over HTML fetched from a
-     * site the module does not control, up to maxBodyBytes of it, once per page
-     * of a scheduled scan. A hostile or merely pathological page could hold a
+     * The combined form scored 23 on regex complexity against a limit of 20, and
+     * an alternation of two unrelated shapes is genuinely harder to read than
+     * either alone: one looks for a JSON-LD property, the other for a meta tag.
+     *
+     * The attribute run in the second is BOUNDED, and that is not style.
+     * `[^>]*` followed by `content=` backtracks - the engine scans to the end of
+     * the tag, fails, retries from the next position, and repeats that at every
+     * occurrence of the prefix. Quadratic in the page size on a document with
+     * many repetitions of `article:modified_time"` and no closing `>`. This runs
+     * over HTML fetched from a site the module does not control, once per page
+     * of a scan of up to ten thousand pages, so a pathological page could hold a
      * scan thread indefinitely. CodeQL java/polynomial-redos.
-     *
-     * A cap of 200 makes the work per start position constant, so the whole
-     * match is linear again. Real meta tags put a handful of attributes between
-     * the property and its content; 200 characters is far past any of them.
      */
-    private static final Pattern MODIFIED = Pattern.compile(
-            "(?is)[\"']dateModified[\"']\\s*:\\s*[\"']([^\"']+)[\"']"
-            + "|article:modified_time[\"'][^>]{0,200}content=[\"']([^\"']+)[\"']");
+    private static final Pattern MODIFIED_LD = Pattern.compile(
+            "(?is)[\"']dateModified[\"']\\s*:\\s*[\"']([^\"']+)[\"']");
+    private static final Pattern MODIFIED_META = Pattern.compile(
+            "(?is)article:modified_time[\"'][^>]{0,400}content=[\"']([^\"']+)[\"']");
     private static final Pattern SCRIPTS = Pattern.compile("(?is)<(script|style|noscript|template)[^>]*>.*?</\\1>");
     private static final Pattern TAGS = Pattern.compile("(?s)<[^>]+>");
     private static final Pattern WS = Pattern.compile("\\s+");
@@ -205,10 +206,9 @@ public final class PageFetch {
         Matcher mf = META_REFRESH.matcher(html);
         o.put("metaRefresh", mf.find() ? clip(mf.group(1).trim(), 300) : JSONObject.NULL);
 
-        Matcher md = MODIFIED.matcher(html);
-        String modified = null;
-        if (md.find()) {
-            modified = md.group(1) != null ? md.group(1) : md.group(2);
+        String modified = firstMatch(MODIFIED_LD, html);
+        if (modified == null) {
+            modified = firstMatch(MODIFIED_META, html);
         }
         o.put("dateModified", modified == null ? JSONObject.NULL : clip(modified.trim(), 40));
     }
@@ -267,6 +267,12 @@ public final class PageFetch {
         }
         seen.forEach(types::put);
         o.put("jsonLdTypes", types);
+    }
+
+    /** The first capture of {@code p} in {@code html}, or null when it does not match. */
+    private static String firstMatch(Pattern p, String html) {
+        Matcher m = p.matcher(html);
+        return m.find() ? m.group(1) : null;
     }
 
     private static String textOf(String html) {

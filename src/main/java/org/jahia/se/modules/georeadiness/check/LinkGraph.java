@@ -282,11 +282,11 @@ public final class LinkGraph {
             int[] in = acc.inbound.get(path);
             int nav = in == null ? 0 : in[NAV];
             int content = in == null ? 0 : in[CONTENT];
-            record(path, node, nav, content);
+            tally(path, node, nav, content);
             classify(path, node, nav, content);
         }
 
-        private void record(String path, PublishedMap.Entry node, int nav, int content) {
+        private void tally(String path, PublishedMap.Entry node, int nav, int content) {
             if (counts.length() >= MAX_COUNTS) {
                 return;
             }

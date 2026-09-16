@@ -3,6 +3,8 @@ package org.jahia.se.modules.georeadiness.check;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.ParameterizedTest;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,44 +44,23 @@ class RobotsEditorTest {
     @DisplayName("grouping User-agent blocks with their directives")
     class Grouping {
 
-        @Test
-        @DisplayName("consecutive User-agent lines are grouped and their shared rules round-trip untouched")
-        void consecutiveUserAgentLines_shareOneGroup_roundTrips() {
-            String original = "User-agent: A\nUser-agent: B\nUser-agent: C\nDisallow: /\n";
-
-            String out = RobotsEditor.apply(original, NO_DECISIONS);
-
-            assertThat(out).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("multiple separate groups, including a blank line between them, round-trip untouched")
-        void multipleGroups_withBlankLineBetween_roundTrip() {
-            String original = "User-agent: A\nDisallow: /a\n\nUser-agent: B\nDisallow: /b\n";
-
-            String out = RobotsEditor.apply(original, NO_DECISIONS);
-
-            assertThat(out).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("an unknown directive (e.g. Crawl-delay) inside a group round-trips untouched")
-        void unknownDirective_roundTrips() {
-            String original = "User-agent: *\nCrawl-delay: 10\nDisallow: /x\n";
-
-            String out = RobotsEditor.apply(original, NO_DECISIONS);
-
-            assertThat(out).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("a Sitemap line outside any group round-trips untouched, as a Raw block")
-        void sitemapLineOutsideGroup_roundTrips() {
-            String original = "Sitemap: https://example.com/sitemap.xml\nUser-agent: *\nDisallow: /x\n";
-
-            String out = RobotsEditor.apply(original, NO_DECISIONS);
-
-            assertThat(out).isEqualTo(original);
+        // @ValueSource rather than @CsvSource on purpose: CSV trims leading and
+        // trailing whitespace, and preserving it byte for byte is exactly what
+        // these assert. A Java string literal in the annotation keeps it.
+        @ParameterizedTest(name = "case {index}")
+        @ValueSource(strings = {
+            // consecutive User-agent lines share one rule block
+            "User-agent: A\nUser-agent: B\nUser-agent: C\nDisallow: /\n",
+            // separate groups, and the blank line that divides them
+            "User-agent: A\nDisallow: /a\n\nUser-agent: B\nDisallow: /b\n",
+            // a directive this module does not manage
+            "User-agent: *\nCrawl-delay: 10\nDisallow: /x\n",
+            // a Sitemap line outside any group, parsed as a Raw block
+            "Sitemap: https://example.com/sitemap.xml\nUser-agent: *\nDisallow: /x\n"
+        })
+        @DisplayName("with no decisions to apply, the file comes back byte for byte")
+        void noDecisions_roundTripsUntouched(String original) {
+            assertThat(RobotsEditor.apply(original, NO_DECISIONS)).isEqualTo(original);
         }
 
         @Test
@@ -114,24 +95,16 @@ class RobotsEditorTest {
     @DisplayName("comments, blank lines, CRLF and whitespace")
     class WhitespaceAndComments {
 
-        @Test
-        @DisplayName("leading comments, blank lines and a trailing comment all round-trip byte for byte")
-        void commentsAndBlankLines_roundTrip() {
-            String original = "# comment\n\nUser-agent: *\nDisallow: /admin\n\n# trailing comment\n";
-
-            String out = RobotsEditor.apply(original, NO_DECISIONS);
-
-            assertThat(out).isEqualTo(original);
-        }
-
-        @Test
-        @DisplayName("leading and trailing whitespace on a User-agent line is preserved verbatim")
-        void leadingAndTrailingWhitespace_onAgentLine_isPreserved() {
-            String original = "  User-agent: *  \nDisallow: /admin\n";
-
-            String out = RobotsEditor.apply(original, NO_DECISIONS);
-
-            assertThat(out).isEqualTo(original);
+        @ParameterizedTest(name = "case {index}")
+        @ValueSource(strings = {
+            // comments before, between and after - the file belongs to whoever wrote it
+            "# comment\n\nUser-agent: *\nDisallow: /admin\n\n# trailing comment\n",
+            // indentation and trailing spaces on an agent line
+            "  User-agent: *  \nDisallow: /admin\n"
+        })
+        @DisplayName("comments and whitespace survive a no-op merge verbatim")
+        void commentsAndWhitespace_survive(String original) {
+            assertThat(RobotsEditor.apply(original, NO_DECISIONS)).isEqualTo(original);
         }
 
         @Test
