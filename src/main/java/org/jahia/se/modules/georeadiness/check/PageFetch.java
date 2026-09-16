@@ -55,7 +55,25 @@ public final class PageFetch {
     private static final int MAX_JSONLD_TYPES = 15;
 
     private static final Pattern JSONLD_TYPE = Pattern.compile("(?is)[\"']@type[\"']\\s*:\\s*[\"']([^\"']+)[\"']");
-    private static final Pattern MODIFIED = Pattern.compile("(?is)[\"']dateModified[\"']\\s*:\\s*[\"']([^\"']+)[\"']|article:modified_time[\"'][^>]*content=[\"']([^\"']+)[\"']");
+    /**
+     * The attribute run is BOUNDED, and that is not style.
+     *
+     * `[^>]*` followed by `content=` backtracks: the engine scans to the end of
+     * the tag, fails to find content=, then retries from the next position, and
+     * does that again at every occurrence of the prefix. On a page carrying many
+     * repetitions of `article:modified_time"` with no closing `>` that is
+     * quadratic in the page size - and this regex runs over HTML fetched from a
+     * site the module does not control, up to maxBodyBytes of it, once per page
+     * of a scheduled scan. A hostile or merely pathological page could hold a
+     * scan thread indefinitely. CodeQL java/polynomial-redos.
+     *
+     * A cap of 200 makes the work per start position constant, so the whole
+     * match is linear again. Real meta tags put a handful of attributes between
+     * the property and its content; 200 characters is far past any of them.
+     */
+    private static final Pattern MODIFIED = Pattern.compile(
+            "(?is)[\"']dateModified[\"']\\s*:\\s*[\"']([^\"']+)[\"']"
+            + "|article:modified_time[\"'][^>]{0,200}content=[\"']([^\"']+)[\"']");
     private static final Pattern SCRIPTS = Pattern.compile("(?is)<(script|style|noscript|template)[^>]*>.*?</\\1>");
     private static final Pattern TAGS = Pattern.compile("(?s)<[^>]+>");
     private static final Pattern WS = Pattern.compile("\\s+");
