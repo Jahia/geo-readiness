@@ -19,6 +19,7 @@ import {
     ENDPOINTS,
     expectJsonOk,
     expectRefusal,
+    geoGet,
     geoPost,
     SITE_FILES_ACTIONS,
     SITE_SCAN_ACTIONS
@@ -94,6 +95,76 @@ describe('geo-readiness endpoints — authorization', () => {
                 language: 'en'
             }).then(response => {
                 expectRefusal(response, 401, 'authentication required', 'an anonymous robots preview is refused');
+            });
+        });
+    });
+
+    /**
+     * JAHIA-SEC-432. Both GET handlers answered ANY authenticated caller with
+     * the operator's configuration: which AI provider and model this site's
+     * content is sent to, and the full crawler user-agent list.
+     *
+     * The coverage before this was worse than none. `crawler-check`'s GET was
+     * never called by any spec. `report`'s GET was called by three tests in
+     * report.spec.ts, and one of them asserted that a contributor MAY read the
+     * status - so the defect was not merely uncovered, it was pinned as
+     * intended behaviour by a passing test. That assertion was written from
+     * what the endpoint did rather than from what it should do, which is how a
+     * characterisation test becomes a specification by accident.
+     *
+     * All three actors are asserted, and the middle one is the point. The
+     * endpoints were never open to anonymous callers, so a suite checking only
+     * guest-refused and publisher-allowed would have been green throughout. The
+     * defect was that the gate asked about AUTHENTICATION where the question is
+     * AUTHORISATION, and only an authenticated-but-unprivileged actor can tell
+     * those two apart.
+     */
+    describe('the GET endpoints, which answer with operator configuration', () => {
+        // The field each endpoint carries its payload in, so a refusal can be
+        // checked for having disclosed nothing rather than only for its status.
+        // The fiche makes that distinction explicitly: the discriminator is the
+        // RESPONSE BODY, not the code.
+        const GETS = [
+            {name: 'report', endpoint: ENDPOINTS.report, payload: 'enabled'},
+            {name: 'crawler-check', endpoint: ENDPOINTS.crawlerCheck, payload: 'agents'}
+        ] as const;
+
+        GETS.forEach(({name, endpoint, payload}) => {
+            it(`refuses a guest with 401 on ${name}`, () => {
+                asGuest();
+                geoGet(endpoint, {path: fixture.sitePath, language: 'en'}).then(response => {
+                    expectRefusal(response, 401, 'authentication required',
+                        `an anonymous ${name} GET is refused`);
+                });
+            });
+
+            it(`refuses a contributor with 403 on ${name}, disclosing nothing`, () => {
+                asUser(fixture.contributor);
+                geoGet(endpoint, {path: fixture.sitePath, language: 'en'}).then(response => {
+                    expectRefusal(response, 403, 'cannot read node',
+                        `${name} is operator configuration: it needs publish, not a login`);
+                    expect(response.body[payload],
+                        `${name} must carry no configuration while refusing`).to.be.undefined;
+                });
+            });
+
+            it(`answers a publisher on ${name}`, () => {
+                // The positive half. Without it every refusal above is also
+                // consistent with a gate that refuses everybody.
+                asUser(fixture.publisher);
+                geoGet(endpoint, {path: fixture.sitePath, language: 'en'}).then(response => {
+                    expectJsonOk(response, `a publisher may read ${name}`);
+                    expect(response.body[payload],
+                        `${name} answers the caller who holds publish`).to.not.be.undefined;
+                });
+            });
+
+            it(`refuses ${name} with 400 when no site is named`, () => {
+                asUser(fixture.publisher);
+                geoGet(endpoint).then(response => {
+                    expectRefusal(response, 400, 'path required',
+                        `${name} cannot decide who may be told without a site to decide on`);
+                });
             });
         });
     });

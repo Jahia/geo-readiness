@@ -119,6 +119,35 @@ export function geoPost(
 }
 
 /**
+ * GET a geo-readiness endpoint as whoever the browser session currently is.
+ *
+ * The GET handlers take their site and language from the query string, because
+ * a GET has no body to read them from. They are not optional: before
+ * JAHIA-SEC-432 these two endpoints asked only whether the caller was logged in
+ * and answered any account on the platform with the operator's configuration.
+ *
+ * `params` is passed through rather than always sent, so a spec can assert what
+ * happens when one is missing.
+ *
+ * @param {GeoEndpoint} endpoint one of {@link ENDPOINTS}.
+ * @param {Record<string, string>} params the query string, usually path + language.
+ * @returns {Cypress.Chainable<Cypress.Response<any>>} the raw response.
+ */
+export function geoGet(
+    endpoint: GeoEndpoint,
+    params: Record<string, string> = {}
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Cypress.Chainable<Cypress.Response<any>> {
+    return cy.request({
+        method: 'GET',
+        url: endpoint,
+        qs: params,
+        headers: {Origin: jahiaOrigin()},
+        failOnStatusCode: false
+    });
+}
+
+/**
  * Assert a response is a refusal with the status and the error message the
  * servlet documents.
  *
