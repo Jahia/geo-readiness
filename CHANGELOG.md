@@ -1,5 +1,9 @@
 # geo-readiness Changelog
 
+## 1.4.0
+
+* Closed a flaw where any logged-in account could read the site's configured AI provider, model and crawler list.
+
 ## 1.3.2
 
 A maintenance release with no change a user of the module will see. It clears the quality gate that had been red on `main` since before 1.3.1 was prepared, and removes the first of the obstacles that stop the release running in CI. An existing install upgrades in place.
