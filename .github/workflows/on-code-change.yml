@@ -4,16 +4,20 @@
 # their major alias @v2 (a generated Git tag, re-pointed by every v2.x.y release).
 name: On Code Change (PR)
 
-permissions:
-  contents: read
-  packages: read
-
 on:
   pull_request:
     types: [opened, reopened, synchronize]
 
+# Each job says what its token may do, rather than the workflow saying it once.
+# The repository default is write - every action in a job, and every dependency
+# of those actions, able to push to main - and none of these jobs needs that.
+# A job-level block replaces the default rather than adding to it, so each one
+# is complete in itself.
 jobs:
   update-signature:
+    permissions:
+      contents: read
+      packages: read
     name: Update module signature
     runs-on: ubuntu-latest
     steps:
@@ -24,6 +28,9 @@ jobs:
           nexus_password: ${{ secrets.NEXUS_PASSWORD }}
 
   static-analysis:
+    permissions:
+      contents: read
+      packages: read
     name: Static Analysis (linting, vulns)
     runs-on: ubuntu-latest
     steps:
@@ -41,6 +48,9 @@ jobs:
           skip_vulns_tests: true
 
   build:
+    permissions:
+      contents: read
+      packages: read
     name: Build Module
     needs: update-signature
     runs-on: ubuntu-latest
@@ -60,6 +70,9 @@ jobs:
           mvn_settings_filepath: '.github/maven.settings.xml'
 
   sonar-analysis:
+    permissions:
+      contents: read
+      packages: read
     name: Sonar Analysis
     needs: build
     runs-on: ubuntu-latest
@@ -102,6 +115,15 @@ jobs:
   integration-tests:
     name: Integration Tests
     needs: build
+    # Everything the workflow grants by default, plus the one thing this job
+    # needs and the others do not: dorny/test-reporter, inside the reusable
+    # workflow, publishes the JUnit results as a check run. A job-level block
+    # replaces the default rather than adding to it, so contents and packages
+    # are restated here.
+    permissions:
+      contents: read
+      packages: read
+      checks: write
     secrets: inherit
     uses: Jahia/jahia-modules-action/.github/workflows/reusable-integration-tests.yml@v2
     with:

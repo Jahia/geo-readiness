@@ -184,17 +184,14 @@ class PageFetchTest {
             assertThat(o.getInt("h2Count")).isEqualTo(3);
         }
 
-        // SUSPECT: PageFetch.java:57 - H2 = <h2[\s>] only requires the opening
-        // tag start, not a matching close tag, and only matches when "h2" is
-        // immediately followed by whitespace or '>'. A self-closing "<h2/>"
-        // has '/' right after "h2", which matches neither \s nor >, so it is
-        // silently NOT counted - inconsistent with how h1 is matched (which at
-        // least requires a full open/close pair) and easy to miss in review.
+        // WAS SUSPECT, FIXED by the Markup walker. The old pattern required the
+        // character after "h2" to be whitespace or '>', so a self-closing tag -
+        // where it is '/' - was silently not counted. Markup tokenises the tag
+        // rather than matching around it, so the name ends where it ends.
         @Test
-        @DisplayName("SUSPECT: self-closing <h2/> is not counted (char after h2 is '/', not \\s or '>')")
-        void selfClosingNotCounted() {
-            JSONObject o = PageFetch.analyse("<h2/>");
-            assertThat(o.getInt("h2Count")).isZero();
+        @DisplayName("a self-closing heading is counted")
+        void selfClosingIsCounted() {
+            assertThat(PageFetch.analyse("<h2/>").getInt("h2Count")).isEqualTo(1);
         }
 
         @Test
@@ -436,24 +433,17 @@ class PageFetchTest {
             assertThat(o.getInt("imagesWithAlt")).isZero();
         }
 
-        // SUSPECT: PageFetch.java:47 - IMG = <img\s[^>]*> requires whitespace
-        // immediately after "img", i.e. at least one attribute (or a trailing
-        // space) between "img" and the closing '>'. A bare "<img>" or a
-        // no-space self-closing "<img/>" is NOT matched at all, so it is
-        // silently excluded from both "images" and "imagesWithAlt" instead of
-        // counting as an image lacking alt text.
-        @Test
-        @DisplayName("SUSPECT: bare <img> with no attributes/space is not counted as an image")
-        void bareImgNotCounted() {
-            JSONObject o = PageFetch.analyse("<img>");
-            assertThat(o.getInt("images")).isZero();
-        }
-
-        @Test
-        @DisplayName("SUSPECT: no-space self-closing <img/> is not counted as an image")
-        void noSpaceSelfClosingNotCounted() {
-            JSONObject o = PageFetch.analyse("<img/>");
-            assertThat(o.getInt("images")).isZero();
+        // WAS SUSPECT, FIXED by the Markup walker. The old pattern required
+        // whitespace straight after "img", so an image with no attributes at all
+        // was excluded from BOTH counts rather than counted as one lacking alt
+        // text - which is the accessibility finding the check exists to make.
+        @ParameterizedTest(name = "{0}")
+        @ValueSource(strings = {"<img>", "<img/>"})
+        @DisplayName("an image with no attributes is still an image, and still has no alt")
+        void attributelessImageIsCounted(String html) {
+            JSONObject o = PageFetch.analyse(html);
+            assertThat(o.getInt("images")).isEqualTo(1);
+            assertThat(o.getInt("imagesWithAlt")).isZero();
         }
 
         @Test

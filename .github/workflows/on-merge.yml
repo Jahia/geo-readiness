@@ -10,8 +10,25 @@ on:
     tags-ignore:
       - '**'
 
+# A read-only token. The repository default is write, which is what these jobs
+# would inherit if this block were missing: every action in them, and every
+# dependency of those actions, able to push to main. None of them needs it. The
+# release pushes over SSH, Nexus and Dependency-Track are given their own
+# credentials, and update-signature has nothing to commit for as long as this
+# pom declares no signature element.
+permissions:
+  contents: read
+
+# Each job below asks for a read-only token. The repository default is write,
+# which is what they would inherit otherwise: every action in them, and every
+# dependency of those actions, able to push to main. None of them needs it. The
+# release pushes over SSH, Nexus and Dependency-Track are given their own
+# credentials, and update-signature has nothing to commit for as long as this
+# pom declares no signature element.
 jobs:
   update-signature:
+    permissions:
+      contents: read
     name: Update module signature
     runs-on: ubuntu-latest
     steps:
@@ -22,6 +39,8 @@ jobs:
           nexus_password: ${{ secrets.NEXUS_PASSWORD }}
 
   build:
+    permissions:
+      contents: read
     name: Build Module
     needs: update-signature
     runs-on: ubuntu-latest
@@ -39,6 +58,8 @@ jobs:
           mvn_settings_filepath: '.github/maven.settings.xml'
 
   sbom:
+    permissions:
+      contents: read
     name: SBOM processing
     needs: build
     runs-on: ubuntu-latest
@@ -52,6 +73,8 @@ jobs:
           sbom_artifacts: 'build-artifacts'
 
   publish:
+    permissions:
+      contents: read
     name: Publish module
     needs: build
     if: github.ref == 'refs/heads/main'
