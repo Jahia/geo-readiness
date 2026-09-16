@@ -437,238 +437,238 @@ public final class SiteScorer {
             }
             return out;
         }
-    }
 
-    /** One page: is it readable, what does its HTML contain, what does that score. */
+        /** One page: is it readable, what does its HTML contain, what does that score. */
 
-    private static JSONObject scorePage(String sitePath, String path, String language,
-            RobotsRules rules, JSONObject siteFiles, Options opts, LinkGraph.Accumulator links,
-            Map<String, String> canonicals, String siteBase) throws RepositoryException {
-        JSONObject visibility = GuestVisibility.forPage(path, language);
-        if (!visibility.optBoolean("published", false)) {
-            return null;
-        }
-
-        JSONObject out = new JSONObject();
-        out.put(GUEST_READABLE, visibility.optBoolean(GUEST_READABLE, true));
-
-        // Also writes title and template onto `out`: they come from the same
-        // node read, and reading it twice to keep the method tidy would double
-        // the repository work for every page on the site.
-        String url = resolveUrl(path, language, opts, out);
-
-        JSONObject agent = fetch(url, visibility, siteBase, opts, links);
-        recordCanonical(url, agent, canonicals);
-
-        JSONObject score = GeoScore.compute(drawerReport(url, agent, visibility, siteFiles, rules));
-        return summarise(out, score);
-    }
-
-    /**
-     * The public url of a page, with its title and template written onto
-     * {@code out} on the way past.
-     *
-     * Null when the node has no address a visitor could use, which the caller
-     * treats as "do not fetch" rather than as a failure.
-     */
-    private static String resolveUrl(String path, String language, Options opts, JSONObject out)
-            throws RepositoryException {
-        return JCRTemplate.getInstance().doExecuteWithSystemSessionAsUser(null, "live",
-                Locale.forLanguageTag(language), (JCRCallback<String>) session -> {
-                    JCRNodeWrapper n = session.getNode(path);
-                    out.put("title", title(n));
-                    out.put("template", template(n));
-                    try {
-                        return PublicUrls.forNode(n, opts.publicBaseUrl);
-                    } catch (Exception e) {
-                        return null;
-                    }
-                });
-    }
-
-    /**
-     * One fetch as the scan agent, or a synthetic miss.
-     *
-     * No point fetching a page a visitor cannot open. The score still records
-     * it, and the critical guestReadable check does the talking.
-     */
-    private static JSONObject fetch(String url, JSONObject visibility, String siteBase, Options opts,
-            LinkGraph.Accumulator links) {
-        if (!visibility.optBoolean(GUEST_READABLE, true) || url == null) {
-            JSONObject agent = new JSONObject();
-            agent.put("name", SCAN_AGENT);
-            agent.put(STATUS, JSONObject.NULL);
-            return agent;
-        }
-        // GEO-22. The link graph is built from the page we are already fetching,
-        // so it costs nothing beyond this request.
-        String from = PublishedMap.pathOf(url);
-        return PageFetch.probe(url, siteBase, SCAN_AGENT, agentUa(), opts.fetchTimeoutMs, opts.maxBodyBytes,
-                html -> LinkGraph.addPage(links, from, html));
-    }
-
-    /**
-     * GEO-25. Recorded even when absent, so "fetched and had none" can be told
-     * apart from "never fetched".
-     */
-    private static void recordCanonical(String url, JSONObject agent, Map<String, String> canonicals) {
-        if (url == null) {
-            return;
-        }
-        JSONObject html = agent.optJSONObject("html");
-        canonicals.put(PublishedMap.pathOf(url), html == null ? "" : html.optString("canonicalHref", ""));
-    }
-
-    /**
-     * A report shaped exactly like the drawer's, so one scorer serves both and
-     * the site score and the page score cannot drift apart.
-     */
-    private static JSONObject drawerReport(String url, JSONObject agent, JSONObject visibility,
-            JSONObject siteFiles, RobotsRules rules) {
-        JSONObject report = new JSONObject();
-        report.put("published", true);
-        report.put("url", url == null ? JSONObject.NULL : url);
-        JSONArray agents = new JSONArray();
-        agents.put(agent);
-        report.put("agents", agents);
-        JSONObject html = agent.optJSONObject("html");
-        report.put("controlWords", html == null ? 0 : html.optInt("words", 0));
-        report.put("blockedCount", agent.optInt(STATUS, 0) == 200 ? 0 : 1);
-        report.put("visibility", visibility);
-        report.put("blockedButAllowedCount", 0);
-        report.put("reachableButDisallowedCount", contradicts(agent, rules, url) ? 1 : 0);
-        report.put("siteFiles", siteFiles);
-        return report;
-    }
-
-    /** True when robots.txt and the fetch disagree about this page, either way round. */
-    private static boolean contradicts(JSONObject agent, RobotsRules rules, String url) {
-        RobotsRules.Verdict v = rules.evaluate(SCAN_AGENT, pathOf(url));
-        int status = agent.optInt(STATUS, 0);
-        if (v.allowed) {
-            return status != 200 && !agent.isNull(STATUS);
-        }
-        return status == 200;
-    }
-
-    /**
-     * The per-page row the walk accumulates: the counts, which checks failed,
-     * and how much each failure matters.
-     *
-     * The one check that genuinely needs several agents is dropped rather than
-     * allowed to pass for free.
-     */
-    private static JSONObject summarise(JSONObject out, JSONObject score) {
-        JSONArray failed = new JSONArray();
-        JSONObject severities = new JSONObject();
-        JSONArray checks = score.getJSONArray("checks");
-        int passed = 0;
-        int total = 0;
-        int critical = 0;
-        for (int i = 0; i < checks.length(); i++) {
-            JSONObject c = checks.getJSONObject(i);
-            if (MULTI_AGENT_ONLY.equals(c.getString("id"))) {
-                continue;
+        private static JSONObject scorePage(String sitePath, String path, String language,
+                RobotsRules rules, JSONObject siteFiles, Options opts, LinkGraph.Accumulator links,
+                Map<String, String> canonicals, String siteBase) throws RepositoryException {
+            JSONObject visibility = GuestVisibility.forPage(path, language);
+            if (!visibility.optBoolean("published", false)) {
+                return null;
             }
-            severities.put(c.getString("id"), c.getString(SEVERITY));
-            total++;
-            if (c.getBoolean(PASSED)) {
-                passed++;
-            } else {
-                failed.put(c.getString("id"));
-                if ("critical".equals(c.getString(SEVERITY))) {
-                    critical++;
+
+            JSONObject out = new JSONObject();
+            out.put(GUEST_READABLE, visibility.optBoolean(GUEST_READABLE, true));
+
+            // Also writes title and template onto `out`: they come from the same
+            // node read, and reading it twice to keep the method tidy would double
+            // the repository work for every page on the site.
+            String url = resolveUrl(path, language, opts, out);
+
+            JSONObject agent = fetch(url, visibility, siteBase, opts, links);
+            recordCanonical(url, agent, canonicals);
+
+            JSONObject score = GeoScore.compute(drawerReport(url, agent, visibility, siteFiles, rules));
+            return summarise(out, score);
+        }
+
+        /**
+         * The public url of a page, with its title and template written onto
+         * {@code out} on the way past.
+         *
+         * Null when the node has no address a visitor could use, which the caller
+         * treats as "do not fetch" rather than as a failure.
+         */
+        private static String resolveUrl(String path, String language, Options opts, JSONObject out)
+                throws RepositoryException {
+            return JCRTemplate.getInstance().doExecuteWithSystemSessionAsUser(null, "live",
+                    Locale.forLanguageTag(language), (JCRCallback<String>) session -> {
+                        JCRNodeWrapper n = session.getNode(path);
+                        out.put("title", title(n));
+                        out.put("template", template(n));
+                        try {
+                            return PublicUrls.forNode(n, opts.publicBaseUrl);
+                        } catch (Exception e) {
+                            return null;
+                        }
+                    });
+        }
+
+        /**
+         * One fetch as the scan agent, or a synthetic miss.
+         *
+         * No point fetching a page a visitor cannot open. The score still records
+         * it, and the critical guestReadable check does the talking.
+         */
+        private static JSONObject fetch(String url, JSONObject visibility, String siteBase, Options opts,
+                LinkGraph.Accumulator links) {
+            if (!visibility.optBoolean(GUEST_READABLE, true) || url == null) {
+                JSONObject agent = new JSONObject();
+                agent.put("name", SCAN_AGENT);
+                agent.put(STATUS, JSONObject.NULL);
+                return agent;
+            }
+            // GEO-22. The link graph is built from the page we are already fetching,
+            // so it costs nothing beyond this request.
+            String from = PublishedMap.pathOf(url);
+            return PageFetch.probe(url, siteBase, SCAN_AGENT, agentUa(), opts.fetchTimeoutMs, opts.maxBodyBytes,
+                    html -> LinkGraph.addPage(links, from, html));
+        }
+
+        /**
+         * GEO-25. Recorded even when absent, so "fetched and had none" can be told
+         * apart from "never fetched".
+         */
+        private static void recordCanonical(String url, JSONObject agent, Map<String, String> canonicals) {
+            if (url == null) {
+                return;
+            }
+            JSONObject html = agent.optJSONObject("html");
+            canonicals.put(PublishedMap.pathOf(url), html == null ? "" : html.optString("canonicalHref", ""));
+        }
+
+        /**
+         * A report shaped exactly like the drawer's, so one scorer serves both and
+         * the site score and the page score cannot drift apart.
+         */
+        private static JSONObject drawerReport(String url, JSONObject agent, JSONObject visibility,
+                JSONObject siteFiles, RobotsRules rules) {
+            JSONObject report = new JSONObject();
+            report.put("published", true);
+            report.put("url", url == null ? JSONObject.NULL : url);
+            JSONArray agents = new JSONArray();
+            agents.put(agent);
+            report.put("agents", agents);
+            JSONObject html = agent.optJSONObject("html");
+            report.put("controlWords", html == null ? 0 : html.optInt("words", 0));
+            report.put("blockedCount", agent.optInt(STATUS, 0) == 200 ? 0 : 1);
+            report.put("visibility", visibility);
+            report.put("blockedButAllowedCount", 0);
+            report.put("reachableButDisallowedCount", contradicts(agent, rules, url) ? 1 : 0);
+            report.put("siteFiles", siteFiles);
+            return report;
+        }
+
+        /** True when robots.txt and the fetch disagree about this page, either way round. */
+        private static boolean contradicts(JSONObject agent, RobotsRules rules, String url) {
+            RobotsRules.Verdict v = rules.evaluate(SCAN_AGENT, pathOf(url));
+            int status = agent.optInt(STATUS, 0);
+            if (v.allowed) {
+                return status != 200 && !agent.isNull(STATUS);
+            }
+            return status == 200;
+        }
+
+        /**
+         * The per-page row the walk accumulates: the counts, which checks failed,
+         * and how much each failure matters.
+         *
+         * The one check that genuinely needs several agents is dropped rather than
+         * allowed to pass for free.
+         */
+        private static JSONObject summarise(JSONObject out, JSONObject score) {
+            JSONArray failed = new JSONArray();
+            JSONObject severities = new JSONObject();
+            JSONArray checks = score.getJSONArray("checks");
+            int passed = 0;
+            int total = 0;
+            int critical = 0;
+            for (int i = 0; i < checks.length(); i++) {
+                JSONObject c = checks.getJSONObject(i);
+                if (MULTI_AGENT_ONLY.equals(c.getString("id"))) {
+                    continue;
+                }
+                severities.put(c.getString("id"), c.getString(SEVERITY));
+                total++;
+                if (c.getBoolean(PASSED)) {
+                    passed++;
+                } else {
+                    failed.put(c.getString("id"));
+                    if ("critical".equals(c.getString(SEVERITY))) {
+                        critical++;
+                    }
                 }
             }
+            JSONObject trimmed = new JSONObject();
+            trimmed.put(PASSED, passed);
+            trimmed.put(TOTAL, total);
+            trimmed.put(CRITICAL_FAILED, critical);
+            out.put("score", trimmed);
+            out.put("failed", failed);
+            out.put("severities", severities);
+            return out;
         }
-        JSONObject trimmed = new JSONObject();
-        trimmed.put(PASSED, passed);
-        trimmed.put(TOTAL, total);
-        trimmed.put(CRITICAL_FAILED, critical);
-        out.put("score", trimmed);
-        out.put("failed", failed);
-        out.put("severities", severities);
-        return out;
-    }
 
-    private static List<String> publishedPages(JCRSessionWrapper session, String root, int limit)
-            throws RepositoryException {
-        List<String> out = new ArrayList<>();
-        // issamenode as well as isdescendantnode: a scope an editor typed
-        // usually names a page, and isdescendantnode alone excludes that page.
-        // Scoping to /sites/x/home would otherwise skip home itself.
-        String escaped = root.replace("'", "''");
-        String sql = "select * from [jnt:page] as p where isdescendantnode(p, '"
-                + escaped + "') or issamenode(p, '" + escaped + "')";
-        Query q = session.getWorkspace().getQueryManager().createQuery(sql, Query.JCR_SQL2);
-        q.setLimit(limit);
-        NodeIterator it = q.execute().getNodes();
-        while (it.hasNext()) {
-            out.add(it.nextNode().getPath());
+        private static List<String> publishedPages(JCRSessionWrapper session, String root, int limit)
+                throws RepositoryException {
+            List<String> out = new ArrayList<>();
+            // issamenode as well as isdescendantnode: a scope an editor typed
+            // usually names a page, and isdescendantnode alone excludes that page.
+            // Scoping to /sites/x/home would otherwise skip home itself.
+            String escaped = root.replace("'", "''");
+            String sql = "select * from [jnt:page] as p where isdescendantnode(p, '"
+                    + escaped + "') or issamenode(p, '" + escaped + "')";
+            Query q = session.getWorkspace().getQueryManager().createQuery(sql, Query.JCR_SQL2);
+            q.setLimit(limit);
+            NodeIterator it = q.execute().getNodes();
+            while (it.hasNext()) {
+                out.add(it.nextNode().getPath());
+            }
+            return out;
         }
-        return out;
-    }
 
-    private static String baseFor(String sitePath, String language, Options opts) throws RepositoryException {
-        if (opts.publicBaseUrl != null && !opts.publicBaseUrl.trim().isEmpty()) {
-            return withoutTrailingSlashes(opts.publicBaseUrl.trim());
+        private static String baseFor(String sitePath, String language, Options opts) throws RepositoryException {
+            if (opts.publicBaseUrl != null && !opts.publicBaseUrl.trim().isEmpty()) {
+                return withoutTrailingSlashes(opts.publicBaseUrl.trim());
+            }
+            return JCRTemplate.getInstance().doExecuteWithSystemSession(null, "live",
+                    Locale.forLanguageTag(language), (JCRCallback<String>) session ->
+                            PublicUrls.base(session.getNode(sitePath), null, ""));
         }
-        return JCRTemplate.getInstance().doExecuteWithSystemSession(null, "live",
-                Locale.forLanguageTag(language), (JCRCallback<String>) session ->
-                        PublicUrls.base(session.getNode(sitePath), null, ""));
-    }
 
-    /** Trimmed by counting back, where "/+$" would re-try from every slash. */
-    private static String withoutTrailingSlashes(String s) {
-        int end = s.length();
-        while (end > 0 && s.charAt(end - 1) == '/') {
-            end--;
+        /** Trimmed by counting back, where "/+$" would re-try from every slash. */
+        private static String withoutTrailingSlashes(String s) {
+            int end = s.length();
+            while (end > 0 && s.charAt(end - 1) == '/') {
+                end--;
+            }
+            return s.substring(0, end);
         }
-        return s.substring(0, end);
-    }
 
-    private static String agentUa() {
-        for (AiCrawlers.Crawler c : AiCrawlers.all()) {
-            if (SCAN_AGENT.equals(c.name)) {
-                return c.userAgent;
+        private static String agentUa() {
+            for (AiCrawlers.Crawler c : AiCrawlers.all()) {
+                if (SCAN_AGENT.equals(c.name)) {
+                    return c.userAgent;
+                }
+            }
+            return AiCrawlers.CONTROL_UA;
+        }
+
+        private static String pathOf(String url) {
+            try {
+                return new java.net.URL(url).getPath();
+            } catch (Exception e) {
+                return "/";
             }
         }
-        return AiCrawlers.CONTROL_UA;
-    }
 
-    private static String pathOf(String url) {
-        try {
-            return new java.net.URL(url).getPath();
-        } catch (Exception e) {
-            return "/";
+        /** The first path segment under the site, which is what people call a section. */
+        private static String sectionOf(String sitePath, String path) {
+            String rel = path.startsWith(sitePath) ? path.substring(sitePath.length()) : path;
+            while (rel.startsWith("/")) {
+                rel = rel.substring(1);
+            }
+            int slash = rel.indexOf('/');
+            String first = slash < 0 ? rel : rel.substring(0, slash);
+            return first.isEmpty() ? "/" : first;
         }
-    }
 
-    /** The first path segment under the site, which is what people call a section. */
-    private static String sectionOf(String sitePath, String path) {
-        String rel = path.startsWith(sitePath) ? path.substring(sitePath.length()) : path;
-        while (rel.startsWith("/")) {
-            rel = rel.substring(1);
+        private static String title(JCRNodeWrapper n) {
+            try {
+                return n.hasProperty("jcr:title") ? n.getProperty("jcr:title").getString() : n.getName();
+            } catch (RepositoryException e) {
+                return n.getName();
+            }
         }
-        int slash = rel.indexOf('/');
-        String first = slash < 0 ? rel : rel.substring(0, slash);
-        return first.isEmpty() ? "/" : first;
-    }
 
-    private static String title(JCRNodeWrapper n) {
-        try {
-            return n.hasProperty("jcr:title") ? n.getProperty("jcr:title").getString() : n.getName();
-        } catch (RepositoryException e) {
-            return n.getName();
-        }
-    }
-
-    /** The template is what makes a finding fixable once instead of four hundred times. */
-    private static String template(JCRNodeWrapper n) {
-        try {
-            return n.hasProperty("j:templateName") ? n.getProperty("j:templateName").getString() : "";
-        } catch (RepositoryException e) {
-            return "";
+        /** The template is what makes a finding fixable once instead of four hundred times. */
+        private static String template(JCRNodeWrapper n) {
+            try {
+                return n.hasProperty("j:templateName") ? n.getProperty("j:templateName").getString() : "";
+            } catch (RepositoryException e) {
+                return "";
+            }
         }
     }
 }

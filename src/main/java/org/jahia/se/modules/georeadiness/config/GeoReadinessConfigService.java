@@ -5,6 +5,7 @@ import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Modified;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -123,43 +124,33 @@ public class GeoReadinessConfigService {
         final String aiPromptAppendix;
         final int aiRateMaxCalls;
 
-        private Snapshot(int fetchTimeoutMs, int maxBodyBytes, int rateMaxCalls, long rateWindowMs,
-                String crawlerAgents, String publicBaseUrl, String aiProvider, String aiModel, String aiApiKey,
-                int aiMaxTokens, String aiBaseUrl, String aiPromptAppendix, int aiRateMaxCalls) {
-            this.fetchTimeoutMs = fetchTimeoutMs;
-            this.maxBodyBytes = maxBodyBytes;
-            this.rateMaxCalls = rateMaxCalls;
-            this.rateWindowMs = rateWindowMs;
-            this.crawlerAgents = crawlerAgents;
-            this.publicBaseUrl = publicBaseUrl;
-            this.aiProvider = aiProvider;
-            this.aiModel = aiModel;
-            this.aiApiKey = aiApiKey;
-            this.aiMaxTokens = aiMaxTokens;
-            this.aiBaseUrl = aiBaseUrl;
-            this.aiPromptAppendix = aiPromptAppendix;
-            this.aiRateMaxCalls = aiRateMaxCalls;
+        /**
+         * Every field reads its own key, with the value it takes when the key is
+         * absent. That is what makes {@link #defaults()} an empty map rather than
+         * a second list of the same thirteen numbers, kept in step by hand.
+         */
+        private Snapshot(Map<String, Object> p) {
+            this.fetchTimeoutMs = intVal(p, "FETCH_TIMEOUT_MS", 8000);
+            this.maxBodyBytes = intVal(p, "MAX_BODY_BYTES", 1_500_000);
+            this.rateMaxCalls = intVal(p, "RATE_MAX_CALLS", 20);
+            this.rateWindowMs = longVal(p, "RATE_WINDOW_MS", 600_000L);
+            this.crawlerAgents = str(p, "CRAWLER_AGENTS", "");
+            this.publicBaseUrl = str(p, "PUBLIC_BASE_URL", "");
+            this.aiProvider = str(p, "AI_PROVIDER", "");
+            this.aiModel = str(p, "AI_MODEL", "");
+            this.aiApiKey = str(p, "AI_API_KEY", "");
+            this.aiMaxTokens = intVal(p, "AI_MAX_TOKENS", 6000);
+            this.aiBaseUrl = str(p, "AI_BASE_URL", "");
+            this.aiPromptAppendix = str(p, "AI_PROMPT_APPENDIX", "");
+            this.aiRateMaxCalls = intVal(p, "AI_RATE_MAX_CALLS", 5);
         }
 
         static Snapshot defaults() {
-            return new Snapshot(8000, 1_500_000, 20, 600_000L, "", "", "", "", "", 6000, "", "", 5);
+            return new Snapshot(Collections.emptyMap());
         }
 
         static Snapshot from(Map<String, Object> p) {
-            return new Snapshot(
-                    intVal(p, "FETCH_TIMEOUT_MS", 8000),
-                    intVal(p, "MAX_BODY_BYTES", 1_500_000),
-                    intVal(p, "RATE_MAX_CALLS", 20),
-                    longVal(p, "RATE_WINDOW_MS", 600_000L),
-                    str(p, "CRAWLER_AGENTS", ""),
-                    str(p, "PUBLIC_BASE_URL", ""),
-                    str(p, "AI_PROVIDER", ""),
-                    str(p, "AI_MODEL", ""),
-                    str(p, "AI_API_KEY", ""),
-                    intVal(p, "AI_MAX_TOKENS", 6000),
-                    str(p, "AI_BASE_URL", ""),
-                    str(p, "AI_PROMPT_APPENDIX", ""),
-                    intVal(p, "AI_RATE_MAX_CALLS", 5));
+            return new Snapshot(p);
         }
 
         private static String str(Map<String, Object> m, String key, String def) {

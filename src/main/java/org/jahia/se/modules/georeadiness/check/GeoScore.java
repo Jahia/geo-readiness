@@ -92,6 +92,23 @@ public final class GeoScore {
             return new Facts(report);
         }
 
+        /**
+         * The control is the first agent that answered 200. Everything is judged
+         * against what a normal browser received, not against an ideal.
+         */
+        private static JSONObject controlHtml(JSONArray agents) {
+            if (agents == null) {
+                return null;
+            }
+            for (int i = 0; i < agents.length(); i++) {
+                JSONObject a = agents.getJSONObject(i);
+                if (a.optInt("status", 0) == 200 && a.optJSONObject("html") != null) {
+                    return a.getJSONObject("html");
+                }
+            }
+            return null;
+        }
+
         /** A field of the control's html, or null when there is no control at all. */
         private String text(String key) {
             return control == null || control.isNull(key) ? null : control.optString(key);
@@ -221,23 +238,6 @@ public final class GeoScore {
         out.put("importantFailed", importantFailed);
         out.put("checks", checks);
         return out;
-    }
-
-    /**
-     * The control is the first agent that answered 200. Everything is judged
-     * against what a normal browser received, not against an ideal.
-     */
-    private static JSONObject controlHtml(JSONArray agents) {
-        if (agents == null) {
-            return null;
-        }
-        for (int i = 0; i < agents.length(); i++) {
-            JSONObject a = agents.getJSONObject(i);
-            if (a.optInt("status", 0) == 200 && a.optJSONObject("html") != null) {
-                return a.getJSONObject("html");
-            }
-        }
-        return null;
     }
 
     private static String join(JSONArray a) {
