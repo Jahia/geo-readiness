@@ -106,8 +106,9 @@ quoting me before I publish.
 - The UI states plainly which criteria are not covered and why. It never implies a full audit.
 - Runs against the draft, not the published page.
 
-**What shipped instead.** A count of checks, not a rating out of 100. Seventeen checks in three
-groups, each reading one fact already in the report and shown next to that fact, with three
+**What shipped instead.** A count of checks, not a rating out of 100. Eighteen checks in three
+groups - the eighteenth, `guestReadable`, is added only when the repository could answer, so a
+drawer can legitimately show seventeen - each reading one fact already in the report and shown next to that fact, with three
 severities (critical, important, advisory). The reason is trust: an editor can disagree with a
 specific line, but not with a number they cannot see inside. The four-family split was dropped
 with it, so the two scores are no longer directly comparable to BotRank's. That is a conscious
