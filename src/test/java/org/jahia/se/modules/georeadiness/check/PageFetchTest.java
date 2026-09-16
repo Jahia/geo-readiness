@@ -519,20 +519,64 @@ class PageFetchTest {
             assertThat(types.getString(1)).isEqualTo("BreadcrumbList");
         }
 
-        // SUSPECT: PageFetch.java:187-197,49-50 - jsonLdTypes is extracted with
-        // a plain regex over the raw script text, never an actual JSON parse.
-        // Malformed JSON does not throw, but it also is not detected as
-        // malformed: if a "@type":"..." token happens to appear in the broken
-        // text it is still extracted as if the document were valid.
+        // WAS SUSPECT, NOW FIXED. The types used to come from a regex over the
+        // block's raw text, so a block no consumer can read still reported its
+        // types - and GeoScore's structuredData check PASSED a page whose
+        // JSON-LD is broken. That is a false pass on the exact thing the check
+        // exists to find. A crawler parses the block; if it does not parse, the
+        // page has declared nothing, whatever the text looks like.
         @Test
-        @DisplayName("SUSPECT: malformed JSON inside the script tag does not throw, and a well-formed @type substring is still extracted")
-        void malformedJsonDoesNotThrowAndStillExtractsType() {
+        @DisplayName("a block that does not parse declares nothing, even if the text contains an @type")
+        void malformedJson_declaresNothing() {
             String html = "<script type=\"application/ld+json\">{\"@type\":\"Article\", not valid json at all !! }</script>";
+
             JSONObject o = PageFetch.analyse(html);
+
+            // The BLOCK is still counted - there is an ld+json script on the page.
             assertThat(o.getInt("jsonLd")).isEqualTo(1);
-            JSONArray types = o.getJSONArray("jsonLdTypes");
+            // What it declares is nothing, because nothing can read it.
+            assertThat(o.getJSONArray("jsonLdTypes").length()).isZero();
+        }
+
+        /** {@code {"@type":"Top","n":{"n":{ ... {"@type":"Bottom"} ... }}}} */
+        private String nested(int depth) {
+            StringBuilder b = new StringBuilder("{\"@type\":\"Top\",\"n\":");
+            for (int i = 0; i < depth; i++) {
+                b.append("{\"n\":");
+            }
+            b.append("{\"@type\":\"Bottom\"}");
+            for (int i = 0; i < depth; i++) {
+                b.append("}");
+            }
+            return b.append("}").toString();
+        }
+
+        @Test
+        @DisplayName("the walk stops at its depth cap instead of following a document down")
+        void deeplyNestedJsonLd_walkIsCapped() {
+            String html = "<script type=\"application/ld+json\">" + nested(100) + "</script>";
+
+            JSONArray types = PageFetch.analyse(html).getJSONArray("jsonLdTypes");
+
+            // Top is at the root; Bottom sits past the cap and is never reached.
             assertThat(types.length()).isEqualTo(1);
-            assertThat(types.getString(0)).isEqualTo("Article");
+            assertThat(types.getString(0)).isEqualTo("Top");
+        }
+
+        @Test
+        @DisplayName("the cap is the only thing bounding the walk: org.json parses arbitrary nesting")
+        void absurdlyNestedJsonLd_doesNotOverflow() {
+            // Measured rather than assumed: org.json in this version parses 2000
+            // levels without complaint, so it contributes no bound of its own.
+            // The walk's own cap is what keeps a page the module does not control
+            // from choosing how deep this recurses.
+            String html = "<script type=\"application/ld+json\">" + nested(2000) + "</script>";
+
+            JSONObject o = PageFetch.analyse(html);
+
+            assertThat(o.getInt("jsonLd")).isEqualTo(1);
+            assertThat(o.getJSONArray("jsonLdTypes").length()).isEqualTo(1);
+            assertThat(o.getJSONArray("jsonLdTypes").getString(0)).isEqualTo("Top");
         }
 
         @Test

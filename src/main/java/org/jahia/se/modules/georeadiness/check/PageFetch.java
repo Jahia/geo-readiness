@@ -1,5 +1,6 @@
 package org.jahia.se.modules.georeadiness.check;
 
+import org.json.JSONException;
 import org.json.JSONArray;
 import org.jahia.se.modules.georeadiness.util.FetchGuard;
 import org.jahia.se.modules.georeadiness.util.Markup;
@@ -13,6 +14,8 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -51,6 +54,10 @@ public final class PageFetch {
     private static final String VALUE = "[^\"']{0,2000}";
     /** A language tag, a robots directive, a schema type: short by definition. */
     private static final String SHORT = "[^\"']{1,100}";
+    /** Enough to name what a page declares itself as. */
+    private static final int MAX_JSONLD_TYPES = 15;
+    /** A parsed tree from a page this module does not own is walked, not trusted. */
+    private static final int MAX_JSONLD_DEPTH = 20;
 
     private static final Pattern HREF = value("href", VALUE);
     private static final Pattern CONTENT = value("content", VALUE);
@@ -297,14 +304,10 @@ public final class PageFetch {
 
         // A count of ld+json blocks says nothing. Which schema types are declared does.
         JSONArray types = new JSONArray();
-        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        Set<String> seen = new LinkedHashSet<>();
         Markup.forEachElement(html, "script", (tag, body, at) -> {
-            if (!LD_JSON.matcher(tag).find()) {
-                return;
-            }
-            Matcher jt = JSONLD_TYPE.matcher(body);
-            while (jt.find() && seen.size() < 15) {
-                seen.add(clip(jt.group(1).trim(), 40));
+            if (LD_JSON.matcher(tag).find()) {
+                declaredTypes(body, seen);
             }
         });
         seen.forEach(types::put);
@@ -344,6 +347,73 @@ public final class PageFetch {
     }
 
     /** Visible text: tags dropped, and the bodies of OPAQUE elements with them. */
+    /**
+     * The schema types one ld+json block declares - PARSED, not scraped.
+     *
+     * It used to be a regex for `"@type": "..."` over the block's raw text, and
+     * that reported types out of a block no consumer could read. A crawler parses
+     * the JSON; if it does not parse, the page has declared nothing, whatever the
+     * text looks like. Scraping it made the structured-data check PASS for a page
+     * whose JSON-LD is broken - a false pass on the exact thing that check exists
+     * to find, which is the worst direction for it to be wrong in.
+     */
+    private static void declaredTypes(String body, Set<String> seen) {
+        String text = body == null ? "" : body.trim();
+        if (text.isEmpty()) {
+            return;
+        }
+        try {
+            walk(text.startsWith("[") ? new JSONArray(text) : new JSONObject(text), seen, 0);
+        } catch (JSONException e) {
+            // Not parseable is not a finding here: llmsPresent and the checks in
+            // GeoScore speak to what is missing. This one only reports what is
+            // genuinely declared.
+            logger.debug("ld+json block did not parse", e);
+        }
+    }
+
+    /**
+     * Every @type anywhere in the document, @graph and nesting included.
+     *
+     * Depth-limited because this is parsed from a page the module does not own.
+     * org.json builds the whole tree before this walks it, so the cap is not
+     * about the parse; it is about not recursing a few thousand frames deep on a
+     * document built to do exactly that.
+     */
+    private static void walk(Object node, Set<String> seen, int depth) {
+        if (depth > MAX_JSONLD_DEPTH || seen.size() >= MAX_JSONLD_TYPES) {
+            return;
+        }
+        if (node instanceof JSONObject) {
+            JSONObject o = (JSONObject) node;
+            addTypes(o.opt("@type"), seen);
+            for (String key : o.keySet()) {
+                walk(o.get(key), seen, depth + 1);
+            }
+        } else if (node instanceof JSONArray) {
+            JSONArray a = (JSONArray) node;
+            for (int i = 0; i < a.length(); i++) {
+                walk(a.get(i), seen, depth + 1);
+            }
+        }
+    }
+
+    /** @type is a string or an array of them; anything else declares nothing. */
+    private static void addTypes(Object type, Set<String> seen) {
+        if (type instanceof String) {
+            seen.add(clip(((String) type).trim(), 40));
+            return;
+        }
+        if (type instanceof JSONArray) {
+            JSONArray a = (JSONArray) type;
+            for (int i = 0; i < a.length() && seen.size() < MAX_JSONLD_TYPES; i++) {
+                if (a.get(i) instanceof String) {
+                    seen.add(clip(a.getString(i).trim(), 40));
+                }
+            }
+        }
+    }
+
     private static String textOf(String html) {
         return WS.matcher(withoutTags(html, true, " ")).replaceAll(" ").trim();
     }
