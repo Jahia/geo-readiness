@@ -81,7 +81,17 @@ public final class RobotsEditor {
         }
         // Exactly one trailing newline, so merging the same decisions twice does
         // not append another and read as a change.
-        String out = sb.toString().replaceAll("(\\r?\\n)+$", "");
+        //
+        // A loop, not replaceAll("(\\r?\\n)+$", ""). That is a repetition
+        // anchored at the end of the input, and the engine can recurse once per
+        // repetition - a stack overflow on a file that is mostly blank lines.
+        // Which would be a poor way to fix one catastrophic regex by writing
+        // another. Sonar java:S5998.
+        int end = sb.length();
+        while (end > 0 && (sb.charAt(end - 1) == '\n' || sb.charAt(end - 1) == '\r')) {
+            end--;
+        }
+        String out = sb.substring(0, end);
         return out.isEmpty() ? out : out + eol;
     }
 

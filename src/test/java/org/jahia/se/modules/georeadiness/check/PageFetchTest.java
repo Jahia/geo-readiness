@@ -525,14 +525,20 @@ class PageFetchTest {
         // JSON-LD is broken. That is a false pass on the exact thing the check
         // exists to find. A crawler parses the block; if it does not parse, the
         // page has declared nothing, whatever the text looks like.
-        @Test
-        @DisplayName("a block that does not parse declares nothing, even if the text contains an @type")
-        void malformedJson_declaresNothing() {
-            String html = "<script type=\"application/ld+json\">{\"@type\":\"Article\", not valid json at all !! }</script>";
+        @ParameterizedTest(name = "{0}")
+        @ValueSource(strings = {
+            // an @type token is present, but the block as a whole does not parse
+            "{\"@type\":\"Article\", not valid json at all !! }",
+            // no @type token anywhere either
+            "not json { [ } definitely broken"
+        })
+        @DisplayName("a block that does not parse declares nothing, whatever its text looks like")
+        void malformedJson_declaresNothing(String body) {
+            String html = "<script type=\"application/ld+json\">" + body + "</script>";
 
             JSONObject o = PageFetch.analyse(html);
 
-            // The BLOCK is still counted - there is an ld+json script on the page.
+            // The BLOCK is still counted - there IS an ld+json script on the page.
             assertThat(o.getInt("jsonLd")).isEqualTo(1);
             // What it declares is nothing, because nothing can read it.
             assertThat(o.getJSONArray("jsonLdTypes").length()).isZero();
@@ -579,14 +585,6 @@ class PageFetchTest {
             assertThat(o.getJSONArray("jsonLdTypes").getString(0)).isEqualTo("Top");
         }
 
-        @Test
-        @DisplayName("malformed JSON with no @type token at all -> no type extracted, still no throw")
-        void malformedJsonNoTypeToken() {
-            String html = "<script type=\"application/ld+json\">not json { [ } definitely broken</script>";
-            JSONObject o = PageFetch.analyse(html);
-            assertThat(o.getInt("jsonLd")).isEqualTo(1);
-            assertThat(o.getJSONArray("jsonLdTypes").length()).isZero();
-        }
 
         @Test
         @DisplayName("a non-JSON-LD script tag does not add to jsonLd count or jsonLdTypes")
