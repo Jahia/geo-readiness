@@ -1,5 +1,41 @@
 # geo-readiness Changelog
 
+## 1.3.1
+
+* The dashboard and the drawer now meet WCAG 2.2 AAA on contrast, carry real headings, and announce a running scan to a screen reader. The charts stopped making every data mark a tab stop — a full failure matrix was upwards of three hundred of them — and instead carry their numbers as text inside the table and list structures they already had, so assistive tech reads the figures and the keyboard passes through in one stop. The drawer is a real `<dialog>`, and every control that had no accessible name has one.
+
+* The public base url now takes its host from the repository rather than from the request that matched it. The two were equal under a case-insensitive comparison but not identical, so a `Host:` header could choose the casing of a base url that the scan servlet then persisted in `geoBaseUrl` and reused on every later scheduled scan.
+
+* Sped up reading of fetched pages, sitemaps and site files, which could take minutes on some documents.
+
+* Moved the module to the `org.jahia.community` groupId. The Java package, the OSGi configuration file and the bundle name are unchanged, so an existing install upgrades in place and keeps its settings.
+
+* The runtime configuration is swapped through an AtomicReference, so the operation that replaces it reads as the atomic one it always had to be.
+
+* Decomposed the four methods Sonar scored furthest over the cognitive-complexity limit — the scoring engine at 43, the robots.txt rule evaluator at 27, the llms.txt freshness comparison at 19 and the robots.txt parser at 16. Behaviour is unchanged, and the characterisation tests added in the previous release are what proves it.
+
+* Decomposed four more methods over the cognitive-complexity limit — the HTML analyser at 26, the link-graph report at 28, the robots.txt editor's parser at 16 and the guest-visibility classifier — each behind characterisation tests written first. Unit coverage of the module roughly doubled, and nine classes are now at or near complete coverage.
+
+* Audited every factual claim in the documentation against the code and corrected what was wrong, including two instructions that would have broken a contributor's setup: a `yarn e2e` command that does not exist, and a CI `instance_type` the live workflow deliberately omits because it fails. Two of the corrections were code rather than prose — the test harness dropped the `notests` flag it documented, and a comment claimed the module refuses to fetch a site with no server name when it in fact falls back to `localhost:8080`.
+
+* Fixed crawler and site scans so repeated checks remain reliable and sitemap comparisons no longer follow links to other sites.
+
+* Fixed the `$` end-anchor in robots.txt matching, which was wrong in two opposite directions: a pattern with no wildcard checked its start and its end independently, so `/foo$` matched `/foo/bar/foo`, and a pattern ending in `*$` rejected every path longer than its literal prefix, so `abc*$` did not match `abcdef`. Sites whose robots.txt uses `$` anchors will see corrected verdicts in the drawer's policy cross-check and may see their score move.
+
+* The language, freshness, sitemap and schema checks are now covered by tests that assert what they report rather than that they answered, and the three methods behind them have been decomposed to sit under the complexity limit.
+
+* Closed an SSRF where the request's Host header chose the port this module connected to, gated the one endpoint that had no permission check, stopped a browsing node deleting every site's scan schedule from the cluster, and fixed six places where the code did the opposite of its own comment - including a config marker typo that silently reset the administrator's settings on every redeploy.
+
+* Gave the four servlets one base class instead of four copies of the same seven helpers, which fixed two defects that were living in the drift between them: three of the module's four JSON endpoints were served without `X-Content-Type-Options: nosniff` while echoing content read from the site being checked, and three of them silently truncated an oversized request body so it came back as "malformed body" instead of being refused for what it was.
+
+* Nothing escapes a servlet method any more, the servlets hold no mutable shared state, an interrupted crawler check no longer swallows the interrupt, and the language pattern is bounded so a long input cannot overflow the matcher's stack.
+
+* Fixed seven defects the new characterisation tests had pinned. The largest: a page whose JSON-LD is syntactically broken now correctly reports no structured data, where it used to pass the check because the types were read out of the text with a regex rather than parsed. The robots.txt editor also now keeps the promise it makes in its own documentation — a merge that changes nothing returns a customer's file exactly as it arrived, rather than dropping blank lines, adding a trailing newline or mixing line endings into it.
+
+* The module has unit tests for the first time: JUnit 5, AssertJ and JaCoCo, with 189 characterisation tests pinning the scoring engine, the robots.txt matcher, the llms.txt freshness comparison and the two security guards. They exist so the decomposition that follows cannot change a score silently — the existing Cypress suite asserts that a scan happened and that the UI reads "n of m checks passed", never which n or which m.
+
+* Removed ten imports left behind by the decomposition, which were the last thing keeping the quality gate red on the main branch.
+
 ## 1.3.0
 
 * Added an optional AI-written GEO report with prioritised recommendations and Markdown or JSON export.
