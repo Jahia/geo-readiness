@@ -193,9 +193,18 @@ public final class PublicUrls {
         JCRSiteNode site = node.getResolveSite();
         String server = site == null ? null : site.getServerName();
         if (server == null || server.isEmpty() || "localhost".equalsIgnoreCase(server)) {
-            // The site does not say where it lives, so neither can we. The
-            // request cannot answer it either: its Host header is written by
-            // whoever sent it. PUBLIC_BASE_URL is the way to say it.
+            // The site does not say where it lives, and the request cannot
+            // answer it either: its Host header is written by whoever sent it.
+            //
+            // So this falls back to LOCAL_FALLBACK and FETCHES it. That is worth
+            // stating plainly, because this comment used to say only that we
+            // could not know where the site lives - which read as "nothing is
+            // fetched", and the README repeated it as such. On a box serving one
+            // site the fallback is right. On a box serving several it is the
+            // DEFAULT site, so the check quietly reports another site's pages
+            // and robots.txt as if they were this one's. PUBLIC_BASE_URL is how
+            // an operator says which, and on a multi-site box it is required
+            // rather than optional.
             return LOCAL_FALLBACK;
         }
         // The host is the site's own, always: the request only gets to say WHICH

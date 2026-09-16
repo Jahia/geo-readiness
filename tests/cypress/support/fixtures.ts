@@ -69,6 +69,19 @@ export type GeoFixture = {
     homePath: string;
     /** A page inside the site, used as a legitimate `scope`. */
     childPath: string;
+    /**
+     * A PUBLISHED page whose ACL inheritance is broken, so guest cannot read it
+     * while its parent stays open. The visibility check should call this
+     * `isolatedRestriction` - the one somebody forgot.
+     */
+    gatedPath: string;
+    /**
+     * A published page UNDER the gated one, so neither it nor its parent is
+     * readable. The check should call this `gatedBranch` - a members area, not
+     * a mistake. Telling these two apart is the whole point of the check, and
+     * nothing asserted it before.
+     */
+    gatedChildPath: string;
     publisher: GeoTestUser;
     contributor: GeoTestUser;
 };
@@ -84,6 +97,8 @@ export function geoFixture(siteKey: string): GeoFixture {
         sitePath: `/sites/${siteKey}`,
         homePath: `/sites/${siteKey}/home`,
         childPath: `/sites/${siteKey}/home/geo-child`,
+        gatedPath: `/sites/${siteKey}/home/geo-gated`,
+        gatedChildPath: `/sites/${siteKey}/home/geo-gated/geo-gated-child`,
         publisher: {username: `${siteKey}-publisher`, password: 'geoPublisher1234'},
         contributor: {username: `${siteKey}-contributor`, password: 'geoContributor1234'}
     };
@@ -175,6 +190,52 @@ export function setupGeoFixture(fixture: GeoFixture): void {
     createUser(fixture.contributor.username, fixture.contributor.password);
     grantRoles(fixture.sitePath, PUBLISHER_ROLES, fixture.publisher.username, 'USER');
     grantRoles(fixture.sitePath, CONTRIBUTOR_ROLES, fixture.contributor.username, 'USER');
+
+    buildGatedBranch(fixture);
+}
+
+/**
+ * A published branch a guest cannot read, which is what GEO-19 exists to find.
+ *
+ * Built rather than mocked, because in Jahia a server administrator is a ROLE
+ * and a role arrives through ACL entries - precisely what breaking inheritance
+ * removes. After this, every account but `root` and the system session is denied
+ * on these two pages, site and server administrators included. A suite that only
+ * looks as `root` sees nothing wrong here.
+ *
+ * Two pages, not one, because the check's interesting output is the DISTINCTION:
+ * a closed page under an open one is the permission somebody forgot, a closed
+ * page under a closed one is a members area working as intended. Reporting the
+ * second as a defect would train an editor to ignore the check.
+ *
+ * @param {GeoFixture} fixture the fixture being built.
+ */
+function buildGatedBranch(fixture: GeoFixture): void {
+    addNode({
+        parentPathOrId: fixture.homePath,
+        primaryNodeType: 'jnt:page',
+        name: 'geo-gated',
+        properties: [
+            {name: 'j:templateName', type: 'STRING', value: 'simple'},
+            {name: 'jcr:title', type: 'STRING', value: 'GEO gated page', language: 'en'}
+        ]
+    });
+    addNode({
+        parentPathOrId: fixture.gatedPath,
+        primaryNodeType: 'jnt:page',
+        name: 'geo-gated-child',
+        properties: [
+            {name: 'j:templateName', type: 'STRING', value: 'simple'},
+            {name: 'jcr:title', type: 'STRING', value: 'GEO gated child', language: 'en'}
+        ]
+    });
+
+    // Published BEFORE the ACL is broken. The check reads `live` as guest, so
+    // both copies have to exist for the break to be what makes them unreadable
+    // rather than their absence.
+    publishAndWaitJobEnding(fixture.gatedPath, ['en']);
+
+    cy.executeGroovy('groovy/breakAclInheritance.groovy', {NODE_PATH: fixture.gatedPath});
 }
 
 /**

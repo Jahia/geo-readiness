@@ -132,7 +132,7 @@ tests/
 │       ├── commands.ts                  # registration only
 │       ├── e2e.ts                       # run-level precondition
 │       ├── fixtures.ts                  # site + users + grants lifecycle
-│       ├── geo.ts                       # the three endpoints and the one way to call them
+│       ├── geo.ts                       # the four endpoints and the one way to call them
 │       └── ui.ts                        # reaching the drawer and the dashboard in jContent
 ├── Dockerfile                           # the `cypress` service the CI action builds and runs
 ├── docker-compose.yml
@@ -214,8 +214,10 @@ for some other reason" — which is how a validation test quietly becomes a taut
   would be a flaky test rather than a slow one. Per §4 of the coverage standard this is a documented
   exception, not an oversight.
 - **The generated content of `llms.txt` and `robots.txt`.** `LlmsGenerator` and `RobotsEditor` are
-  pure functions over a page tree and a text file. They triage to unit tests, which this repository
-  does not yet have — see the root-file section below.
+  pure functions over a page tree and a text file. They triage to unit tests. The repository now HAS those:
+  nine test classes under `src/test/java`, JUnit 5 with AssertJ and Mockito, JaCoCo reporting.
+  `LlmsGenerator` and `RobotsEditor` are the two named here; `RobotsEditor` is covered now,
+  `LlmsGenerator` still is not.
 - **Reading the two files back over HTTP.** `applyRobots` writes `j:robots` via `jmix:robots` and
   publishes. Serving `/robots.txt` from that property is the community robots module's job, not this
   module's, so asserting it here would be testing a dependency. Note that `applyLlms` / `applyRobots`
@@ -328,12 +330,13 @@ can be replaced by the job itself:
 +      artifact_prefix: geo-readiness
 +      should_skip_testrail: true
 +      pagerduty_skip_notification: true
-+      instance_type: ubuntu-latest
++      # instance_type deliberately unset - see below
 +      mvn_java_version: '17'
 ```
 
-Two judgement calls left to whoever applies it: `instance_type` (`ubuntu-latest` unless this repo is
-entitled to the self-hosted pool), and the `jahia_image` tag. `mvn_java_version` is irrelevant here —
+One judgement call left to whoever applies it: the `jahia_image` tag. `instance_type` is NOT one -
+leave it unset. `ubuntu-latest` was tried and fails, because the reusable workflow reports the
+runner with `ec2metadata --instance-id` and that command does not exist on a GitHub-hosted runner. `mvn_java_version` is irrelevant here —
 there is no Maven project under `tests/` — so it can be left at its default or set to `17` for
 consistency with the build.
 

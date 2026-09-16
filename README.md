@@ -87,7 +87,7 @@ fails reads as a solid column, which is the template's doing rather than the aut
 HTML and CSS in Moonstone's own colors - no chart library - with a tooltip on hover and on keyboard
 focus. Every mark encodes one thing: where a shape would have to mean two, it is two marks.
 
-No findings list is capped. A list is shown in full up to twenty-five rows; past ten rows a
+Most findings lists ARE capped, and only one says so. The per-page failures list stops at 500 rows, the link-graph and sitemap lists at 200 each, the llms.txt lists at 100, and the freshness list at 5000 - which is the only one that emits a truncation flag the UI can show. On a site with more orphans than the cap, the panel shows a short list and nothing says it was cut. A list is shown in full up to twenty-five rows; past ten rows a
 pagination control appears so a denser view can be chosen, and past twenty-five the list pages,
 saying "Showing 1–25 of 40" above its rows so a header count and the visible rows never disagree
 without the explanation between them.
@@ -209,9 +209,9 @@ Enable the module on the target site. Both entry points guard with
 `requireModuleInstalledOnSite`, so neither appears otherwise.
 
 An end-to-end suite lives in [`tests/`](tests/README.md) and runs against a live Jahia: the
-three endpoints across a guest, an editor without the permission and a publisher, the values a
+four endpoints across a guest, an editor without the permission and a publisher, the values a
 path-shaped input can take, request validation, the rate limit, and the two jContent screens. It is
-its own npm project, so `yarn install && yarn e2e` inside `tests/`.
+its own npm project, so `yarn install && yarn e2e:ci` inside `tests/`.
 
 Before claiming anything works, read [`test-fixtures/README.md`](test-fixtures/README.md): a
 zero-dependency server that simulates the failure cases a healthy local Jahia cannot produce.
@@ -227,7 +227,7 @@ redeploy.
 |---|---|---|
 | `FETCH_TIMEOUT_MS` | 8000 | Per-fetch timeout. Sixteen agents run three at a time, so the drawer's worst case is about six times this. |
 | `MAX_BODY_BYTES` | 1500000 | How much of a page to read. |
-| `RATE_MAX_CALLS` / `RATE_WINDOW_MS` | 20 / 600000 | Per-user limit on the expensive actions. Reading a stored result is never limited. |
+| `RATE_MAX_CALLS` / `RATE_WINDOW_MS` | 20 / 600000 | Per-user limit on the CRAWLER CHECK only. The site scan has its own limit as a constant in the servlet (30 per ten minutes) and the AI report uses `AI_RATE_MAX_CALLS`; neither reads these keys. Reading a stored result is never limited. |
 | `CRAWLER_AGENTS` | *(blank)* | Override the agent list as `name|user-agent` pairs. Blank uses the built-in fifteen. |
 | `PUBLIC_BASE_URL` | *(blank)* | The base URL to fetch. Set this when the site's server name is not resolvable from inside the container. |
 | `AI_PROVIDER` | *(blank)* | `anthropic`, `openai` or `deepseek`. With `AI_MODEL` and `AI_API_KEY` set, the Report tab appears. Blank keeps it off and nothing leaves the server. |
@@ -239,9 +239,15 @@ redeploy.
 | `AI_RATE_MAX_CALLS` | 5 | Report generations allowed per user per ten minutes. |
 
 The address a check fetches comes from this setting, or from the site's own server name when it is
-blank. A request can say how that host is reached, scheme and port, but only once it is already
-addressing that host, because a `Host` header is written by whoever sent the request. A site that
-declares no server name therefore has nothing to fetch until `PUBLIC_BASE_URL` says so.
+blank. The scheme and the port come from the connection the request arrived on — `getLocalPort()`
+and `isSecure()` — never from a header, because a `Host` header is written by whoever sent the
+request.
+
+A site that declares no server name, or names `localhost`, does **not** refuse to fetch: it falls
+back to `http://localhost:8080` and fetches that. On a box serving one site that is usually right.
+On a box serving several it is the *default* site, so the check reports another site's pages and
+robots.txt as if they were yours — quietly, because the fetch succeeds. `PUBLIC_BASE_URL` is how you
+say which, and on a multi-site box it is required rather than optional.
 
 ## Known gaps
 

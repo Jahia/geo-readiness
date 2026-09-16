@@ -147,7 +147,7 @@ Concretely, the servlet must keep:
   findings to the scanned language.
 - **Exclude the site home page from link findings.** Every menu and every logo points at it, so it
   is either trivially fine or unfixable, and reporting it is pure noise.
-- **Bump `CACHE_SCHEMA` in the drawer whenever the report grows a field.** It is at 5. A stale
+- **Bump `CACHE_SCHEMA` in the drawer whenever the report grows a field.** It is at 8. A stale
   cached report is restored into a UI that expects the new field and the new banner silently never
   appears - which reads as "the feature does not work". This has now cost time twice.
 
@@ -224,8 +224,10 @@ Concretely, the servlet must keep:
   `RobotsRules.matches()` to JS and testing it against jahia.com's actual rules. Fifteen cases
   live in that throwaway test; if you touch the matcher, rebuild them first.
 - `RobotsRules` has **no Jahia dependencies on purpose**. It is pure `java.util`, so it can be
-  compiled and unit-tested on its own. Keep it that way, it is the only piece of this module
-  that can be tested without a running Jahia.
+  compiled and unit-tested on its own. Keep it that way. It was the FIRST piece testable
+  without a running Jahia and is no longer the only one: `GeoScore`, `PageFetch`, `LinkGraph`,
+  `LlmsFreshness`, `RobotsEditor`, `FetchGuard`, `SiteScope` and `GuestVisibility` all have unit
+  tests now, several stubbing a node with Mockito.
 - Robots matching is not standardised in practice. We always return the **matched rule** next to
   the verdict, so a human can disagree with us. Never show a bare allowed/disallowed.
 - A missing robots.txt means everything is allowed. Report that as a finding, not as an error.
@@ -235,7 +237,7 @@ Concretely, the servlet must keep:
 
 ## Documentation
 
-Four files, each with one job. `README.md` is the front door: what it does, the two entry points,
+Ten or so files, each with one job. `README.md` is the front door: what it does, the two entry points,
 configuration, known gaps. `docs/checks.md` is the reference for all eighteen checks.
 `docs/architecture.md` is the shape of the code. `CHANGELOG.md` carries the behaviour notes that
 explain choices the code cannot explain by itself. This file is the invariants and the traps.

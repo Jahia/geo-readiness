@@ -176,7 +176,7 @@ zero entries and make every published page look missing), or it could not be rea
 Both sides belong to us, so the comparison is resolution, not fetching. Every `<loc>` in
 `sitemap.xml` is resolved back to a repository node; the published set is built as **guest**, in
 **every language the site has**, because a sitemap is language-aware and an anonymous crawler is
-what it is written for. Four findings come out of it:
+what it is written for. Five findings come out of it:
 
 | Finding | Means |
 |---|---|
@@ -186,7 +186,7 @@ what it is written for. Four findings come out of it:
 | `noindexListed` | Listed in the sitemap and carrying `noindex`. The two files contradict each other. |
 | `redirects` | The page has a vanity URL and the sitemap names the address Jahia redirects away from. |
 
-`agrees` is true only when all four are empty.
+`agrees` is true only when all five are empty.
 
 The drawer carries three of these per page, because each calls for a different
 action: the page is absent from the map, the map advertises it while the page says `noindex`, or

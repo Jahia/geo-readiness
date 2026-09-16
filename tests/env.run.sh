@@ -4,4 +4,4 @@
 # sets the exit code from the result.
 version=$(node -p "require('./package.json').devDependencies['@jahia/cypress']")
 echo Using @jahia/cypress@$version...
-npx --yes --package @jahia/cypress@$version env.run
+npx --yes --package @jahia/cypress@$version env.run "$@"

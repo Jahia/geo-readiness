@@ -27,7 +27,7 @@ major alias) and the org baseline managed in `Jahia/.github`.
 | `.github/dependabot.yml` | alerts without PRs | this repo |
 | `.github/instructions/changelog.instructions.md` | changelog style guide read by the AI reviewer | **org-managed, DO NOT EDIT** |
 | `.github/pull_request_template.md` | PR body baseline | this repo |
-| `.chachalog/config.mjs`, `.chachalog/.version`, `.chachalog/README.md` | changelog fragment mechanism | this repo |
+| `.chachalog/config.mjs`, `.chachalog/.version`, `.github/changelog-fragments.md` | changelog fragment mechanism | this repo |
 
 `.github/workflows/build.yml` (hand-rolled checkout + `setup-java` + `mvn clean install` +
 `upload-artifact`) was **deleted**. Everything it did is covered by `on-code-change.yml` and
@@ -80,7 +80,7 @@ And the one remaining dated heading further down:
 
 There is no `[1.1.0]: https://…` link-reference footer to remove — checked, the file has none.
 
-From then on: no hand edits. One fragment per user-facing PR, per `.chachalog/README.md`.
+From then on: no hand edits. One fragment per user-facing PR, per `.github/changelog-fragments.md`.
 
 ### 2.2 `package.json` — add a `lint` script so static analysis can lint
 
@@ -223,12 +223,14 @@ verified against
       artifact_prefix: geo-readiness
       should_skip_testrail: true
       pagerduty_skip_notification: true
-      instance_type: ubuntu-latest
+      # instance_type: DO NOT SET. See below.
       mvn_java_version: '11'
 ```
 
-`instance_type` defaults to `self-hosted`; set it to `ubuntu-latest` unless this repo is
-entitled to the Jahia self-hosted runner pool. `mvn_java_version` must match the JDK the
+`instance_type` defaults to `self-hosted` and must be LEFT ALONE. `ubuntu-latest` was tried
+and fails: the reusable workflow reports the runner with `ec2metadata --instance-id`, which
+does not exist on a GitHub-hosted runner. The live job in `on-code-change.yml` omits the key
+for exactly this reason and says so. `mvn_java_version` must match the JDK the
 `tests/` Maven project targets, if that project is a Maven one.
 
 ### 2.6 Optional: OWASP suppressions
@@ -246,7 +248,7 @@ before the end of `README.md`:
 +## Changelog
 +
 +The changelog is generated. Do not edit `CHANGELOG.md`: add a fragment under `.chachalog/`
-+in the same pull request as your change — see `.chachalog/README.md`.
++in the same pull request as your change — see `.github/changelog-fragments.md`.
 ```
 
 ---

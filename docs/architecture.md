@@ -79,7 +79,7 @@ JavaScript-only page is still caught, by the word-count check.
 | `/geo-readiness/site-files` | One site | **Yes**, robots.txt and llms.txt |
 | `/geo-readiness/report` | One site | Only the stored report |
 
-All three: authenticated callers only, `application/json` required so a cross-site form post cannot
+All four: authenticated callers only, `application/json` required so a cross-site form post cannot
 reach them, per-user rate limiting on the expensive actions, and generic errors that leak no
 upstream detail.
 
