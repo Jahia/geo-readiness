@@ -227,66 +227,98 @@ public final class LinkGraph {
             String language, String homePath, boolean sitemapPresent, Set<String> notListed) {
         JSONObject out = new JSONObject();
         if (acc == null) {
+            // Deliberately empty, not merely zeroed: no accumulator means no walk
+            // happened, and "nothing links anywhere" is not what that means.
             return out;
         }
         out.put("pagesRead", acc.pagesRead);
 
-        JSONArray orphans = new JSONArray();
-        JSONArray navOnly = new JSONArray();
-        JSONObject counts = new JSONObject();
+        Findings f = new Findings(sitemapPresent, notListed);
         int pages = 0;
-
         for (Map.Entry<String, PublishedMap.Entry> e : published.entrySet()) {
-            PublishedMap.Entry node = e.getValue();
-            if (!node.page) {
-                continue;
-            }
-            // Only the language this scan actually read. The published map spans
-            // every language because a sitemap does, but a scan fetches one, so
-            // the other languages' pages have no links observed - not no links.
-            // Judging them here reported every French page as weakly linked on a
-            // site whose French pages had simply not been looked at.
-            if (language != null && !language.equals(node.language)) {
-                continue;
-            }
-            if (node.jcrPath.equals(homePath)) {
+            if (!judged(e.getValue(), language, homePath)) {
                 continue;
             }
             pages++;
-            String path = e.getKey();
+            f.add(acc, e.getKey(), e.getValue());
+        }
+
+        out.put("pages", pages);
+        out.put("orphans", f.orphans);
+        out.put("weak", f.navOnly);
+        out.put("counts", f.counts);
+        return out;
+    }
+
+    /**
+     * Whether this entry is one this report has anything to say about.
+     *
+     * Three exclusions, and the middle one is not obvious. The published map
+     * spans every language because a sitemap does, but a scan fetches ONE, so
+     * the other languages' pages have no links OBSERVED - which is not the same
+     * as no links. Judging them reported every French page as weakly linked on a
+     * site whose French pages had simply not been looked at.
+     */
+    private static boolean judged(PublishedMap.Entry node, String language, String homePath) {
+        return node.page
+                && (language == null || language.equals(node.language))
+                && !node.jcrPath.equals(homePath);
+    }
+
+    /** The three arrays the report is built from, and the rules that fill them. */
+    private static final class Findings {
+        private final JSONArray orphans = new JSONArray();
+        private final JSONArray navOnly = new JSONArray();
+        private final JSONObject counts = new JSONObject();
+        private final boolean sitemapPresent;
+        private final Set<String> notListed;
+
+        private Findings(boolean sitemapPresent, Set<String> notListed) {
+            this.sitemapPresent = sitemapPresent;
+            this.notListed = notListed;
+        }
+
+        private void add(Accumulator acc, String path, PublishedMap.Entry node) {
             int[] in = acc.inbound.get(path);
             int nav = in == null ? 0 : in[NAV];
             int content = in == null ? 0 : in[CONTENT];
+            tally(path, node, nav, content);
+            classify(path, node, nav, content);
+        }
 
-            if (counts.length() < MAX_COUNTS) {
-                JSONObject c = new JSONObject();
-                c.put("nav", nav);
-                c.put("content", content);
-                c.put("path", path);
-                counts.put(node.jcrPath + "@" + node.language, c);
+        private void tally(String path, PublishedMap.Entry node, int nav, int content) {
+            if (counts.length() >= MAX_COUNTS) {
+                return;
             }
+            JSONObject c = new JSONObject();
+            c.put("nav", nav);
+            c.put("content", content);
+            c.put("path", path);
+            counts.put(node.jcrPath + "@" + node.language, c);
+        }
 
+        private void classify(String path, PublishedMap.Entry node, int nav, int content) {
             if (nav == 0 && content == 0) {
-                // In the sitemap is the difference between "a crawler will never
-                // hear of this" and "a crawler is told, but nobody vouches for
-                // it". A campaign page deliberately out of the menus belongs in
-                // the second group, not reported as broken.
-                boolean listed = sitemapPresent && (notListed == null || !notListed.contains(path));
-                if (!listed && orphans.length() < MAX_REPORTED) {
-                    orphans.put(row(node, path, null));
-                } else if (listed && navOnly.length() < MAX_REPORTED) {
-                    navOnly.put(row(node, path, "sitemapOnly"));
-                }
+                unlinked(path, node);
             } else if (content == 0 && navOnly.length() < MAX_REPORTED) {
                 navOnly.put(row(node, path, "navOnly"));
             }
         }
 
-        out.put("pages", pages);
-        out.put("orphans", orphans);
-        out.put("weak", navOnly);
-        out.put("counts", counts);
-        return out;
+        /**
+         * Nothing points here. Being in the sitemap is the difference between "a
+         * crawler will never hear of this" and "a crawler is told, but nobody
+         * vouches for it": a campaign page deliberately out of the menus belongs
+         * in the second group, not reported as broken.
+         */
+        private void unlinked(String path, PublishedMap.Entry node) {
+            boolean listed = sitemapPresent && (notListed == null || !notListed.contains(path));
+            if (!listed && orphans.length() < MAX_REPORTED) {
+                orphans.put(row(node, path, null));
+            } else if (listed && navOnly.length() < MAX_REPORTED) {
+                navOnly.put(row(node, path, "sitemapOnly"));
+            }
+        }
     }
 
     /** Inbound counts for one node in one language, or null when not recorded. */

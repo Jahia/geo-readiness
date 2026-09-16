@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,8 +49,32 @@ public final class PageFetch {
     private static final Pattern IMG = Pattern.compile("(?is)<img\\s[^>]*>");
     private static final Pattern IMG_ALT = Pattern.compile("(?is)\\balt=[\"']([^\"']*)[\"']");
     private static final Pattern JSONLD_BLOCK = Pattern.compile("(?is)<script[^>]+application/ld\\+json[^>]*>(.*?)</script>");
+    /** Enough to show the page is translated; past this the list is not read. */
+    private static final int MAX_HREFLANG = 20;
+    /** Enough to name what the page declares itself as. */
+    private static final int MAX_JSONLD_TYPES = 15;
+
     private static final Pattern JSONLD_TYPE = Pattern.compile("(?is)[\"']@type[\"']\\s*:\\s*[\"']([^\"']+)[\"']");
-    private static final Pattern MODIFIED = Pattern.compile("(?is)[\"']dateModified[\"']\\s*:\\s*[\"']([^\"']+)[\"']|article:modified_time[\"'][^>]*content=[\"']([^\"']+)[\"']");
+    /**
+     * Two patterns rather than one alternation, for two reasons.
+     *
+     * The combined form scored 23 on regex complexity against a limit of 20, and
+     * an alternation of two unrelated shapes is genuinely harder to read than
+     * either alone: one looks for a JSON-LD property, the other for a meta tag.
+     *
+     * The attribute run in the second is BOUNDED, and that is not style.
+     * `[^>]*` followed by `content=` backtracks - the engine scans to the end of
+     * the tag, fails, retries from the next position, and repeats that at every
+     * occurrence of the prefix. Quadratic in the page size on a document with
+     * many repetitions of `article:modified_time"` and no closing `>`. This runs
+     * over HTML fetched from a site the module does not control, once per page
+     * of a scan of up to ten thousand pages, so a pathological page could hold a
+     * scan thread indefinitely. CodeQL java/polynomial-redos.
+     */
+    private static final Pattern MODIFIED_LD = Pattern.compile(
+            "(?is)[\"']dateModified[\"']\\s*:\\s*[\"']([^\"']+)[\"']");
+    private static final Pattern MODIFIED_META = Pattern.compile(
+            "(?is)article:modified_time[\"'][^>]{0,400}content=[\"']([^\"']+)[\"']");
     private static final Pattern SCRIPTS = Pattern.compile("(?is)<(script|style|noscript|template)[^>]*>.*?</\\1>");
     private static final Pattern TAGS = Pattern.compile("(?s)<[^>]+>");
     private static final Pattern WS = Pattern.compile("\\s+");
@@ -120,8 +146,28 @@ public final class PageFetch {
 
     public static JSONObject analyse(String html) {
         JSONObject o = new JSONObject();
+        headings(o, html);
+        metaTags(o, html);
+        languages(o, html);
+        images(o, html);
+        structuredData(o, html);
+
+        o.put("links", count(ANCHOR, html));
+        // Matches the literal media type anywhere in the document, not only in a
+        // script tag. Reported for information; the structured-data CHECK reads
+        // jsonLdTypes, which is scoped to real ld+json blocks.
+        o.put("jsonLd", count(JSONLD, html));
+
+        String text = textOf(html);
+        o.put("words", text.isEmpty() ? 0 : text.split(" ").length);
+        return o;
+    }
+
+    /** The title and the h1 outline: what a crawler reads as the page's name. */
+    private static void headings(JSONObject o, String html) {
         Matcher t = TITLE.matcher(html);
         o.put("title", t.find() ? clip(strip(t.group(1)), 120) : JSONObject.NULL);
+
         Matcher h = H1.matcher(html);
         int h1Count = 0;
         String firstH1 = null;
@@ -133,7 +179,13 @@ public final class PageFetch {
         }
         o.put("h1Count", h1Count);
         o.put("h1", firstH1 == null ? JSONObject.NULL : firstH1);
+        o.put("h2Count", count(H2, html));
+    }
+
+    /** The head's instructions to a crawler, and where it says the page really lives. */
+    private static void metaTags(JSONObject o, String html) {
         o.put("metaDescription", META_DESC.matcher(html).find());
+
         Matcher can = CANONICAL.matcher(html);
         boolean hasCanonical = can.find();
         o.put("canonical", hasCanonical);
@@ -145,31 +197,41 @@ public final class PageFetch {
                 o.put("canonicalHref", href.group(1));
             }
         }
+
         Matcher mr = META_ROBOTS.matcher(html);
         o.put("metaRobots", mr.find() ? clip(mr.group(1).trim(), 60) : JSONObject.NULL);
+
         // A client-side redirect. The page answers 200 with a shell, and only a
         // browser follows it. To a crawler this is the whole page.
         Matcher mf = META_REFRESH.matcher(html);
         o.put("metaRefresh", mf.find() ? clip(mf.group(1).trim(), 300) : JSONObject.NULL);
-        o.put("links", count(ANCHOR, html));
-        o.put("jsonLd", count(JSONLD, html));
 
-        // Signals below cost nothing extra: the html is already in memory. They are
-        // what turns "the crawler got a page" into "the crawler got a USEFUL page".
+        String modified = firstMatch(MODIFIED_LD, html);
+        if (modified == null) {
+            modified = firstMatch(MODIFIED_META, html);
+        }
+        o.put("dateModified", modified == null ? JSONObject.NULL : clip(modified.trim(), 40));
+    }
+
+    /** What the page says it is written in, and what else it exists as. */
+    private static void languages(JSONObject o, String html) {
         Matcher lang = HTML_LANG.matcher(html);
         o.put("lang", lang.find() ? clip(lang.group(1).trim(), 20) : JSONObject.NULL);
 
         Matcher hl = HREFLANG.matcher(html);
         JSONArray alts = new JSONArray();
-        while (hl.find() && alts.length() < 20) {
+        while (hl.find() && alts.length() < MAX_HREFLANG) {
             alts.put(clip(hl.group(1).trim(), 20));
         }
         o.put("hreflang", alts);
+    }
 
-        o.put("h2Count", count(H2, html));
-
-        // Alt text is how a text-only crawler learns what an image shows. An
-        // explicitly empty alt is a decorative image, correct but not descriptive.
+    /**
+     * Alt text is how a text-only crawler learns what an image shows. An
+     * explicitly empty alt is a decorative image - correct, but not descriptive,
+     * so it does not count towards coverage.
+     */
+    private static void images(JSONObject o, String html) {
         Matcher im = IMG.matcher(html);
         int images = 0;
         int withAlt = 0;
@@ -182,30 +244,35 @@ public final class PageFetch {
         }
         o.put("images", images);
         o.put("imagesWithAlt", withAlt);
+    }
 
-        // A count of ld+json blocks says nothing. Which schema types are declared does.
+    /**
+     * Which schema types are declared. A count of ld+json blocks says nothing;
+     * the types do.
+     *
+     * Scraped with a regex rather than parsed, and scoped to real ld+json script
+     * blocks. The consequence is worth knowing: a block whose JSON is invalid
+     * still yields its types here, so the structured-data check passes for a
+     * page that a crawler actually parsing the block would read as having none.
+     */
+    private static void structuredData(JSONObject o, String html) {
         Matcher jb = JSONLD_BLOCK.matcher(html);
         JSONArray types = new JSONArray();
-        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        Set<String> seen = new LinkedHashSet<>();
         while (jb.find()) {
             Matcher jt = JSONLD_TYPE.matcher(jb.group(1));
-            while (jt.find() && seen.size() < 15) {
+            while (jt.find() && seen.size() < MAX_JSONLD_TYPES) {
                 seen.add(clip(jt.group(1).trim(), 40));
             }
         }
         seen.forEach(types::put);
         o.put("jsonLdTypes", types);
+    }
 
-        Matcher md = MODIFIED.matcher(html);
-        String modified = null;
-        if (md.find()) {
-            modified = md.group(1) != null ? md.group(1) : md.group(2);
-        }
-        o.put("dateModified", modified == null ? JSONObject.NULL : clip(modified.trim(), 40));
-
-        String text = textOf(html);
-        o.put("words", text.isEmpty() ? 0 : text.split(" ").length);
-        return o;
+    /** The first capture of {@code p} in {@code html}, or null when it does not match. */
+    private static String firstMatch(Pattern p, String html) {
+        Matcher m = p.matcher(html);
+        return m.find() ? m.group(1) : null;
     }
 
     private static String textOf(String html) {
