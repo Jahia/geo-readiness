@@ -10,5 +10,5 @@
   autoStart: true
   ignoreIfPresent: true
 
-- installBundle: "mvn:org.jahia.se.modules/geo-readiness/1.2.0-SNAPSHOT"
+- installBundle: "mvn:org.jahia.community/geo-readiness/1.2.0-SNAPSHOT"
   autoStart: true

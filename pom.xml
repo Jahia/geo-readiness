@@ -9,7 +9,11 @@
         <groupId>org.jahia.modules</groupId>
         <version>8.2.0.0</version>
     </parent>
-    <groupId>org.jahia.se.modules</groupId>
+    <!-- The community namespace, not org.jahia.se.modules: this is a community
+         module now. The Java package deliberately does not follow. It names the
+         OSGi configuration PID, so moving it would orphan every deployed
+         .cfg file, and content-reports-react ships the same way. -->
+    <groupId>org.jahia.community</groupId>
     <artifactId>geo-readiness</artifactId>
     <name>GEO Readiness</name>
     <version>1.4.0-SNAPSHOT</version>
@@ -37,6 +41,13 @@
              rather than failing at the first write. -->
         <jahia-depends>default,jcontent,robots,llms</jahia-depends>
         <yarn.arguments>build:production</yarn.arguments>
+        <!-- Sonar keys a project by groupId:artifactId, so moving the groupId
+             would start an empty project: no reference branch, every line of
+             the module counted as new code, and the gate failing on a backlog
+             nobody just wrote. The key is an identifier, not an address, so it
+             stays where the analyses are. A Sonar administrator can rename the
+             project key, after which this property is deleted. -->
+        <sonar.projectKey>org.jahia.se.modules:geo-readiness</sonar.projectKey>
     </properties>
 
     <dependencies>
