@@ -2,4 +2,4 @@
 geo-readiness: patch
 ---
 
-The page drawer opens against the right edge again, rather than in the top left corner.
+Fixed the page drawer so it opens against the right edge instead of in the top-left corner.
