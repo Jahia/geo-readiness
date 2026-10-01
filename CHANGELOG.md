@@ -1,5 +1,9 @@
 # geo-readiness Changelog
 
+## 1.4.1
+
+* Fixed the page drawer so it opens against the right edge instead of in the top-left corner.
+
 ## 1.4.0
 
 * Closed a flaw where any logged-in account could read the site's configured AI provider, model and crawler list.
