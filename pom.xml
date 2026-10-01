@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0                       http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <artifactId>jahia-modules</artifactId>
@@ -16,7 +13,7 @@
     <groupId>org.jahia.community</groupId>
     <artifactId>geo-readiness</artifactId>
     <name>GEO Readiness</name>
-    <version>1.4.1-SNAPSHOT</version>
+    <version>1.4.1</version>
     <packaging>bundle</packaging>
     <description>jContent UI extension - can AI crawlers actually read this page? Server-side fetch per AI bot user agent, initial-HTML checks, robots.txt and llms.txt readiness.</description>
 
@@ -32,7 +29,7 @@
         <connection>scm:git:git@github.com:Jahia/geo-readiness.git</connection>
         <developerConnection>scm:git:git@github.com:Jahia/geo-readiness.git</developerConnection>
         <url>https://github.com/Jahia/geo-readiness</url>
-        <tag>HEAD</tag>
+        <tag>1_4_1</tag>
     </scm>
 
     <properties>
