@@ -8,10 +8,20 @@
     color: inherit;
     max-height: none;
 
+    /* left:auto and height:auto are load-bearing, and both cancel a UA rule the
+       block above missed. <dialog> also carries `inset-inline-start: 0` (which
+       is `left: 0` here) and `height: fit-content`. An absolutely positioned box
+       given left, right AND width is over-constrained, so LTR drops `right`;
+       given top, bottom AND height, it drops `bottom`. Between them those two
+       put the panel in the top left corner at the height of its own content,
+       which is where it sat from the day it stopped being an <aside> and became
+       a <dialog>. Setting the pair back to auto lets right/bottom decide. */
     position: fixed;
     top: 0;
+    left: auto;
     right: 0;
     bottom: 0;
+    height: auto;
     width: 820px;
     max-width: 96vw;
     background: var(--color-light, #fff);
