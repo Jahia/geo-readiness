@@ -5,7 +5,14 @@ folder. Do not hand-edit `CHANGELOG.md` at the repository root: the
 `Chachalog - Prepare Changelog` workflow aggregates these fragments into it and opens a
 "prepare next release" pull request that also bumps `.chachalog/.version`.
 
-Add one fragment per user-facing pull request, in a file with a **random** name:
+Add one fragment per user-facing pull request. Name the file after the change it describes, the
+way the released ones were named: `robots-dollar-anchor.md`, `unused-imports.md`,
+`accessibility-aaa.md`. The only rule the name has to keep is that two pull requests in flight at
+once must not pick the same one, and a name that describes its own change rarely collides. A random
+name works too, and is what `chachalog`'s own tooling generates, but nothing here requires one.
+
+The name is never read by anybody but us: the release pull request consumes the file and deletes it,
+and the text inside is what reaches the changelog.
 
 ```markdown
 ---
