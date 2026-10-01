@@ -16,7 +16,7 @@
     <groupId>org.jahia.community</groupId>
     <artifactId>geo-readiness</artifactId>
     <name>GEO Readiness</name>
-    <version>1.4.0-SNAPSHOT</version>
+    <version>1.4.1-SNAPSHOT</version>
     <packaging>bundle</packaging>
     <description>jContent UI extension - can AI crawlers actually read this page? Server-side fetch per AI bot user agent, initial-HTML checks, robots.txt and llms.txt readiness.</description>
 
