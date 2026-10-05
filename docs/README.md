@@ -14,6 +14,17 @@ Read in the order that matches why you are here.
    A zero-dependency simulator with flags for every failure mode, and a table of expected results
    per flag combination.
 
+## If you are a content author using the module
+
+Neither of these assumes you know what a crawler, a sitemap or structured data is, and both say
+which findings are yours to fix and which belong to a developer, an administrator or whoever runs
+the infrastructure.
+
+- **[`drawer-guide.md`](drawer-guide.md)** is the panel that opens on a page: its four tabs, the
+  banners above them, and what each verdict is telling you.
+- **[`dashboard-guide.md`](dashboard-guide.md)** is the site-wide screen under Additional, SEO: its
+  ten panels, which two of them write to the site, and a sensible order to work through them.
+
 ## If you want to know what it checks, or how it works
 
 - **[`checks.md`](checks.md)** is the reference for the eighteen page checks *and* for the six
