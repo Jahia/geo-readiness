@@ -12,9 +12,40 @@ vendor at all.
 
 ## Status of the partnership
 
-No API contract exists yet. BotRank publishes thirteen MCP tool names in one article and nothing
-else: no parameter names, no response fields, no auth mechanism, no rate limits. Everything in
-this file that touches their API is an assumption, not a specification.
+**Updated 5 October 2026, from their CTO's written answers to ten questions.** Before that reply,
+the only public information was thirteen MCP tool names in one article: no parameter names, no
+response fields, no auth mechanism, no rate limits.
+
+What the reply settles, and what it does not:
+
+| | |
+|---|---|
+| **The data exists** | Sentiment, positive and negative themes, response excerpts tied to their prompt and their LLM, and query fan-outs at brand *and* prompt level all exist and feed their own screens. They are simply not on the public MCP. |
+| **Authority is cheaper than assumed** | Brand authority and domain authority are computed per domain, one value per site, and can be read globally **without consuming the page-audit quota**. Only Google and Bing indexation are per URL. |
+| **Refresh is faster than observed** | Prompts run daily, configurable per brand and per LLM. Pages every two days. The weekly rhythm we saw is their GEO *recommendations*, not the underlying data. |
+| **Locale is bought, not filtered** | Locale is a property of a prompt, not a query parameter. A market fixes geolocation and execution language, over 17 countries, so five markets consume five prompt slots. Each prompt then runs on N of 9 AI surfaces. |
+| **No rate limits** | None today, and a nightly sync matches their data rhythm anyway. |
+| **Three things do not exist** | A documented public API, machine-to-machine credentials, and deep links to a cited source. All three are offered willingly. **None has a date.** |
+
+**The gate is now one named thing rather than a vague one.** Their only authentication today is
+user-level OIDC and OAuth 2.0, including for the MCP. There is no server identity, so a Jahia
+module cannot authenticate at all. Organisation-scoped API keys are possible on their side and not
+built. Everything in Wave 2 waits on that single item, which is at least something we can ask for a
+date on.
+
+**Two shapes to design around.** Their entity model is *organisation → brands/projects*, and the
+commercial model they propose is that Jahia subscribes at organisation level and creates one brand
+per end customer, with org credentials reading all of them. That makes Jahia the account holder,
+which is a contract and data-protection position rather than a technical one - see the risk table.
+
+**An unresolved collision, raised by them.** Org-level API keys and their deep links do not fit
+together: the links require *the user* to be authenticated on the project, and a content editor in
+jContent has no BotRank identity. Either editors get provisioned accounts, or we render everything
+ourselves and never link out, or they produce a signed link that carries org authority with no user
+session. The third is what we should propose.
+
+**Nothing above is a specification.** A willing answer in an email is not a contract, and no
+statement here has been verified against an API, because there is not one to verify against.
 
 That is why the waves are ordered the way they are. Wave 1 depends on nobody.
 
@@ -113,6 +144,12 @@ severities (critical, important, advisory). The reason is trust: an editor can d
 specific line, but not with a number they cannot see inside. The four-family split was dropped
 with it, so the two scores are no longer directly comparable to BotRank's. That is a conscious
 trade and it should be revisited only if the partnership makes comparability worth something.
+
+**5 October 2026:** it now partly does, and the answer is still no. Brand authority and domain
+authority can be read per domain without touching the audit quota, which is exactly the half a
+repository cannot compute. Import them as two named signals beside our own checks. Do **not**
+reopen the four-family split to do it: one score, ours, with two imported facts next to it, keeps
+the property that makes the score trustworthy.
 
 One rule is deliberately absent. Being disallowed in robots.txt is not counted as a failure,
 because refusing a crawler is a legitimate decision. What is counted is a disagreement between the
@@ -237,7 +274,10 @@ actually works on that host. Verified on 8.2.3.2. See `README.md` for the full l
 
 # Wave 2, needs the citation data
 
-Gate: a real API contract. Do not start until the open questions below are answered.
+Gate, narrowed on 5 October 2026: **organisation-scoped API keys.** Their data exists and their
+CTO is willing to expose it on a dedicated API, but there is no server identity to authenticate
+with, so none of this can be built yet. The old gate - "a real API contract" - was a vaguer thing
+to wait on; this one has a name and can carry a date.
 
 ## GEO-4 · Is this page one that AI engines quote?
 
@@ -275,7 +315,8 @@ that** I can look at what changed while the loss is still recoverable.
   before the drop".
 - Detection is polling. The UI never implies real time.
 
-**Data** `list-cited-pages`, two windows. **Surface** dashboard and accordion. **Effort** M.
+**Data** `list-cited-pages`, two windows - viable now that prompts are confirmed to run daily
+rather than weekly. **Surface** dashboard and accordion. **Effort** M.
 
 ## GEO-6 · Which questions am I losing, and to whom?
 
@@ -342,8 +383,11 @@ Jahia's contributors are organised by language. That is the shape of the product
 using it. A GEO panel that is language-aware by construction is something a general-purpose GEO
 dashboard structurally cannot be, and it costs almost nothing on top of GEO-4 and GEO-6.
 
-**Data** `list-prompts`, grouped by locale. **Surface** page drawer and dashboard. **Effort** S on
-top of GEO-4 and GEO-6.
+**Data** `list-prompts`, grouped by locale. **Reframed 5 October 2026:** locale is a property of a
+prompt, not a filter over one set of results, so a market is bought rather than selected. The story
+becomes "which markets are we paying to track, and how do they compare", and the cost of answering
+it scales with markets x questions. **Surface** page drawer and dashboard. **Effort** S on top of
+GEO-4 and GEO-6.
 
 ## GEO-14 · Write for the question the engine actually asked
 
@@ -359,8 +403,11 @@ at intent.
 - Checks the fan-out phrasing against the page's actual text and says which are unanswered.
 - Never auto-inserts the phrases into content. It suggests, the editor writes.
 
-**Data** query fan-outs per prompt. No MCP tool is named for this. Blocked on the API question
-below. **Surface** page drawer, beside SEO assist. **Effort** S, high perceived value.
+**Data** query fan-outs per prompt. **Confirmed to exist on 5 October 2026**, at brand level and at
+prompt level, feeding their own screens; the gap is exposure, not capability. This was the one
+story whose data we had no evidence for at all, so it moves from speculative to ready-on-contract
+and keeps the best value-to-effort ratio in this file. **Surface** page drawer, beside SEO assist.
+**Effort** S, high perceived value.
 
 ## GEO-15 · Say it on our page before someone else says it for us
 
@@ -447,6 +494,11 @@ Real value, narrower audience. Build if a specific customer or prospect asks. Do
 speculatively.
 
 ## GEO-11 · What are the engines saying about us?
+
+**Re-rank candidate, 5 October 2026.** Sentiment, the three-class distribution and named themes
+were assumed to be the expensive end of their product. Their CTO confirms all three already exist
+and feed their screens, so this is cheaper than Wave 4 placement implies. Worth reconsidering
+against GEO-7, which needs the same excerpts.
 
 **As a** brand or comms manager, **I want** the sentiment and recurring themes the engines attach
 to our brand, traced back to the source that caused them, **so that** I can go fix the article
@@ -578,15 +630,16 @@ In rough order of how likely they are to bite.
 
 | Risk | Shape | What reduces it |
 |---|---|---|
-| The API contract never materializes | No public docs, quote-only tier, small young company. The integration could stall indefinitely on a document that does not exist yet | Wave 1 ships without them. Build against a thin internal abstraction so a second GEO vendor is a driver swap, not a rewrite |
+| ~~The API contract never materializes~~ **Narrowed 5 Oct 2026: no server identity** | The data half of this risk is retired: their CTO confirms the data exists and offers a dedicated API with us as first consumer. What remains is that their only auth is user-level OIDC/OAuth 2.0, so a module cannot authenticate at all. Org-scoped API keys are offered and unbuilt, with no date | Wave 1 ships without them. Keep the thin internal abstraction so a second GEO vendor is a driver swap. Ask for a date on the keys specifically, not on "the API" |
 | Vendor lock-in of the UI | If BotRank's vocabulary leaks into our node types and GraphQL schema, the panel becomes theirs, not ours | Model the domain in Jahia's terms (cited page, tracked question, engine) and keep their field names inside the driver |
 | Machine-extracted entities reach the contributor unfiltered | Their discovered "market actors" include generic phrases, parent companies and adjacent-category brands. Passing that straight through names nonsense competitors to the person least able to judge it | Curate before display: filter by relationship classification, apply a visibility floor, let a site manager hide an actor. Never present the raw discovered list as "your competitors" |
-| Scraped data is probabilistic | Browser-simulated sessions against consumer chat interfaces. Numbers move for reasons unrelated to our content, and a contributor gets blamed | Show trends, not single-day values. Never present a day-over-day change as the result of an edit |
-| Page quota makes site-wide coverage impossible | 5 or 25 audited pages is meaningless for a site with thousands. Citations are uncapped, audits are not | Never build a feature on the audit quota. Wave 1 covers page scoring natively and without limit |
+| Scraped data is probabilistic | Browser-simulated sessions against consumer chat interfaces. Numbers move for reasons unrelated to our content, and a contributor gets blamed. **Eased 5 Oct 2026:** prompts run daily, so a trend is built from real daily points rather than inferred from weekly ones | Show trends, not single-day values. Never present a day-over-day change as the result of an edit. Daily data makes this rule easier to keep, not less necessary |
+| Page quota makes site-wide coverage impossible | 5 or 25 audited pages is meaningless for a site with thousands. Citations are uncapped, audits are not. **Reduced 5 Oct 2026:** brand and domain authority are per-domain reads that do not consume the quota at all; only Google and Bing indexation stay per URL | Never build a feature on the audit quota. Wave 1 covers page scoring natively and without limit. Confirm in the design session whether the per-URL indexation reads consume it |
 | Back-office CSP and iframe behaviour | Any embedded external view can fail silently in jContent, differently on Jahia Cloud | Render our own components against our own servlet. No `iframeUrl` in the critical path |
 | Two scores for one page | A BotRank score and a page-audit score that disagree destroys trust in both | One score, ours, computed on the draft. BotRank contributes citation facts, not a competing grade |
 | Untrusted third-party content in the UI | Engine responses and cited-source titles are text written by systems outside our control, rendered inside the authoring app | Escape and treat as data, never as markup or instructions. page-audit's server-side field whitelist is the pattern to copy |
-| GDPR and data flow | Their hosting is Azure EU and their agent runs on Azure OpenAI, which is favourable, but we would be sending customer site URLs to a subprocessor | Document the flow before any customer pilot. No ISO 27001 or SOC 2 is claimed on their site |
+| GDPR and data flow | **Grew 5 Oct 2026.** Their hosting is Azure EU and their agent runs on Azure OpenAI, which is favourable. But the commercial model they propose has Jahia subscribing at organisation level and creating one brand per end customer, so every customer's tracked questions and page URLs would live inside *our* organisation at a subprocessor. That is a larger position than sending them URLs | A DPA and a documented data flow become a precondition rather than paperwork. Settle retention, export and what happens to a brand when a customer leaves - or when Jahia does. No ISO 27001 or SOC 2 is claimed on their site |
+| Jahia becomes the reseller | **New 5 Oct 2026.** Their proposed model bills prompt execution, not API calls, which is favourable: we read freely and a customer's budget is knowable at configuration time. The cost driver is then markets x questions rather than pages, which is unlike how we price anything else, and Jahia carries the billing relationship, the support path and the exit question for every end customer | Settle the slot formula before pricing anything: is a slot a prompt, a prompt per market, or a prompt per market per LLM per day. Define exit for a customer and for us. We are their first API consumer and their price benchmark, which is leverage and responsibility at once |
 
 ---
 
@@ -600,6 +653,16 @@ BotRank's screen inventory and metric names were read from the running app at `a
 8 September 2026, on the account we have access to, across two brand tenants. Everything else
 about BotRank comes from their public site. **They publish no API reference, so no statement here
 about their endpoints, schemas, parameters or auth should be treated as a specification.**
+
+Everything dated **5 October 2026** comes from their CTO's written reply to ten questions we sent,
+ahead of a design session on architecture, their model against ours, our needs and authentication.
+It is a willing answer in an email, which is a better foundation than this file had before and
+still not a contract. Two statements from the 5 August call sit beside it and are worth holding
+together: their CEO described their own crawler as "un mini Ahrefs, Screaming Frog, plutot light"
+and said that for exhaustive coverage "vous etes obliges d'avoir un autre acteur comme Meteoria, ou
+comme Query, ou comme Profound" - while the CTO now offers us sentiment, themes and fan-outs, which
+is that same specialist territory. Having the data is not the same as having it at a specialist's
+breadth, so ask how the two compare rather than assuming either.
 
 One claim in the first draft, that Jahia had no llms.txt support, was wrong. The community
 `llms.txt manager` module (v1.0.0, August 2026, min 8.1.5.0, github.com/Jahia/llms) publishes and
