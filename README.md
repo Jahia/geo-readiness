@@ -282,4 +282,5 @@ say which, and on a multi-site box it is required rather than optional.
 ## Documentation
 
 [`docs/`](docs/README.md) — the check reference, the architecture, and the backlog.
+[`docs/drawer-guide.md`](docs/drawer-guide.md) and [`docs/dashboard-guide.md`](docs/dashboard-guide.md) — the two screens explained for content authors, in plain language.
 [`.agents/README.md`](.agents/README.md) — invariants and traps, read this before changing code.
