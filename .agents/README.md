@@ -473,3 +473,25 @@ server-side, so what the editor sees is the file that would actually be written.
 Wave 1 is complete. Wave 2 candidates, in the order they are worth doing: run the check across
 every site language rather than one at a time, and a site-level roll-up instead of one page at a
 time. The roll-up is the better presales artifact but needs crawl budgeting.
+
+## The vendor gate, if you are about to call BotRank
+
+Do not design a server-side call to BotRank yet, and do not add a driver for one. As of
+**5 October 2026** their only authentication is user-level OIDC and OAuth 2.0, including for the
+MCP. There is no machine-to-machine identity, so a module calling from a Jahia server cannot
+authenticate at all. Organisation-scoped API keys are offered and unbuilt, with no date.
+
+Three more facts worth knowing before designing anything against them, because each one has already
+sent a design the wrong way once:
+
+- **Locale is a property of a prompt, not a filter.** Five markets are five prompts, not one prompt
+  queried five ways. Anything modelled as "filter the results by market" is modelled wrong.
+- **Their page-audit quota is irrelevant to the two authority signals.** Brand and domain authority
+  are per-domain reads. Only Google and Bing indexation are per URL.
+- **Their deep links need a user session**, which an editor inside jContent does not have and will
+  not have under an organisation-key model. Assume we render rather than link out until that is
+  settled.
+
+When any of this changes, `docs/botrank-backlog.md` is where it is recorded, with dates. Everything
+in that file that touches their API is still an assumption rather than a specification: there is no
+published API reference to check it against.
