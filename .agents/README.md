@@ -476,10 +476,16 @@ time. The roll-up is the better presales artifact but needs crawl budgeting.
 
 ## The vendor gate, if you are about to call BotRank
 
-Do not design a server-side call to BotRank yet, and do not add a driver for one. As of
-**5 October 2026** their only authentication is user-level OIDC and OAuth 2.0, including for the
-MCP. There is no machine-to-machine identity, so a module calling from a Jahia server cannot
-authenticate at all. Organisation-scoped API keys are offered and unbuilt, with no date.
+As of **12 October 2026** BotRank has a public API in production behind a feature flag, with
+organisation-scoped API keys. The integration is server to server: a Jahia module holds the
+customer's key, syncs once a day (06:30 Paris time, after their night runs) and re-exposes the data
+through Jahia GraphQL. The browser never calls BotRank. Each customer has its own BotRank
+organisation and key; Jahia holds none on their behalf.
+
+Do not code against response shapes yet: the API is undocumented until test access arrives, and
+the routes in `docs/botrank-backlog.md` are announced, not called. The sync reads a domain's
+cited-pages list first, filters it by host (their domain is the registrable domain, a Jahia site
+is often a subdomain), then reads per-page detail only for cited pages.
 
 Three more facts worth knowing before designing anything against them, because each one has already
 sent a design the wrong way once:
@@ -488,10 +494,10 @@ sent a design the wrong way once:
   queried five ways. Anything modelled as "filter the results by market" is modelled wrong.
 - **Their page-audit quota is irrelevant to the two authority signals.** Brand and domain authority
   are per-domain reads. Only Google and Bing indexation are per URL.
-- **Their deep links need a user session**, which an editor inside jContent does not have and will
-  not have under an organisation-key model. Assume we render rather than link out until that is
-  settled.
+- **Their deep links need a user session.** Settled: anyone who opens BotRank uses their own
+  BotRank account, so a plain link is enough. Everything shown inside Jahia is rendered by us from
+  the synced data.
 
-When any of this changes, `docs/botrank-backlog.md` is where it is recorded, with dates. Everything
-in that file that touches their API is still an assumption rather than a specification: there is no
-published API reference to check it against.
+When any of this changes, `docs/botrank-backlog.md` is where it is recorded, with dates. Until
+their documentation arrives, everything in that file about the public API's routes is announced
+rather than specified.

@@ -12,6 +12,32 @@ vendor at all.
 
 ## Status of the partnership
 
+**Updated 12 October 2026: the public API exists.** After a design session with their CTO and a
+requirements document from us, BotRank has put a public API in production behind a feature flag.
+It has organisation-scoped API keys, a route that lists the projects a key can read, and the first
+two page reads: citations with their variation and per-engine split, and the prompts that cite a
+page. Test access and documentation are promised for the week of 12 October.
+
+What the design session and their reply settle:
+
+| | |
+|---|---|
+| **Authentication** | Server to server with an organisation API key. Jahia calls BotRank from its own server and re-exposes the data through Jahia GraphQL; the browser never calls BotRank. A front-end login popup was considered and dropped (CORS, on-premise customers) |
+| **Who holds the account** | Each Jahia customer has its own BotRank organisation, subscription and key. Jahia does not hold an organisation for its customers and does not resell capacity |
+| **Site and project** | The customer's administrator pastes the key into Jahia and picks the BotRank project of each tracked site. A project is BotRank's access boundary; not every site is tracked |
+| **Order** | The page screen (GEO-4) comes first. The site dashboard follows once it works |
+| **Shape** | A list route of a domain's cited pages, ordered by citations (rank, citations, variation, cursor), drives the sync; per-page detail routes are read only for cited pages: totals and engines, prompts, tags, history, co-cited pages. Lookup tolerates `www.` and a trailing slash |
+| **Domain** | BotRank's domain is the registrable domain (`blog.example.com` falls under `example.com`). A Jahia site is often a subdomain, so we filter the list by host and have asked for a `host` parameter |
+| **URL identity** | `?page=2` stays a distinct page; session parameters such as `msockid` are stripped. We asked for the full list of stripped parameters |
+| **History** | One point per day the page is cited, no zero days. We asked for the project's run days so we can fill zeros ourselves |
+| **Sync time** | Their prompts run at night. Our daily sync runs at 06:30 Paris time by default, after their runs |
+| **Page recommendations** | Deferred to their V2: a recommendation is generated text that may name a page, with no reliable link to its URL |
+| **Draft pages** | Out of scope: a draft is not public, so it cannot be cited |
+
+Still open with them: whether detail routes take a URL or a stable page id from the list, whether
+a URL lookup can tell "never cited" from "not cited in the period", and a timestamp for the last
+completed run.
+
 **Updated 5 October 2026, from their CTO's written answers to ten questions.** Before that reply,
 the only public information was thirteen MCP tool names in one article: no parameter names, no
 response fields, no auth mechanism, no rate limits.
@@ -23,31 +49,151 @@ What the reply settles, and what it does not:
 | **The data exists** | Sentiment, positive and negative themes, response excerpts tied to their prompt and their LLM, and query fan-outs at brand *and* prompt level all exist and feed their own screens. They are simply not on the public MCP. |
 | **Authority is cheaper than assumed** | Brand authority and domain authority are computed per domain, one value per site, and can be read globally **without consuming the page-audit quota**. Only Google and Bing indexation are per URL. |
 | **Refresh is faster than observed** | Prompts run daily, configurable per brand and per LLM. Pages every two days. The weekly rhythm we saw is their GEO *recommendations*, not the underlying data. |
-| **Locale is bought, not filtered** | Locale is a property of a prompt, not a query parameter. A market fixes geolocation and execution language, over 17 countries, so five markets consume five prompt slots. Each prompt then runs on N of 9 AI surfaces. |
+| **Locale is bought, not filtered** | Locale is a property of a prompt, not a query parameter. A market fixes geolocation and execution language, over 17 countries (the MCP schema lists 18 region codes), so five markets consume five prompt slots. Each prompt then runs on N of 9 AI surfaces. |
 | **No rate limits** | None today, and a nightly sync matches their data rhythm anyway. |
 | **Three things do not exist** | A documented public API, machine-to-machine credentials, and deep links to a cited source. All three are offered willingly. **None has a date.** |
 
-**The gate is now one named thing rather than a vague one.** Their only authentication today is
-user-level OIDC and OAuth 2.0, including for the MCP. There is no server identity, so a Jahia
-module cannot authenticate at all. Organisation-scoped API keys are possible on their side and not
-built. Everything in Wave 2 waits on that single item, which is at least something we can ask for a
-date on.
+**The gate was one named thing.** *(Lifted 12 October 2026: organisation keys are in production
+behind a feature flag.)* Their only authentication was user-level OIDC and OAuth 2.0, including
+for the MCP. There was no server identity, so a Jahia module could not authenticate at all.
 
-**Two shapes to design around.** Their entity model is *organisation → brands/projects*, and the
-commercial model they propose is that Jahia subscribes at organisation level and creates one brand
-per end customer, with org credentials reading all of them. That makes Jahia the account holder,
-which is a contract and data-protection position rather than a technical one - see the risk table.
+**Two shapes to design around.** Their entity model is *organisation → brands/projects*. The
+commercial model first proposed had Jahia subscribe at organisation level and create one brand per
+end customer. *(Superseded in the design session: each customer holds its own organisation, see
+above.)*
 
-**An unresolved collision, raised by them.** Org-level API keys and their deep links do not fit
-together: the links require *the user* to be authenticated on the project, and a content editor in
-jContent has no BotRank identity. Either editors get provisioned accounts, or we render everything
-ourselves and never link out, or they produce a signed link that carries org authority with no user
-session. The third is what we should propose.
+**A collision, raised by them.** Org-level API keys and their deep links do not fit together: the
+links require *the user* to be authenticated on the project. *(Settled in the design session:
+anyone who opens BotRank uses their own BotRank account, so a plain link is enough; the data shown
+in Jahia comes through the organisation key. No signed link is needed.)*
 
-**Nothing above is a specification.** A willing answer in an email is not a contract, and no
-statement here has been verified against an API, because there is not one to verify against.
+**What is verified now, and what is not.** The public API is not documented yet, so the response
+shapes of its first routes are still unknown to us. The public MCP can be read directly, and the
+section below records what it served on 5 October 2026, before the API existed. Its tool schemas
+give **inputs only**: no tool declares an output schema, so every response shape below was read
+off real responses, not off a specification. Treat those shapes as observed on 5 October 2026,
+unversioned, and liable to change without notice.
 
 That is why the waves are ordered the way they are. Wave 1 depends on nobody.
+
+## What the public MCP actually serves
+
+Read on 5 October 2026 by calling every tool once, read-only, on one luxury-goods brand tenant
+reached through a user's OAuth session. Nothing was written. The server exposes **21 tools, not
+13**: the thirteen this file was written from, plus eight added since (`list-tasks` and seven
+shopping-product tools). `get-recommendations`, as this file used to call it, does not exist. The
+tool is `list-recommendations`.
+
+### Common inputs
+
+Every tool but `list-brands` takes `brandId` (integer, from `list-brands`). Most analytic tools
+also take the same filter block:
+
+| Input | Values |
+|---|---|
+| `time` | `last_7_days`, `last_14_days`, `last_30_days`, `all_time`. Default `last_30_days` |
+| `startDate` + `endDate` | `YYYY-MM-DD`, both or neither, never with `time`. No timezone is stated |
+| `llms[]` | `ChatGpt`, `Perplexity`, `Gemini`, `Mistral`, `AiOverview`, `Grok`, `Copilot`, `AiMode`, `Claude` |
+| `regions[]` | `fr`, `de`, `it`, `es`, `nl`, `be`, `ch`, `dk`, `se`, `pl`, `gb`, `us`, `ca`, `br`, `ae`, `jp`, `in`, `dz`. **18 codes**, not the 17 markets stated by email |
+| `tagIds[]` + `tagMatchMode` | prompt tag ids, `any` (default) or `all` |
+
+`get-prompt-responses` takes only the time filter. `get-last-prompt-responses`,
+`get-product-details`, `list-recommendations` and `list-tasks` take none of it.
+
+### The thirteen
+
+| Tool | Specific inputs | Response, as observed | Paging |
+|---|---|---|---|
+| `list-brands` | none | bare array of `{brandId, displayName}` | none |
+| `get-brand-visibility` | filters | `{visibilityPercent, trending, history: [{date, score}]}` | none |
+| `get-entities-visibility-history` | `entityType`, filters | `{data: {xAxis: [date], series: [{name, isMyBrand, values}]}}`. Names only, no entity id | none |
+| `list-entities` | `entityRelation`, `entityType`, `take` (default 50), filters | array of `{id, position, name, type, relationToBrand, visibilityPercent, visibilityTrend, totalMentions, shareOfVoice, shareOfVoiceVariation, mentionedByLLMs}` | `take` only, ranked |
+| `list-prompts` | `text`, filters | array of `{promptId, content, market, visibilityPercent, visibilityTrend, averagePosition, volumeIndicator, tags: [{id, name}]}` | none |
+| `get-prompt-visibility-history` | `promptId`, filters | `{xAxis, series: [{name, isMyBrand, values}]}`: the top entities on that prompt, brands and products mixed, names only | none |
+| `get-prompt-responses` | `promptId`, time, `limit` (1-100, default 20), `cursor` | `{items: [{llm, response, sources: [{position, url, name}], entities: [{position, name, type, relationToBrand}]}], cursor}` | opaque cursor |
+| `get-last-prompt-responses` | `promptId` | bare array, one item per engine, same item shape | none |
+| `list-sources` | `types[]` (12 site types), `take` (default 50), filters | array of `{domainName, type, citationCount, citationCountVariation, shareOfCitations, shareOfCitationsVariation, urlCount, llms}` | `take` only, ranked |
+| `list-cited-pages` | `domain`, `siteTypes[]`, `take` (default 50), filters | array of `{domainName, pageUrl, pageTitle, citationCount, citationCountVariation, llms, mention: {status, lastAnalysedAt}}` | `take` only, ranked |
+| `get-site-citation-share-history` | `domainName` (must be a cited source), filters | `{domainName, xAxis, values, citationTotals}`. An uncited domain is an error | none |
+| `list-observed-products` | `ownership`, `search`, `sortBy`, `sortOrder`, `take` (default 30, max 100), `cursor`, filters | `{observationBase: {observedAnswers, carouselTriggeringPrompts}, minimumSample, nextCursor, products: [{id, name, imageUrl, appearances, llms, presenceRate, winRate, averageRank, merchants, distinctMerchants, priceRange: {lowest, highest, currency, pricedOffers}, isOwnProduct, presenceRateVariation, winRateVariation, averageRankVariation}]}` | positional cursor |
+| `list-recommendations` | none | `{recommendations: [{id, title, description, motive, category, priority, market}], truncated}` | bounded, `truncated` flag |
+
+### The eight added since
+
+| Tool | Specific inputs | Response, as observed |
+|---|---|---|
+| `list-tasks` | `category`, `priority`, `status[]`, `markets[]`, `search` | `{tasks: [{id, title, description, category, priority, status, market, createdAt, updatedAt}], truncated}` |
+| `get-product-details` | `productId` | `{id, name, imageUrl, isOwnProduct}` |
+| `get-product-readings` | `productId`, filters | `{appearances, presenceRate, winRate, averageRank, observationBase, minimumSample, appearancesVariation, presenceRateVariation, winRateVariation, averageRankVariation}`. Below `minimumSample` a reading comes back absent, not zero |
+| `list-co-featured-products` | `productId`, filters | `{coFeaturedProducts: [{productId, name, imageUrl, isOwnProduct, sharedCarousels, coFeatureRate, averageSharedRank}]}` |
+| `list-product-merchants` | `productId`, filters | `{observedOffers, unattributedOffers, merchants: [{merchantId, name, offers, share, priceRanges: [{currency, lowest, highest}]}]}` |
+| `list-product-prompts` | `productId`, filters | `{prompts: [{promptId, content, market, llms, appearances, observedAnswers, presenceRate}]}` |
+| `list-product-search-terms` | `productId`, filters | `{searchingAnswers, terms: [{position, term, termCount, termShare}]}` |
+| `list-product-searches` | `productId`, filters | `{searches: [{position, search, searchCount, promptReach, llms}]}` |
+
+Errors come back as a plain message string with no code, for example "The site is not part of the
+cited sources of the brand". No tool name, response or header carries a version.
+
+### Screen A, field by field
+
+Screen A is the page citation panel in the meeting pack (GEO-4, GEO-7, GEO-14 on one node).
+**Of its fifteen fields, five are served, four come in a different shape, and six are missing.**
+
+| Field | Status | What the MCP actually gives |
+|---|---|---|
+| Citation count for an exact URL | different shape | `list-cited-pages` filters by `domain` only, and the domain matches every subdomain (`fr.`, `eu.`, `us.` all came back under the apex). There is no URL parameter: fetch the domain's whole list and match locally. A `take` above the domain's `urlCount` from `list-sources` returned the full set in one call |
+| Previous-window count | different shape | `citationCountVariation` is a delta against the comparable preceding period, not a count. Previous = `citationCount - citationCountVariation` |
+| "Never cited" vs "zero this period" | missing | Zero rows are never returned, so a URL missing from the list is either never cited or not cited in the window. `citationCountVariation: null` (most rows on the brand's own domain) looks like "no record in the previous window". That is inferred, not documented |
+| Engines citing the page | served | `llms[]` on the page row |
+| Prompts this URL is cited for | missing | No URL-to-prompt join anywhere. The only route is `get-prompt-responses` for every prompt, scanning `sources[].url`: prompts x pages of calls per sync |
+| Prompt id, text, market | served | `list-prompts`: `promptId`, `content`, `market`, plus `volumeIndicator`, `averagePosition` and `tags` |
+| Date of the run | missing | Response items carry no date. Dates exist only as day-level `xAxis` points on the history tools. The `get-prompt-responses` cursor happens to encode a start time, but it is opaque and must not be parsed |
+| Verbatim excerpts | different shape | The whole answer per engine, as markdown with inline links, not the sentences that name us. Extracting the excerpt is our job, and the text stays untrusted |
+| Excerpt engine | served | `llm` on each response item |
+| Sentiment label | missing | Not a field on any tool. Recommendation `motive` text quotes sentiment themes with counts, so the data exists upstream and is not exposed |
+| Source URLs the answer cited | served | `sources: [{position, url, name}]`. Tracking parameters such as `utm_source` are stripped compared with the links inside the answer text. Positions have gaps |
+| Each source flagged ours or third-party | missing, cheap | No flag. We compute it by matching the host against the site's own domains |
+| Fan-outs for those prompts | different shape | They exist verbatim (`list-product-searches`: `search`, `searchCount`, `promptReach`, `llms`; `list-product-search-terms` gives them as tokens), but only for answers whose shopping carousel showed a given product. They are not per prompt or per URL, and a search carries no prompt id. **For a page that is not a product, missing** |
+| Site context for the page | served | Rank = the row's position in its domain's `list-cited-pages` (ordered by `citationCount`, no rank field). Domain scale from `list-sources` (`citationCount`, `shareOfCitations`, `urlCount`), and its trend from `get-site-citation-share-history` with the `citationTotals` behind each ratio |
+| Run timestamp for "as of" | missing | As for the run date: the last `xAxis` day is the best proxy. `mention.lastAnalysedAt` dates their analysis of the page, not a prompt run, and was null on every own-domain row |
+
+**The two "ask them" items, partly answered.** URL normalisation: query strings are kept (`?page=2`
+and a session-style `?msockid=` parameter each made a separate row from the bare URL), each locale
+host is its own row, and `utm_*` is stripped in sources. Case and trailing slash were not observed.
+So we normalise both sides ourselves, and one page's citations can be split over several rows.
+Whether a `promptId` survives an edit to the prompt text is not visible. Their own recommendations
+propose "replacing" a prompt's wording, so ask.
+
+**What this means for the session.** Screen A is buildable today, apart from authentication, as a
+URL count with a delta, its engines, its site context, and full answers we excerpt ourselves. The
+three fields that make it editorially useful are the ones to ask for by name: **a URL-to-prompt
+join, a run timestamp on each response, and prompt-level fan-outs.** Sentiment on the response
+item is the fourth.
+
+### Other things the responses settle
+
+- **Cadence is not daily on the tenant read.** Over 30 days, brand visibility and domain citation
+  share had a point every three to four days (nine points) and one prompt's history was weekly (four
+  points). `citationTotals` swung between 284 and 1,362 from one point to the next, and the
+  domain's share between 0 and 0.165, which suggests consecutive points cover different engine sets.
+  Ask, and keep the "trends, never single days" rule.
+- **Engine coverage is observed, not declared.** No field says which of the nine surfaces a brand
+  tracks. Only the `llms` arrays show what was seen (four of nine on this tenant).
+- **A market has no grouping key.** The same question in two markets is two `promptId`s. Their
+  `content` is identical when the markets share a language and different when it is translated, so
+  grouping on text works only within one language (Screen B, GEO-13).
+- **Competitors are not on the prompt record.** Per prompt they come from the
+  `get-prompt-visibility-history` series (names only, products mixed in with brands) or from each
+  response's `entities` (`relationToBrand`: `owned`, `competitor`, `undefined`). Only `list-entities`
+  carries a stable `id` (Screen C, GEO-6).
+- **No intent class.** The volume band is `volumeIndicator` (`low` observed). Intent is not exposed.
+- **No authority values.** Brand and domain authority are not on any tool.
+- **Their task board is readable.** `list-tasks` returns their board with its column and
+  timestamps, so GEO-8 can show where our local completion and theirs diverge.
+- **Incremental sync is impossible as served.** No tool takes a changed-since cursor. The only
+  cursors are on `get-prompt-responses` and `list-observed-products`.
+- **The auth gate is unchanged.** The MCP authenticates a user. Nothing here gives a module a
+  server identity.
 
 ## The one sentence that explains the whole analysis
 
@@ -274,10 +420,10 @@ actually works on that host. Verified on 8.2.3.2. See `README.md` for the full l
 
 # Wave 2, needs the citation data
 
-Gate, narrowed on 5 October 2026: **organisation-scoped API keys.** Their data exists and their
-CTO is willing to expose it on a dedicated API, but there is no server identity to authenticate
-with, so none of this can be built yet. The old gate - "a real API contract" - was a vaguer thing
-to wait on; this one has a name and can carry a date.
+Gate, 12 October 2026: **test access to the public API.** Organisation keys and the first page
+reads are in production behind a feature flag; test access and documentation are promised for the
+week of 12 October. GEO-4 is first, built against those routes. The gate on 5 October was the keys
+themselves.
 
 ## GEO-4 · Is this page one that AI engines quote?
 
@@ -299,9 +445,15 @@ is earning its keep in AI answers.
 - A page with no citation record says "not cited yet", never "0".
 - Works for the published URL. States clearly that a draft has no data yet.
 - Shows where this page stands against the site's other cited pages, so "3 citations" has a scale.
+- Shows the themes the page answers: the tags of the prompts that cite it, as BotRank finds them.
+  The author never declares them, since the point is to discover how engines read the page.
+- Shows the competing pages cited on the same prompts, and which ones come before ours.
 
-**Data** `list-cited-pages`, `get-site-citation-share-history`. **Surface** page drawer.
-**Effort** M.
+**Data** public API (12 October 2026): the list of a domain's cited pages, filtered by host on our
+side, then per-page routes for totals and engines, prompts, tags, history and co-cited pages, read
+only for cited pages. The daily sync runs at 06:30 Paris time, after their night runs. Totals,
+engines and prompts are live behind a flag; tags, history and co-cited pages are announced.
+**Surface** page drawer. **Effort** M.
 
 ## GEO-5 · Tell me when a page stops being cited
 
@@ -326,7 +478,9 @@ opinion.
 
 **Acceptance**
 - Table of prompt by engine by who is cited, filtered to "competitor yes, us no". The competing
-  brands are already a field on the prompt record, so no computation is needed.
+  brands are **not** a field on the prompt record (verified 5 October 2026): they come from the
+  prompt's visibility-history series or from each response's `entities`, by name, so a join to
+  `list-entities` ids is needed before anything reaches a contributor.
 - Sorted by the prompt's volume band (LOW, MEDIUM and so on) and intent class. Not by an absolute
   search volume, because that number is not exposed.
 - Each row offers "create content for this", creating a real node with the question as a working
@@ -404,7 +558,9 @@ at intent.
 - Never auto-inserts the phrases into content. It suggests, the editor writes.
 
 **Data** query fan-outs per prompt. **Confirmed to exist on 5 October 2026**, at brand level and at
-prompt level, feeding their own screens; the gap is exposure, not capability. This was the one
+prompt level, feeding their own screens; the gap is exposure, not capability. On the MCP they are exposed only
+per shopping product (`list-product-searches`, `list-product-search-terms`), not per prompt, so
+for a non-product page this story still waits on the API. This was the one
 story whose data we had no evidence for at all, so it moves from speculative to ready-on-contract
 and keeps the best value-to-effort ratio in this file. **Surface** page drawer, beside SEO assist.
 **Effort** S, high perceived value.
@@ -455,7 +611,11 @@ against the nodes they concern, **so that** I do not maintain my editorial work 
 - Completion is tracked locally. The MCP is read-only and their board also accepts user-authored
   tasks, so the two will diverge in both directions. Say so in the UI rather than implying a sync.
 
-**Data** `get-recommendations`. **Surface** accordion and node action. **Effort** M.
+**Data** `list-recommendations`, and `list-tasks` for their board's own completion state. **Surface** accordion and node action. **Effort** M.
+
+**12 October 2026:** recommendations for a page are in BotRank's V2. A recommendation is generated
+text that may name a page, with no reliable link to its URL, so they cannot expose it per page yet.
+Until they do, resolving a recommendation to a node is ours, and unreliable.
 
 ## GEO-9 · Warn me before I publish something that will cost citations
 
@@ -468,7 +628,8 @@ AI engines currently cite, **so that** I do not quietly break the passage that w
 - Never blocks publication. It informs only.
 - Absent entirely for pages with no citation record.
 
-**Data** cached `list-cited-pages`. **Surface** `publishMenu` action. **Effort** S.
+**Data** the cached list of cited pages from the daily sync. **Surface** `publishMenu` action.
+**Effort** S.
 
 ## GEO-10 · Did my rewrite actually work?
 
@@ -565,6 +726,20 @@ front.
 
 ## For BotRank
 
+**Open on 12 October 2026**, asked in reply to their API proposal:
+
+- A timestamp for the project's last completed run, so the sync knows it read complete data.
+- A `host` parameter on the cited-pages list, since a Jahia site is often a subdomain.
+- The project's run days over a period, to tell "not cited that day" from "no run that day".
+- The full list of URL parameters they strip (`msockid` is one; `utm_*`, `gclid`, `fbclid`?).
+- Whether detail routes take a URL or a stable page id returned by the list.
+- Whether a URL lookup can tell "never cited" from "not cited in the period".
+
+Settled since the list below was sent: 1 (a dedicated public API, separate from the MCP), 4
+(organisation API key, server to server), 5 (prompts run daily, at night), 6 (no rate limits), 10
+(users open BotRank with their own account) and 13 (a Jahia site maps to a project, chosen by the
+customer's administrator).
+
 These were sent by email. Answers gate Wave 2.
 
 1. Is there a REST API distinct from the MCP server, or is "API & MCP" one product? Pricing lists
@@ -609,8 +784,9 @@ These were sent by email. Answers gate Wave 2.
    UI, licensing, support commitments, upgrade guarantees, and whether a partner's API may sit on
    a critical path. Wave 1 is deliberately identical under both tracks, so the decision can stay
    open a while longer, but the two diverge right after it.
-2. **Who holds the credential?** One Jahia-owned account for demos is a different module from a
-   customer bringing their own key, which is different again from Jahia reselling capacity.
+2. ~~**Who holds the credential?**~~ **Settled October 2026:** each customer brings its own
+   organisation key. Jahia does not resell capacity. A Jahia-owned organisation is still needed for
+   demos and tests.
 3. **Does the back-office CSP allow what we need?** Verify framing and outbound behaviour on a real
    8.2 instance and on Jahia Cloud, including whether Cloud filters egress to a partner API. This
    is the classic late surprise.
@@ -630,7 +806,7 @@ In rough order of how likely they are to bite.
 
 | Risk | Shape | What reduces it |
 |---|---|---|
-| ~~The API contract never materializes~~ **Narrowed 5 Oct 2026: no server identity** | The data half of this risk is retired: their CTO confirms the data exists and offers a dedicated API with us as first consumer. What remains is that their only auth is user-level OIDC/OAuth 2.0, so a module cannot authenticate at all. Org-scoped API keys are offered and unbuilt, with no date | Wave 1 ships without them. Keep the thin internal abstraction so a second GEO vendor is a driver swap. Ask for a date on the keys specifically, not on "the API" |
+| ~~The API contract never materializes~~ **Narrowed 12 Oct 2026: an undocumented, flagged API** | Organisation keys and the first page reads are in production behind a feature flag (12 Oct 2026). What remains is that the API is undocumented, unversioned in writing, and shaped by one partner's roadmap | Keep the thin internal abstraction so a second GEO vendor is a driver swap. Get versioning and deprecation in writing before a customer depends on it |
 | Vendor lock-in of the UI | If BotRank's vocabulary leaks into our node types and GraphQL schema, the panel becomes theirs, not ours | Model the domain in Jahia's terms (cited page, tracked question, engine) and keep their field names inside the driver |
 | Machine-extracted entities reach the contributor unfiltered | Their discovered "market actors" include generic phrases, parent companies and adjacent-category brands. Passing that straight through names nonsense competitors to the person least able to judge it | Curate before display: filter by relationship classification, apply a visibility floor, let a site manager hide an actor. Never present the raw discovered list as "your competitors" |
 | Scraped data is probabilistic | Browser-simulated sessions against consumer chat interfaces. Numbers move for reasons unrelated to our content, and a contributor gets blamed. **Eased 5 Oct 2026:** prompts run daily, so a trend is built from real daily points rather than inferred from weekly ones | Show trends, not single-day values. Never present a day-over-day change as the result of an edit. Daily data makes this rule easier to keep, not less necessary |
@@ -638,8 +814,8 @@ In rough order of how likely they are to bite.
 | Back-office CSP and iframe behaviour | Any embedded external view can fail silently in jContent, differently on Jahia Cloud | Render our own components against our own servlet. No `iframeUrl` in the critical path |
 | Two scores for one page | A BotRank score and a page-audit score that disagree destroys trust in both | One score, ours, computed on the draft. BotRank contributes citation facts, not a competing grade |
 | Untrusted third-party content in the UI | Engine responses and cited-source titles are text written by systems outside our control, rendered inside the authoring app | Escape and treat as data, never as markup or instructions. page-audit's server-side field whitelist is the pattern to copy |
-| GDPR and data flow | **Grew 5 Oct 2026.** Their hosting is Azure EU and their agent runs on Azure OpenAI, which is favourable. But the commercial model they propose has Jahia subscribing at organisation level and creating one brand per end customer, so every customer's tracked questions and page URLs would live inside *our* organisation at a subprocessor. That is a larger position than sending them URLs | A DPA and a documented data flow become a precondition rather than paperwork. Settle retention, export and what happens to a brand when a customer leaves - or when Jahia does. No ISO 27001 or SOC 2 is claimed on their site |
-| Jahia becomes the reseller | **New 5 Oct 2026.** Their proposed model bills prompt execution, not API calls, which is favourable: we read freely and a customer's budget is knowable at configuration time. The cost driver is then markets x questions rather than pages, which is unlike how we price anything else, and Jahia carries the billing relationship, the support path and the exit question for every end customer | Settle the slot formula before pricing anything: is a slot a prompt, a prompt per market, or a prompt per market per LLM per day. Define exit for a customer and for us. We are their first API consumer and their price benchmark, which is leverage and responsibility at once |
+| GDPR and data flow | **Shrank October 2026:** each customer holds its own BotRank organisation, so their data lives in their own account, not in ours. Jahia's module only reads it with the customer's key. **Grew 5 Oct 2026.** Their hosting is Azure EU and their agent runs on Azure OpenAI, which is favourable. But the commercial model they propose has Jahia subscribing at organisation level and creating one brand per end customer, so every customer's tracked questions and page URLs would live inside *our* organisation at a subprocessor. That is a larger position than sending them URLs | A DPA and a documented data flow become a precondition rather than paperwork. Settle retention, export and what happens to a brand when a customer leaves - or when Jahia does. No ISO 27001 or SOC 2 is claimed on their site |
+| ~~Jahia becomes the reseller~~ **Retired October 2026** | Each customer subscribes to BotRank directly, at the level of its own organisation. Jahia carries no billing relationship. Kept for the record: **New 5 Oct 2026.** Their proposed model bills prompt execution, not API calls, which is favourable: we read freely and a customer's budget is knowable at configuration time. The cost driver is then markets x questions rather than pages, which is unlike how we price anything else, and Jahia carries the billing relationship, the support path and the exit question for every end customer | Settle the slot formula before pricing anything: is a slot a prompt, a prompt per market, or a prompt per market per LLM per day. Define exit for a customer and for us. We are their first API consumer and their price benchmark, which is leverage and responsibility at once |
 
 ---
 
@@ -651,8 +827,11 @@ Academy documentation and were not exercised.
 
 BotRank's screen inventory and metric names were read from the running app at `app.botrank.ai` on
 8 September 2026, on the account we have access to, across two brand tenants. Everything else
-about BotRank comes from their public site. **They publish no API reference, so no statement here
-about their endpoints, schemas, parameters or auth should be treated as a specification.**
+about BotRank comes from their public site. They publish no API reference. The one exception
+is the public MCP: its input schemas and the response shapes in "What the public MCP actually
+serves" were read off the live server on 5 October 2026. They are observations of an unversioned
+surface, not a contract, and the response shapes come from responses because no tool declares an
+output schema.
 
 Everything dated **5 October 2026** comes from their CTO's written reply to ten questions we sent,
 ahead of a design session on architecture, their model against ours, our needs and authentication.
@@ -663,6 +842,11 @@ and said that for exhaustive coverage "vous etes obliges d'avoir un autre acteur
 comme Query, ou comme Profound" - while the CTO now offers us sentiment, themes and fan-outs, which
 is that same specialist territory. Having the data is not the same as having it at a specialist's
 breadth, so ask how the two compare rather than assuming either.
+
+Everything dated **12 October 2026** comes from a design session with their CTO, our requirements
+document that followed it, and his written reply. The routes it describes are announced or behind
+a feature flag; none has been called by us yet, and their response shapes are unknown until the
+documentation arrives.
 
 One claim in the first draft, that Jahia had no llms.txt support, was wrong. The community
 `llms.txt manager` module (v1.0.0, August 2026, min 8.1.5.0, github.com/Jahia/llms) publishes and
