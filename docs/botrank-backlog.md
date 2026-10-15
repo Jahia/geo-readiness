@@ -41,6 +41,35 @@ ignored; scheme, subdomain, path case and any other parameter make a different p
 Not in v1: a changed-since parameter, published rate limits, a written deprecation policy, and UTC
 timestamps with an explicit day, which their CTO announced for later.
 
+**Tested on 15 October 2026.** All eight routes behave as their OpenAPI document says, over about 75
+read-only calls with our test key. The key sees one project. Our demo site is never cited in it, so
+the tests ran on the real sites its prompts cite.
+
+| Check | Result |
+|---|---|
+| Key, projects, freshness | As specified, about 0.1 s a call |
+| Pages list pagination | Walking the cursor returns the same 44 pages, in the same order, as one call. Ranks are contiguous and stable between calls, ties included |
+| `host` | Isolates a subdomain (`fr.` from `en.wikipedia.org`), recomputes ranks within it (2 on the domain, 1 on the host), covers `www.`, returns an empty list for a host outside the domain |
+| Page detail consistency | 31 citations in `citation-total`, the same sum over `citation-history` and over `prompts` |
+| URL variants | Same page: `www.`, trailing slash, tracking parameters, anchor, host case. Different page: `http://`, path case, `?page=2` |
+| Never-cited page | `all_time` total 0, empty `aiSurfaces`, zero days on run days, no prompts |
+| Errors | Every documented problem type tried comes back as `application/problem+json` with its `type` and a readable `detail`. `public-api-not-enabled` and `subscription-required` were not reachable |
+
+Undocumented behaviour found, raised with them:
+
+- **A variation against a period with no run.** Over 7 days a page shows `+14`, while no prompt ran
+  in the previous 7 days. A contributor would read growth that was never measured. Until it is
+  `null` on their side, the panel must not show a variation without checking that the previous
+  window had runs (the project history tells: run days are the days it returns).
+- **A variation that is `null`** over 14 days, apparently because the previous window starts before
+  the project's history. Sensible, but not written down.
+- **`aiSurface` values** arrive lowercase (`chatgpt`, `aioverview`, `copilot`, `gemini`, `claude`) with
+  no enum in the spec. The MCP spells the same surfaces `ChatGpt`, `AiOverview`. We need the list
+  to label them.
+- **Headers.** No `Cache-Control` and no rate-limit headers. An `ETag` is sent; whether conditional
+  requests are honoured is untested. CORS is `*`, which matters to us only as a reason never to call
+  from the browser.
+
 **Updated 12 October 2026: the public API exists.** After a design session with their CTO and a
 requirements document from us, BotRank has put a public API in production behind a feature flag.
 It has organisation-scoped API keys, a route that lists the projects a key can read, and the first
@@ -773,6 +802,9 @@ front.
 - UTC timestamps and an explicit day, announced by them for later.
 - A written deprecation policy for `/public/v1`, and published rate limits.
 - A changed-since parameter, so the daily sync can skip pages that did not move.
+- `null` for a variation whose previous period had no run, and the variation rules written down.
+- The list of `aiSurface` values.
+- Whether the `ETag` supports conditional requests.
 
 The six questions asked on 12 October were all answered on 13 October: a project-level freshness
 read instead of a run end, a `host` parameter, history with zeros on run days, the published list of
