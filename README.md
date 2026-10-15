@@ -200,6 +200,11 @@ written is exactly the text on screen, so hand edits made before applying surviv
 Requires Java 17 and Maven 3.6+. Node 22 and Yarn are downloaded by the build itself, so nothing
 else needs installing. `yarn.lock` is committed and must stay committed.
 
+**jContent 3.7 or later.** On jContent 3.5.0 (a Jahia Cloud instance, 15 October 2026) the site
+dashboard under Additional > SEO > GEO readiness rendered an empty panel, while the page drawer
+worked; after an upgrade to 3.7.1 the dashboard showed again. The cause was not isolated, so
+`jahia-depends` does not pin a jContent version yet: check it before deploying.
+
 The module declares `jcontent`, `robots` and `llms` as module dependencies: jcontent hosts the UI,
 and the other two own the node types the site-files editor writes. Jahia holds the module back
 until all three are started rather than starting it and failing at the first write.
