@@ -78,6 +78,7 @@ JavaScript-only page is still caught, by the word-count check.
 | `/geo-readiness/site-scan` | One site | Only the scan record |
 | `/geo-readiness/site-files` | One site | **Yes**, robots.txt and llms.txt |
 | `/geo-readiness/report` | One site | Only the stored report |
+| `/geo-readiness/citations` | One page (GET), one site (POST) | Settings, mappings and the sync record |
 
 All four: authenticated callers only, `application/json` required so a cross-site form post cannot
 reach them, per-user rate limiting on the expensive actions, and generic errors that leak no
@@ -115,6 +116,23 @@ never only in Quartz.
 A run is owned: the store records the account that saved the schedule, and each run asks again
 whether that account still holds the permission. A trigger nobody is entitled to removes itself.
 
+### `botrank/`
+
+The BotRank connector (GEO-4). BotRank's public API v1 is read server to server with the customer's
+organisation key; the browser never calls BotRank, and editors never cause a call.
+
+| Class | Does |
+|---|---|
+| `BotRankConnection` | One organisation, from one factory configuration file `org.jahia.se.modules.georeadiness.botrank-<id>.cfg` (`configurationPolicy = REQUIRE`). The id comes from the file name. A file without a key registers with a `problem` and is never used. |
+| `BotRankConnections` | Every connection, bound and unbound by DS; `forSite` honours a connection's `sites` list with no fallback. |
+| `BotRankClient` | The eight read routes on `java.net.http`: bearer key, `Project-Id`, explicit Paris days, cursor walk bounded at 50 pages, no redirects. RFC 9457 problems become a `BotRankException` that carries the type and never the key. |
+| `CitedUrls` | BotRank's page identity: `www.`, trailing slash, anchor, its published tracking parameters and host case fold away; scheme, subdomain, path case and other parameters do not. |
+| `PageResolver` | A cited URL to `jcrPath@language`: manual mappings, then published URLs (`PublishedMap`), every vanity URL in live, then `/sites/...` paths. A cited URL with a surviving query resolves through a mapping only. |
+| `CitationSync` | One run: freshness, the 30-day and all-time lists, resolution, the details of recently cited pages, and the variation guard (a variation is dropped when the previous window had no run day). Sequential calls. |
+| `CitationStore` | Settings, run record and one node per cited page, under `geo-readiness/botrank`. |
+| `CitationScheduler`, `CitationSyncJob`, `CitationLifecycle` | A daily cron trigger per site in `Europe/Paris`, one-shot triggers for sync now and retries, restored from the store when the bundle starts and removed when it stops, on the processing server only. Each run re-checks that the user who saved the settings still holds `site-admin`. |
+| `CitationsAccess` | Who may do what: a read of the page for the drawer, `site-admin` for the settings, the module enabled on the site for both. |
+
 ### `util/`
 
 | File | Role |
@@ -139,6 +157,12 @@ page of a 50,000 page site across three languages would be about 12 MB against 2
 failures alone. The dashboard's four questions — overall score, score by section, worst pages,
 movement since the last run — are all answerable from the smaller shape. The previous aggregate is
 kept, which is the whole of "movement".
+
+**BotRank citations** live under `geo-readiness/botrank`: the settings (`brConnection`,
+`brProject`, `brHosts`, `brEnabled`, `brTime`, `brOwner`, `brMappings`), the record of the last sync
+and a `pages` child replaced as a whole by every sync, with one node per cited page named by the
+SHA-1 of `jcrPath@language`. A page absent from it has never been cited. Text that comes from BotRank
+is bounded in length and rendered as text.
 
 ## The write path
 

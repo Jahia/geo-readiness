@@ -166,6 +166,11 @@ the same one rather than trusting the screen to hide itself. An editor without i
 and no robots.txt or llms.txt editor. The page drawer asks less: it opens for anyone who can read
 that page in the editing workspace, which is anyone who can select it in jContent.
 
+The **AI citations (BotRank)** entry of Site Settings requires **site-admin** on the site, on the
+route and on every call behind it: binding a site to a BotRank connection spends the customer's
+organisation key, which the server adds to every call. The drawer's AI citations tab only needs a
+read of the page.
+
 A scan's optional scope has to name a node inside the site it was started from, and it is resolved
 before it is compared, so a relative path cannot leave the site it came from.
 
@@ -248,6 +253,33 @@ back to `http://localhost:8080` and fetches that. On a box serving one site that
 On a box serving several it is the *default* site, so the check reports another site's pages and
 robots.txt as if they were yours — quietly, because the fetch succeeds. `PUBLIC_BASE_URL` is how you
 say which, and on a multi-site box it is required rather than optional.
+
+### BotRank connections
+
+AI citations come from [BotRank](https://www.botrank.ai/)'s public API v1. Each BotRank organisation
+this Jahia may read is one file, `digital-factory-data/karaf/etc/org.jahia.se.modules.georeadiness.botrank-<id>.cfg`,
+created by a server administrator; `<id>` is what site administrators pick in Site Settings. No file
+ships with the module, because a file is a credential.
+
+```properties
+# BotRank organisation of the customer
+label = Acme (BotRank)
+apiKey = brk_...
+# Optional: the site keys allowed to use this connection. Blank allows every site.
+sites = acme-fr,acme-com
+# Optional: the API base, https://api.botrank.ai/public/v1 by default.
+baseUrl =
+```
+
+- The key is created by an owner of the BotRank organisation, under Organisation, Integrations, API
+  keys. It is never logged and never sent to the browser; a connection without one is listed with
+  its problem and never used.
+- A site restricted out of a connection does not see it and cannot use it, with no fallback.
+- The daily sync runs at the time saved for the site (06:30 Paris time by default), on the
+  processing server only, and waits while BotRank is still collecting answers, until 10:30 at the
+  latest. It reads the cited pages of the site's hosts, matches each cited address to a page (manual
+  mappings, published URLs, every vanity URL, `/sites/...` paths) and stores one entry per cited
+  page under the site's hidden `geo-readiness` node. Editors never cause a call to BotRank.
 
 ## Known gaps
 
