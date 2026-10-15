@@ -265,7 +265,10 @@ public abstract class GeoServlet extends HttpServlet {
     protected static void writeJson(HttpServletResponse resp, int status, JSONObject json) throws IOException {
         resp.setStatus(status);
         resp.setContentType("application/json;charset=UTF-8");
-        resp.setHeader("Cache-Control", "no-store");
+        // Per-user answers: Jahia Cloud's front cache gives an answer without these headers the
+        // page defaults (public, s-maxage=600) and serves one user's JSON to the next.
+        resp.setHeader("Cache-Control", "no-store, private, max-age=0");
+        resp.setHeader("Vary", "Cookie");
         resp.setHeader("X-Content-Type-Options", "nosniff");
         resp.getWriter().write(json.toString());
     }

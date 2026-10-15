@@ -1,0 +1,404 @@
+package org.jahia.se.modules.georeadiness.botrank;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.jcr.RepositoryException;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.function.Function;
+
+/**
+ * One sync of a site with BotRank: reads the citations and stores one entry per cited page.
+ *
+ * <p>Order of a run, as agreed with BotRank (backlog, 15 October 2026):</p>
+ * <ol>
+ *   <li>{@code data-freshness}: while answers are still being collected and it is before
+ *       {@link #RETRY_UNTIL} Paris time, the run is postponed ({@link Outcome#RETRY}); after that it
+ *       syncs anyway and the drawer shows the time of the latest counted answer;</li>
+ *   <li>the cited pages of the site's hosts over the last 30 days, and over all time (the all-time
+ *       list tells "never cited" from "not recently" without any call from the drawer);</li>
+ *   <li>each cited URL resolved to a page ({@link PageResolver}); several URLs of one page add up;</li>
+ *   <li>for each page cited in the last 30 days: total and engines, the 60-day history (the current
+ *       window plus the previous one), prompts, tags and co-cited pages.</li>
+ * </ol>
+ *
+ * <p><b>Variation guard.</b> BotRank computes a variation against the previous period even when no
+ * prompt ran in it (found in the test of 15 October 2026: {@code +14} against an empty week). A
+ * variation is kept only when the previous 30-day window holds at least one run day, which the
+ * history tells: it only returns days on which the project received answers.</p>
+ *
+ * <p>Calls are sequential, to stay a light client of a partner API with no published rate limit.
+ * Text from BotRank (prompts, tags, URLs) is stored as data and bounded in length; the drawer renders
+ * it as text.</p>
+ *
+ * <p>Thread safety: stateless; the store's run lock keeps one run per site.</p>
+ */
+public final class CitationSync {
+
+    private static final Logger logger = LoggerFactory.getLogger(CitationSync.class);
+
+    public static final ZoneId PARIS = ZoneId.of("Europe/Paris");
+    static final LocalTime RETRY_UNTIL = LocalTime.of(10, 30);
+    public static final int MAX_ATTEMPTS = 8;
+    static final int DAYS = 30;
+    static final int MAX_URLS_PER_PAGE = 5;
+    static final int MAX_PAGE_FAILURES = 20;
+    static final int MAX_UNRESOLVED = 100;
+    static final int MAX_TEXT = 500;
+
+    /** How a run ended. */
+    public enum Outcome { DONE, RETRY, SKIPPED, FAILED }
+
+    /** The outcome and a note for administrators that names no secret. */
+    public static final class Result {
+        public final Outcome outcome;
+        public final String message;
+
+        Result(Outcome outcome, String message) {
+            this.outcome = outcome;
+            this.message = message;
+        }
+    }
+
+    private CitationSync() {
+    }
+
+    /**
+     * Runs one sync of a site.
+     *
+     * @param sitePath    {@code /sites/<key>}
+     * @param connections the configured connections
+     * @param baseUrl     a base URL for the page index (only paths are compared)
+     * @param attempt     1 for the scheduled run, more for its retries
+     * @param clock       the clock (Paris time is derived from it)
+     * @return the outcome
+     */
+    public static Result run(String sitePath, BotRankConnections connections, String baseUrl, int attempt,
+            Clock clock) {
+        CitationStore.Settings settings;
+        try {
+            settings = CitationStore.settings(sitePath);
+        } catch (RepositoryException e) {
+            return new Result(Outcome.FAILED, "the site settings could not be read");
+        }
+        if (!settings.isComplete()) {
+            return new Result(Outcome.SKIPPED, "the site is not connected to BotRank");
+        }
+        String siteKey = sitePath.substring("/sites/".length());
+        BotRankConnection connection = connections.forSite(settings.connection, siteKey);
+        try {
+            if (!CitationStore.tryBegin(sitePath)) {
+                return new Result(Outcome.SKIPPED, "a sync is already running");
+            }
+        } catch (RepositoryException e) {
+            return new Result(Outcome.FAILED, "the sync could not start");
+        }
+        try {
+            if (connection == null) {
+                return fail(sitePath, "the connection \"" + settings.connection + "\" is not available to this site");
+            }
+            BotRankClient client = connection.client();
+            BotRankClient.Freshness fresh = client.freshness(settings.project);
+            ZonedDateTime now = ZonedDateTime.now(clock.withZone(PARIS));
+            if (fresh.refreshing && attempt < MAX_ATTEMPTS && now.toLocalTime().isBefore(RETRY_UNTIL)) {
+                CitationStore.postpone(sitePath, "BotRank is still collecting answers; the sync will retry in 30 minutes");
+                return new Result(Outcome.RETRY, "BotRank is still collecting answers");
+            }
+            LocalDate today = now.toLocalDate();
+            LocalDate start = today.minusDays(DAYS - 1L);
+            List<String> hosts = new ArrayList<>();
+            for (String h : settings.hosts) {
+                String f = CitedUrls.foldHost(h);
+                if (!f.isEmpty() && !hosts.contains(f) && hosts.size() < CitationStore.MAX_HOSTS) {
+                    hosts.add(f);
+                }
+            }
+            String domain = hosts.get(0);
+            List<BotRankClient.CitedPage> recent = client.citedPages(settings.project, domain, hosts,
+                    BotRankClient.Period.between(start, today));
+            List<BotRankClient.CitedPage> ever = client.citedPages(settings.project, domain, hosts,
+                    BotRankClient.Period.allTime());
+            PageResolver resolver = PageResolver.build(sitePath, baseUrl, settings.mappings);
+
+            Map<String, Group> recentGroups = group(recent, hosts, resolver::resolve);
+            Map<String, Group> everGroups = group(ever, hosts, resolver::resolve);
+            JSONArray unresolved = unresolved(ever, hosts, resolver::resolve);
+
+            List<JSONObject> pages = new ArrayList<>();
+            int failures = 0;
+            for (Group g : recentGroups.values()) {
+                Group all = everGroups.get(g.key());
+                JSONObject entry = base(g, all == null ? g.citations : all.citations);
+                entry.put("recent", true);
+                entry.put("rankOf", recent.size());
+                try {
+                    details(client, settings.project, g, start, today, entry);
+                } catch (BotRankException e) {
+                    if (!e.isTransient() && e.status() != 404) {
+                        throw e;
+                    }
+                    failures++;
+                    entry.put("detailsMissing", true);
+                    if (failures > MAX_PAGE_FAILURES) {
+                        throw new BotRankException(e.type(), e.status(), "too many pages could not be read: " + e.getMessage());
+                    }
+                }
+                pages.add(entry);
+            }
+            for (Group g : everGroups.values()) {
+                if (!recentGroups.containsKey(g.key())) {
+                    JSONObject entry = base(g, g.citations);
+                    entry.put("recent", false);
+                    entry.put("citations", 0);
+                    entry.put("variation", JSONObject.NULL);
+                    pages.add(entry);
+                }
+            }
+            String note = failures == 0 ? "" : failures + " page(s) kept their totals only: BotRank did not answer for their details";
+            CitationStore.finish(sitePath, pages, unresolved, fresh.latestCountedAnswerAt, note);
+            logger.info("BotRank sync of {}: {} cited page(s), {} unmatched URL(s)", sitePath, pages.size(), unresolved.length());
+            return new Result(Outcome.DONE, note);
+        } catch (BotRankException e) {
+            logger.warn("BotRank sync of {} failed: {} [{}]", sitePath, e.getMessage(), e.type());
+            return fail(sitePath, e.getMessage());
+        } catch (RepositoryException | RuntimeException e) {
+            logger.warn("BotRank sync of {} failed: {}", sitePath, e.toString());
+            return fail(sitePath, "the sync failed on the Jahia side; see the server log");
+        }
+    }
+
+    /** The cited URLs of one page, added up. */
+    static final class Group {
+        final PageResolver.Target target;
+        final List<BotRankClient.CitedPage> urls = new ArrayList<>();
+        int citations;
+        Integer variation = 0;
+        int rank = Integer.MAX_VALUE;
+
+        Group(PageResolver.Target target) {
+            this.target = target;
+        }
+
+        String key() {
+            return target.key();
+        }
+
+        void add(BotRankClient.CitedPage p) {
+            urls.add(p);
+            citations += p.citations;
+            variation = variation == null || p.variation == null ? null : variation + p.variation;
+            rank = Math.min(rank, p.rank);
+        }
+
+        /** The most cited URL first. */
+        List<BotRankClient.CitedPage> byCitations() {
+            List<BotRankClient.CitedPage> out = new ArrayList<>(urls);
+            out.sort(Comparator.comparingInt((BotRankClient.CitedPage p) -> p.citations).reversed());
+            return out;
+        }
+    }
+
+    /** Cited URLs on the site's hosts, grouped by the page they resolve to. */
+    static Map<String, Group> group(List<BotRankClient.CitedPage> list, List<String> hosts,
+            Function<String, PageResolver.Target> resolve) {
+        Map<String, Group> out = new LinkedHashMap<>();
+        for (BotRankClient.CitedPage p : list) {
+            if (!CitedUrls.onHosts(CitedUrls.host(p.url), hosts)) {
+                continue;
+            }
+            PageResolver.Target t = resolve.apply(p.url);
+            if (t != null) {
+                out.computeIfAbsent(t.key(), k -> new Group(t)).add(p);
+            }
+        }
+        return out;
+    }
+
+    /** The cited URLs of the site that no page matched, most cited first, bounded. */
+    static JSONArray unresolved(List<BotRankClient.CitedPage> ever, List<String> hosts,
+            Function<String, PageResolver.Target> resolve) {
+        List<BotRankClient.CitedPage> left = new ArrayList<>();
+        for (BotRankClient.CitedPage p : ever) {
+            if (CitedUrls.onHosts(CitedUrls.host(p.url), hosts) && resolve.apply(p.url) == null) {
+                left.add(p);
+            }
+        }
+        left.sort(Comparator.comparingInt((BotRankClient.CitedPage p) -> p.citations).reversed());
+        JSONArray out = new JSONArray();
+        for (int i = 0; i < left.size() && i < MAX_UNRESOLVED; i++) {
+            out.put(new JSONObject().put("url", text(left.get(i).url)).put("citations", left.get(i).citations));
+        }
+        return out;
+    }
+
+    private static JSONObject base(Group g, int everCitations) {
+        JSONObject e = new JSONObject();
+        e.put("jcrPath", g.target.jcrPath);
+        e.put("language", g.target.language);
+        e.put("via", g.target.via);
+        JSONArray urls = new JSONArray();
+        for (BotRankClient.CitedPage p : g.byCitations()) {
+            urls.put(text(p.url));
+        }
+        e.put("urls", urls);
+        e.put("citations", g.citations);
+        e.put("variation", g.variation == null ? JSONObject.NULL : g.variation);
+        e.put("rank", g.rank == Integer.MAX_VALUE ? JSONObject.NULL : g.rank);
+        e.put("everCitations", everCitations);
+        return e;
+    }
+
+    /** Fills the per-page figures of a recently cited page. */
+    private static void details(BotRankClient client, String project, Group g, LocalDate start, LocalDate end,
+            JSONObject entry) throws BotRankException {
+        LocalDate previousStart = start.minusDays(DAYS);
+        BotRankClient.Period current = BotRankClient.Period.between(start, end);
+        BotRankClient.Period both = BotRankClient.Period.between(previousStart, end);
+        List<BotRankClient.CitedPage> urls = g.byCitations();
+        String best = urls.get(0).url;
+
+        Map<String, Integer> surfaces = new TreeMap<>();
+        Map<String, Integer> days = new TreeMap<>();
+        for (int i = 0; i < urls.size() && i < MAX_URLS_PER_PAGE; i++) {
+            String url = urls.get(i).url;
+            JSONArray s = client.pageRead(project, "citation-total", url, current, 0).optJSONArray("aiSurfaces");
+            for (int j = 0; s != null && j < s.length(); j++) {
+                JSONObject o = s.optJSONObject(j);
+                if (o != null) {
+                    surfaces.merge(text(o.optString("aiSurface")), o.optInt("citationCount"), Integer::sum);
+                }
+            }
+            JSONArray d = client.pageRead(project, "citation-history", url, both, 0).optJSONArray("days");
+            for (int j = 0; d != null && j < d.length(); j++) {
+                JSONObject o = d.optJSONObject(j);
+                if (o != null && o.optString("date").matches("\\d{4}-\\d{2}-\\d{2}")) {
+                    days.merge(o.optString("date"), o.optInt("citationCount"), Integer::sum);
+                }
+            }
+        }
+        JSONArray aiSurfaces = new JSONArray();
+        surfaces.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .forEach(e -> aiSurfaces.put(new JSONObject().put("aiSurface", e.getKey()).put("citationCount", e.getValue())));
+        entry.put("aiSurfaces", aiSurfaces);
+
+        String startDay = start.toString();
+        JSONArray history = new JSONArray();
+        int previousRunDays = 0;
+        for (Map.Entry<String, Integer> e : days.entrySet()) {
+            if (e.getKey().compareTo(startDay) < 0) {
+                previousRunDays++;
+            } else {
+                history.put(new JSONObject().put("date", e.getKey()).put("citationCount", e.getValue()));
+            }
+        }
+        boolean trusted = previousRunDays > 0;
+        entry.put("history", history);
+        entry.put("previousRunDays", previousRunDays);
+        if (!trusted) {
+            entry.put("variation", JSONObject.NULL);
+        }
+
+        entry.put("prompts", prompts(client.pageRead(project, "prompts", best, current, 20).optJSONArray("prompts"), trusted));
+        entry.put("tags", tags(client.pageRead(project, "tags", best, current, 10).optJSONArray("tags"), trusted));
+        entry.put("coCited", coCited(client.pageRead(project, "co-cited", best, current, 10).optJSONArray("coCitedPages"), trusted));
+        entry.put("period", new JSONObject().put("start", startDay).put("end", end.toString()));
+    }
+
+    static JSONArray prompts(JSONArray in, boolean trusted) {
+        JSONArray out = new JSONArray();
+        for (int i = 0; in != null && i < in.length(); i++) {
+            JSONObject p = in.optJSONObject(i);
+            if (p == null) {
+                continue;
+            }
+            JSONArray surfaces = new JSONArray();
+            JSONArray s = p.optJSONArray("aiSurfaces");
+            for (int j = 0; s != null && j < s.length(); j++) {
+                JSONObject o = s.optJSONObject(j);
+                if (o != null) {
+                    surfaces.put(new JSONObject().put("aiSurface", text(o.optString("aiSurface")))
+                            .put("citationCount", o.optInt("citationCount")));
+                }
+            }
+            out.put(new JSONObject()
+                    .put("id", text(p.optString("id")))
+                    .put("text", text(p.optString("text")))
+                    .put("market", text(p.optString("market")))
+                    .put("citationCount", p.optInt("citationCount"))
+                    .put("variation", variation(p, trusted))
+                    .put("aiSurfaces", surfaces)
+                    .put("lastCitationDay", text(p.optString("lastCitationDay"))));
+        }
+        return out;
+    }
+
+    static JSONArray tags(JSONArray in, boolean trusted) {
+        JSONArray out = new JSONArray();
+        for (int i = 0; in != null && i < in.length(); i++) {
+            JSONObject t = in.optJSONObject(i);
+            if (t != null) {
+                out.put(new JSONObject()
+                        .put("id", text(t.optString("id")))
+                        .put("name", text(t.optString("name")))
+                        .put("promptCount", t.optInt("promptCount"))
+                        .put("citationCount", t.optInt("citationCount"))
+                        .put("variation", variation(t, trusted)));
+            }
+        }
+        return out;
+    }
+
+    static JSONArray coCited(JSONArray in, boolean trusted) {
+        JSONArray out = new JSONArray();
+        for (int i = 0; in != null && i < in.length(); i++) {
+            JSONObject c = in.optJSONObject(i);
+            if (c != null) {
+                out.put(new JSONObject()
+                        .put("url", text(c.optString("url")))
+                        .put("sharedAnswerCount", c.optInt("sharedAnswerCount"))
+                        .put("citationCount", c.optInt("citationCount"))
+                        .put("variation", variation(c, trusted))
+                        .put("averageRank", c.isNull("averageRank") ? JSONObject.NULL : c.optDouble("averageRank"))
+                        .put("requestedPageAverageRank", c.isNull("requestedPageAverageRank") ? JSONObject.NULL
+                                : c.optDouble("requestedPageAverageRank"))
+                        .put("outrankingAnswerCount", c.optInt("outrankingAnswerCount")));
+            }
+        }
+        return out;
+    }
+
+    private static Object variation(JSONObject o, boolean trusted) {
+        return !trusted || !o.has("citationCountVariation") || o.isNull("citationCountVariation")
+                ? JSONObject.NULL : o.optInt("citationCountVariation");
+    }
+
+    /** Text from BotRank, bounded; stored as data and rendered as text. */
+    static String text(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.length() > MAX_TEXT ? s.substring(0, MAX_TEXT) : s;
+    }
+
+    private static Result fail(String sitePath, String message) {
+        try {
+            CitationStore.fail(sitePath, message);
+        } catch (RepositoryException e) {
+            logger.warn("Could not record the failed BotRank sync of {}", sitePath);
+        }
+        return new Result(Outcome.FAILED, message);
+    }
+}
