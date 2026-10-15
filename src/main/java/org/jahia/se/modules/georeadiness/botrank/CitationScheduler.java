@@ -6,11 +6,13 @@ import org.quartz.CronTrigger;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
 import org.quartz.SimpleTrigger;
 import org.quartz.Trigger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.ParseException;
 import java.util.Date;
 import java.util.TimeZone;
 
@@ -45,15 +47,20 @@ public final class CitationScheduler {
      * @param sitePath {@code /sites/<key>}
      * @param time     HH:mm in Europe/Paris
      * @param owner    local path of the user who saved the settings
-     * @throws Exception when Quartz refuses the trigger
+     * @throws SchedulerException when Quartz refuses the trigger
      */
-    public static void scheduleDaily(String sitePath, String time, String owner) throws Exception {
+    public static void scheduleDaily(String sitePath, String time, String owner) throws SchedulerException {
         Scheduler scheduler = scheduler();
         String name = jobName(sitePath);
         unschedule(sitePath);
         scheduler.addJob(job(sitePath, owner), true);
         String[] hm = time.split(":");
-        CronTrigger trigger = new CronTrigger(name, GROUP, "0 " + Integer.parseInt(hm[1]) + " " + Integer.parseInt(hm[0]) + " * * ?");
+        CronTrigger trigger;
+        try {
+            trigger = new CronTrigger(name, GROUP, "0 " + Integer.parseInt(hm[1]) + " " + Integer.parseInt(hm[0]) + " * * ?");
+        } catch (ParseException e) {
+            throw new SchedulerException("Invalid sync time " + time, e);
+        }
         trigger.setTimeZone(TimeZone.getTimeZone(CitationSync.PARIS));
         trigger.setJobName(name);
         trigger.setJobGroup(GROUP);
@@ -70,9 +77,9 @@ public final class CitationScheduler {
      * @param owner    local path of the user who asked
      * @param delayMs  0 to run now
      * @param attempt  1 for a manual run, more for a retry
-     * @throws Exception when Quartz refuses the trigger
+     * @throws SchedulerException when Quartz refuses the trigger
      */
-    public static void runOnce(String sitePath, String owner, long delayMs, int attempt) throws Exception {
+    public static void runOnce(String sitePath, String owner, long delayMs, int attempt) throws SchedulerException {
         Scheduler scheduler = scheduler();
         String name = jobName(sitePath);
         if (scheduler.getJobDetail(name, GROUP) == null) {

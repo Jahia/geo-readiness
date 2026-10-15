@@ -8,16 +8,14 @@ import styles from './CitationsSettings.module.css';
 
 const NS = 'geo-readiness';
 
+// An unparsable value is shown as BotRank sent it; Date never throws, it is only invalid.
 const formatDate = iso => {
     if (!iso) {
         return '-';
     }
 
-    try {
-        return new Date(iso).toLocaleString();
-    } catch (e) {
-        return iso;
-    }
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
 };
 
 /**
@@ -108,19 +106,19 @@ export const CitationsSettings = () => {
         hosts: hosts.split(',').map(h => h.trim()).filter(Boolean),
         enabled,
         time
-    }).then(s => s && window.jahia?.toastDispatcher?.add({message: t('citationsSettings.saved'), variant: 'success'}));
+    }).then(s => s && globalThis.jahia?.toastDispatcher?.add({message: t('citationsSettings.saved'), variant: 'success'}));
 
-    const syncNow = () => call('syncNow').then(s => s && window.jahia?.toastDispatcher?.add({
+    const syncNow = () => call('syncNow').then(s => s && globalThis.jahia?.toastDispatcher?.add({
         message: t('citationsSettings.syncStarted'),
         variant: 'info'
     }));
 
     const map = url => {
-        if (!window.CE_API?.openPicker) {
+        if (!globalThis.CE_API?.openPicker) {
             return;
         }
 
-        window.CE_API.openPicker({
+        globalThis.CE_API.openPicker({
             type: 'editorial',
             isMultiple: false,
             site: siteKey,
@@ -144,7 +142,7 @@ export const CitationsSettings = () => {
             <LayoutContent
                 hasPadding
                 header={<Header title={title}/>}
-                content={<div className={styles.card} role="status">{t('citationsSettings.notEnabled')}</div>}
+                content={<div className={styles.card}>{t('citationsSettings.notEnabled')}</div>}
             />
         );
     }

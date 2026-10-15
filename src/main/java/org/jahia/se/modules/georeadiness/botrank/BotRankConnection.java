@@ -12,6 +12,7 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 /**
@@ -33,7 +34,7 @@ import java.util.regex.Pattern;
  * <p>A file with a missing key still registers, with {@link #problem()} set, so administrators see
  * it in Site Settings; it is never used to call BotRank. {@link #toString()} never prints the key.</p>
  *
- * <p>Thread safety: the settings are one immutable snapshot swapped in one volatile write.</p>
+ * <p>Thread safety: the settings are one immutable snapshot swapped in one atomic write.</p>
  */
 @Component(
         service = BotRankConnection.class,
@@ -53,13 +54,13 @@ public class BotRankConnection {
     private static final Pattern ID = Pattern.compile("[a-z0-9][a-z0-9_-]{0,63}");
     private static final Pattern SITE_KEY = Pattern.compile("[A-Za-z0-9_-]+");
 
-    private volatile Settings settings = Settings.EMPTY;
+    private final AtomicReference<Settings> settings = new AtomicReference<>(Settings.EMPTY);
 
     @Activate
     @Modified
     protected void apply(Map<String, Object> config) {
         Settings s = Settings.from(config);
-        settings = s;
+        settings.set(s);
         if (s.problem != null) {
             logger.warn("BotRank connection {} is not usable: {}", s.id, s.problem);
         } else {
@@ -72,17 +73,17 @@ public class BotRankConnection {
 
     /** @return the id from the file name, lower case */
     public String id() {
-        return settings.id;
+        return settings.get().id;
     }
 
     /** @return the name shown to administrators */
     public String label() {
-        return settings.label;
+        return settings.get().label;
     }
 
     /** @return a sentence that says why the connection cannot be used, or null when it can */
     public String problem() {
-        return settings.problem;
+        return settings.get().problem;
     }
 
     /**
@@ -92,7 +93,7 @@ public class BotRankConnection {
      * @return true when no {@code sites} list is set, or when it names the site
      */
     public boolean allows(String siteKey) {
-        Set<String> sites = settings.sites;
+        Set<String> sites = settings.get().sites;
         return sites.isEmpty() || sites.contains(siteKey);
     }
 
@@ -103,7 +104,7 @@ public class BotRankConnection {
      * @throws BotRankException when the connection has a {@link #problem()}
      */
     public BotRankClient client() throws BotRankException {
-        Settings s = settings;
+        Settings s = settings.get();
         if (s.problem != null) {
             throw new BotRankException("connection-not-usable", 0, s.problem);
         }
@@ -112,7 +113,7 @@ public class BotRankConnection {
 
     @Override
     public String toString() {
-        Settings s = settings;
+        Settings s = settings.get();
         return "BotRankConnection[" + s.id + ", " + s.baseUrl + ", key " + (s.apiKey.isEmpty() ? "missing" : "set") + "]";
     }
 

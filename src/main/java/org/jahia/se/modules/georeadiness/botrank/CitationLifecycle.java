@@ -10,6 +10,8 @@ import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 /**
  * Reinstalls the daily BotRank sync triggers when the bundle starts, removes them when it stops, and
  * hands the Quartz job the services it cannot get through DS (Quartz instantiates jobs itself).
@@ -27,8 +29,9 @@ public class CitationLifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(CitationLifecycle.class);
 
-    private static volatile BotRankConnections connections;
-    private static volatile GeoReadinessConfigService config;
+    // Static holders for the Quartz job, which Quartz instantiates outside DS.
+    private static final AtomicReference<BotRankConnections> CONNECTIONS = new AtomicReference<>();
+    private static final AtomicReference<GeoReadinessConfigService> CONFIG = new AtomicReference<>();
 
     @Reference
     private BotRankConnections boundConnections;
@@ -37,8 +40,8 @@ public class CitationLifecycle {
 
     @Activate
     protected void activate() {
-        connections = boundConnections;
-        config = boundConfig;
+        CONNECTIONS.set(boundConnections);
+        CONFIG.set(boundConfig);
         try {
             if (!SettingsBean.getInstance().isProcessingServer()) {
                 return;
@@ -59,8 +62,8 @@ public class CitationLifecycle {
 
     @Deactivate
     protected void deactivate() {
-        connections = null;
-        config = null;
+        CONNECTIONS.set(null);
+        CONFIG.set(null);
         if (SettingsBean.getInstance().isProcessingServer()) {
             CitationScheduler.unscheduleAll();
         }
@@ -68,12 +71,12 @@ public class CitationLifecycle {
 
     /** The connections, or null while the bundle is stopped. */
     static BotRankConnections connections() {
-        return connections;
+        return CONNECTIONS.get();
     }
 
     /** The base URL used to build the page index; only paths are compared, so a fallback is fine. */
-    static String baseUrl(String sitePath) {
-        GeoReadinessConfigService c = config;
+    static String baseUrl() {
+        GeoReadinessConfigService c = CONFIG.get();
         String configured = c == null ? "" : c.getPublicBaseUrl();
         return configured == null || configured.isEmpty() ? PublicUrls.LOCAL_FALLBACK : configured;
     }

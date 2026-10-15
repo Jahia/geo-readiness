@@ -1,5 +1,5 @@
 // Prefixed once with the context path, so the module also works when Jahia is not served at the root.
-const endpoint = () => `${window.contextJsParameters?.contextPath || ''}/modules/geo-readiness/citations`;
+const endpoint = () => `${globalThis.contextJsParameters?.contextPath || ''}/modules/geo-readiness/citations`;
 
 function fail(res, body) {
     const err = new Error(body && body.error ? body.error : 'citations');

@@ -60,6 +60,25 @@ function filesIssueCount(report) {
     return n;
 }
 
+/** The tabs of the drawer: the report's four when it has a published report, then citations. */
+function drawerTabs(report, citationsAvailable, t) {
+    const tabs = report ? [
+        {id: 'score', label: t('score.tab'), count: report.score ? report.score.criticalFailed : 0},
+        {id: 'crawler', label: t('crawler.tab'), count: report.blockedCount},
+        {id: 'files', label: t('files.tab'), count: filesIssueCount(report)},
+        {
+            id: 'schema',
+            label: t('schema.tab'),
+            count: report.schema && report.schema.mapped && !report.schema.valid ? 1 : 0
+        }
+    ] : [];
+    if (citationsAvailable) {
+        tabs.push({id: 'citations', label: t('citations.tab'), count: 0});
+    }
+
+    return tabs;
+}
+
 export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     const {t} = useTranslation(NS);
     const [report, setReport] = useState(null);
@@ -201,19 +220,7 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     const reportTabs = Boolean(report && report.published);
     // Without a published report only the citations tab exists, whatever tab was selected before.
     const activeTab = reportTabs || !citationsAvailable ? tab : 'citations';
-    const tabs = [
-        ...(reportTabs ? [
-            {id: 'score', label: t('score.tab'), count: report.score ? report.score.criticalFailed : 0},
-            {id: 'crawler', label: t('crawler.tab'), count: report.blockedCount},
-            {id: 'files', label: t('files.tab'), count: filesIssueCount(report)},
-            {
-                id: 'schema',
-                label: t('schema.tab'),
-                count: report.schema && report.schema.mapped && !report.schema.valid ? 1 : 0
-            }
-        ] : []),
-        ...(citationsAvailable ? [{id: 'citations', label: t('citations.tab'), count: 0}] : [])
-    ];
+    const tabs = drawerTabs(reportTabs ? report : null, citationsAvailable, t);
 
     return (
         // A real <dialog> rather than an <aside role="dialog">. Rendered with

@@ -7,20 +7,15 @@ import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
 
+// An unparsable value is shown as BotRank sent it; Date never throws, it is only invalid.
 const formatDate = iso => {
-    try {
-        return new Date(iso).toLocaleString();
-    } catch (e) {
-        return iso;
-    }
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
 };
 
 const formatDay = day => {
-    try {
-        return new Date(`${day}T12:00:00Z`).toLocaleDateString();
-    } catch (e) {
-        return day;
-    }
+    const d = new Date(`${day}T12:00:00Z`);
+    return Number.isNaN(d.getTime()) ? day : d.toLocaleDateString();
 };
 
 /** A variation as a chip, or nothing when BotRank has no comparable previous period. */
@@ -141,7 +136,7 @@ export const CitationsTab = ({data, failed}) => {
                     <Typography variant="heading" component="h3" className={styles.sectionTitle}>{t('citations.history')}</Typography>
                     <Histogram
                         rows={history.map(d => ({key: d.date, label: '', value: d.citationCount, day: d.date}))}
-                        format={v => String(v)}
+                        format={String}
                         tipFor={r => formatDay(r.day)}
                         axisLeft={formatDay(history[0].date)}
                         axisRight={formatDay(history[history.length - 1].date)}

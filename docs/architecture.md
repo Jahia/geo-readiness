@@ -163,7 +163,7 @@ kept, which is the whole of "movement".
 **BotRank citations** live under `geo-readiness/botrank`: the settings (`brConnection`,
 `brProject`, `brHosts`, `brEnabled`, `brTime`, `brOwner`, `brMappings`), the record of the last sync
 and a `pages` child replaced as a whole by every sync, with one node per cited page named by the
-SHA-1 of `jcrPath@language`. A page absent from it has never been cited. Text that comes from BotRank
+SHA-256 of `jcrPath@language`. A page absent from it has never been cited. Text that comes from BotRank
 is bounded in length and rendered as text.
 
 ## The write path

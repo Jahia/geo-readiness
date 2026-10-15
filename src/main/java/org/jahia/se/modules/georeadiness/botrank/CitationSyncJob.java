@@ -56,7 +56,7 @@ public class CitationSyncJob extends BackgroundJob {
                     + " the site; a site administrator saves them again to restart it");
             return;
         }
-        CitationSync.Result r = CitationSync.run(sitePath, connections, CitationLifecycle.baseUrl(sitePath),
+        CitationSync.Result r = CitationSync.run(sitePath, connections, CitationLifecycle.baseUrl(),
                 attempt, Clock.systemUTC());
         if (r.outcome == CitationSync.Outcome.RETRY) {
             CitationScheduler.runOnce(sitePath, owner, CitationScheduler.RETRY_DELAY_MS, attempt + 1);

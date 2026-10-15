@@ -69,7 +69,9 @@ public class CitationsServlet extends GeoServlet {
     private static final long WINDOW_MS = 600_000L;
     private static final int MAX_REMOTE_CALLS = 20;
     private static final Pattern PROJECT = Pattern.compile("[A-Za-z0-9_-]{1,64}");
-    private static final Pattern HOST = Pattern.compile("(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+");
+    /** One DNS label; a host is checked label by label, so no pattern repeats a group. */
+    private static final Pattern HOST_LABEL = Pattern.compile("[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?");
+    private static final String STATUS = "status";
     private static final Pattern TIME = Pattern.compile("([01]\\d|2[0-3]):[0-5]\\d");
 
     private final transient BotRankConnections connections;
@@ -80,7 +82,25 @@ public class CitationsServlet extends GeoServlet {
     }
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
+        try {
+            read(req, resp);
+        } catch (IOException | RuntimeException e) {
+            // Nothing may leave a servlet method: the container would answer with a stack trace.
+            logger.debug("could not write the citations read", e);
+        }
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
+        try {
+            settings(req, resp);
+        } catch (IOException | RuntimeException e) {
+            logger.debug("could not write the citations settings response", e);
+        }
+    }
+
+    private void read(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         try {
             if (requireUser(resp) == null) {
                 return;
@@ -110,7 +130,7 @@ public class CitationsServlet extends GeoServlet {
             }
             JSONObject status = CitationStore.status(site.path);
             out.put("configured", true);
-            out.put("status", status.get("status"));
+            out.put(STATUS, status.get(STATUS));
             out.put("syncedAt", status.get("syncedAt"));
             out.put("latestAnswerAt", status.get("latestAnswerAt"));
             out.put("citedPages", status.get("citedPages"));
@@ -124,8 +144,7 @@ public class CitationsServlet extends GeoServlet {
         }
     }
 
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    private void settings(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         try {
             JahiaUser user = requireUser(resp);
             if (user == null) {
@@ -150,7 +169,7 @@ public class CitationsServlet extends GeoServlet {
             }
             String action = body.optString("action", "");
             switch (action) {
-                case "status":
+                case STATUS:
                     writeJson(resp, HttpServletResponse.SC_OK, status(site));
                     break;
                 case "projects":
@@ -243,20 +262,10 @@ public class CitationsServlet extends GeoServlet {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "invalid project");
             return;
         }
-        JSONArray rawHosts = body.optJSONArray("hosts");
-        List<String> hosts = new ArrayList<>();
-        for (int i = 0; rawHosts != null && i < rawHosts.length(); i++) {
-            String h = CitedUrls.foldHost(rawHosts.optString(i));
-            if (h.isEmpty()) {
-                continue;
-            }
-            if (!HOST.matcher(h).matches()) {
-                deny(resp, HttpServletResponse.SC_BAD_REQUEST, "invalid host");
-                return;
-            }
-            if (!hosts.contains(h)) {
-                hosts.add(h);
-            }
+        List<String> hosts = hosts(body.optJSONArray("hosts"));
+        if (hosts == null) {
+            deny(resp, HttpServletResponse.SC_BAD_REQUEST, "invalid host");
+            return;
         }
         if (hosts.isEmpty() || hosts.size() > CitationStore.MAX_HOSTS) {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "between 1 and " + CitationStore.MAX_HOSTS + " hosts");
@@ -284,6 +293,39 @@ public class CitationsServlet extends GeoServlet {
         writeJson(resp, HttpServletResponse.SC_OK, status(site));
     }
 
+    /** The folded, distinct hosts of the request, or null when one is not a host name. */
+    static List<String> hosts(JSONArray raw) {
+        List<String> hosts = new ArrayList<>();
+        for (int i = 0; raw != null && i < raw.length(); i++) {
+            String h = CitedUrls.foldHost(raw.optString(i));
+            if (h.isEmpty() || hosts.contains(h)) {
+                continue;
+            }
+            if (!isHostName(h)) {
+                return null;
+            }
+            hosts.add(h);
+        }
+        return hosts;
+    }
+
+    /** At least two DNS labels, 253 characters at most. */
+    static boolean isHostName(String h) {
+        if (h.length() > 253) {
+            return false;
+        }
+        String[] labels = h.split("\\.", -1);
+        if (labels.length < 2) {
+            return false;
+        }
+        for (String label : labels) {
+            if (!HOST_LABEL.matcher(label).matches()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private void syncNow(CitationsAccess.Site site, JahiaUser user, HttpServletResponse resp)
             throws IOException, RepositoryException {
         CitationStore.Settings s = CitationStore.settings(site.path);
@@ -291,7 +333,7 @@ public class CitationsServlet extends GeoServlet {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "the site is not connected yet");
             return;
         }
-        if (CitationStore.STATUS_RUNNING.equals(CitationStore.status(site.path).optString("status"))) {
+        if (CitationStore.STATUS_RUNNING.equals(CitationStore.status(site.path).optString(STATUS))) {
             deny(resp, HttpServletResponse.SC_CONFLICT, "a sync is already running");
             return;
         }

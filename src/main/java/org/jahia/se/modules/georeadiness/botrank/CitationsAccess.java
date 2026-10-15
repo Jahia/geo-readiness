@@ -30,6 +30,7 @@ public final class CitationsAccess {
     /** The permission the settings routes and the scheduled job require on the site. */
     public static final String SETTINGS_PERMISSION = "site-admin";
     static final String MODULE = "geo-readiness";
+    private static final String INSTALLED_MODULES = "j:installedModules";
 
     private CitationsAccess() {
     }
@@ -43,13 +44,13 @@ public final class CitationsAccess {
      */
     public static boolean moduleEnabled(String sitePath) {
         try {
-            return Boolean.TRUE.equals(org.jahia.services.content.JCRTemplate.getInstance().doExecuteWithSystemSession(
-                    null, "default", (org.jahia.services.content.JCRCallback<Boolean>) session -> {
+            return Boolean.TRUE.equals(org.jahia.services.content.JCRTemplate.getInstance().doExecuteWithSystemSessionAsUser(
+                    null, "default", null, (org.jahia.services.content.JCRCallback<Boolean>) session -> {
                         JCRNodeWrapper site = session.getNode(sitePath);
-                        if (!site.hasProperty("j:installedModules")) {
+                        if (!site.hasProperty(INSTALLED_MODULES)) {
                             return false;
                         }
-                        for (Value v : site.getProperty("j:installedModules").getValues()) {
+                        for (Value v : site.getProperty(INSTALLED_MODULES).getValues()) {
                             if (MODULE.equals(v.getString())) {
                                 return true;
                             }
@@ -97,8 +98,8 @@ public final class CitationsAccess {
             throw new javax.jcr.PathNotFoundException("no site");
         }
         boolean enabled = false;
-        if (site.hasProperty("j:installedModules")) {
-            for (Value v : site.getProperty("j:installedModules").getValues()) {
+        if (site.hasProperty(INSTALLED_MODULES)) {
+            for (Value v : site.getProperty(INSTALLED_MODULES).getValues()) {
                 if (MODULE.equals(v.getString())) {
                     enabled = true;
                     break;

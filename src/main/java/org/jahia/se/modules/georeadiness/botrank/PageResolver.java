@@ -148,7 +148,7 @@ public final class PageResolver {
      * check, and an unpublished target simply never shows up there.
      */
     private static Map<String, Target> vanityUrls(String sitePath) throws RepositoryException {
-        return JCRTemplate.getInstance().doExecuteWithSystemSession(null, "live",
+        return JCRTemplate.getInstance().doExecuteWithSystemSessionAsUser(null, "live", null,
                 (JCRCallback<Map<String, Target>>) session -> {
                     Map<String, Target> out = new HashMap<>();
                     String sql = "select * from [jnt:vanityUrl] as v where isdescendantnode(v, '"

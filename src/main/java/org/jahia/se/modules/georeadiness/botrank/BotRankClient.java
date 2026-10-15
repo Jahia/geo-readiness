@@ -34,6 +34,7 @@ public class BotRankClient {
 
     /** Upper bound on the pages of the cited-pages list read in one sync (100 entries each). */
     static final int MAX_LIST_PAGES = 50;
+    private static final String VARIATION = "citationCountVariation";
     /** Upper bound on one answer; a list page of 100 entries is a few kilobytes. */
     static final int MAX_BODY_BYTES = 5 * 1024 * 1024;
 
@@ -201,21 +202,24 @@ public class BotRankClient {
                 param(q, "cursor", cursor);
             }
             JSONObject o = call("/ai-visibility/pages", q, projectId);
-            JSONArray arr = o.optJSONArray("pages");
-            for (int i = 0; arr != null && i < arr.length(); i++) {
-                JSONObject p = arr.optJSONObject(i);
-                if (p != null && !p.optString("url").isEmpty()) {
-                    out.add(new CitedPage(p.optString("url"), p.optInt("rank"), p.optInt("citationCount"),
-                            p.isNull("citationCountVariation") || !p.has("citationCountVariation")
-                                    ? null : p.optInt("citationCountVariation")));
-                }
-            }
+            addCitedPages(o.optJSONArray("pages"), out);
             cursor = o.isNull("nextCursor") ? null : o.optString("nextCursor", null);
             if (cursor == null || cursor.isEmpty()) {
                 break;
             }
         }
         return out;
+    }
+
+    /** Adds the entries of one list page that carry a URL. */
+    private static void addCitedPages(JSONArray arr, List<CitedPage> out) {
+        for (int i = 0; arr != null && i < arr.length(); i++) {
+            JSONObject p = arr.optJSONObject(i);
+            if (p != null && !p.optString("url").isEmpty()) {
+                out.add(new CitedPage(p.optString("url"), p.optInt("rank"), p.optInt("citationCount"),
+                        p.isNull(VARIATION) ? null : p.optInt(VARIATION)));
+            }
+        }
     }
 
     /**

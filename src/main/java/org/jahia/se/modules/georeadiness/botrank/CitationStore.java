@@ -27,7 +27,7 @@ import java.util.List;
  * /sites/&lt;key&gt;/geo-readiness              (nt:unstructured + jmix:nolive, see ScanStore)
  *     botrank/                               settings and the state of the last sync
  *         pages/                             replaced as a whole by every sync
- *             &lt;sha1 of jcrPath@language&gt;   one cited page: its figures as JSON blobs
+ *             &lt;sha256 of jcrPath@language&gt; one cited page: its figures as JSON blobs
  * </pre>
  *
  * <p>Written and read with a system session in {@code default}, like {@link ScanStore}: a scheduled job
@@ -42,6 +42,26 @@ public final class CitationStore {
 
     static final String NODE = "botrank";
     static final String PAGES = "pages";
+
+    // Property names of the botrank node.
+    private static final String P_CITED_PAGES = "brCitedPages";
+    private static final String P_CONNECTION = "brConnection";
+    private static final String P_ENABLED = "brEnabled";
+    private static final String P_HOSTS = "brHosts";
+    private static final String P_LATEST_ANSWER_AT = "brLatestAnswerAt";
+    private static final String P_MAPPINGS = "brMappings";
+    private static final String P_MESSAGE = "brMessage";
+    private static final String P_OWNER = "brOwner";
+    private static final String P_PROJECT = "brProject";
+    private static final String P_STARTED_AT = "brStartedAt";
+    private static final String P_STATUS = "brStatus";
+    private static final String P_SYNCED_AT = "brSyncedAt";
+    private static final String P_TIME = "brTime";
+    private static final String P_UNRESOLVED = "brUnresolved";
+    private static final String UNSTRUCTURED = "nt:unstructured";
+    private static final String JCR_PATH = "jcrPath";
+    private static final String LANGUAGE = "language";
+    private static final String DEFAULT_WORKSPACE = "default";
 
     public static final String STATUS_IDLE = "idle";
     public static final String STATUS_RUNNING = "running";
@@ -119,12 +139,12 @@ public final class CitationStore {
     public static Settings saveSettings(String sitePath, String connection, String project, List<String> hosts,
             boolean enabled, String time, String owner) throws RepositoryException {
         return in(sitePath, (node, session) -> {
-            node.setProperty("brConnection", connection);
-            node.setProperty("brProject", project);
-            node.setProperty("brHosts", hosts.toArray(new String[0]));
-            node.setProperty("brEnabled", enabled);
-            node.setProperty("brTime", time);
-            node.setProperty("brOwner", owner);
+            node.setProperty(P_CONNECTION, connection);
+            node.setProperty(P_PROJECT, project);
+            node.setProperty(P_HOSTS, hosts.toArray(new String[0]));
+            node.setProperty(P_ENABLED, enabled);
+            node.setProperty(P_TIME, time);
+            node.setProperty(P_OWNER, owner);
             session.save();
             return settingsOf(node);
         });
@@ -140,7 +160,7 @@ public final class CitationStore {
      */
     public static boolean saveMapping(String sitePath, String urlKey, String target) throws RepositoryException {
         return in(sitePath, (node, session) -> {
-            JSONObject m = jsonObject(node, "brMappings");
+            JSONObject m = jsonObject(node, P_MAPPINGS);
             if (target == null) {
                 m.remove(urlKey);
             } else {
@@ -149,7 +169,7 @@ public final class CitationStore {
                 }
                 m.put(urlKey, target);
             }
-            node.setProperty("brMappings", m.toString());
+            node.setProperty(P_MAPPINGS, m.toString());
             session.save();
             return true;
         });
@@ -171,15 +191,15 @@ public final class CitationStore {
             out.put("hosts", new JSONArray(s.hosts));
             out.put("enabled", s.enabled);
             out.put("time", s.time);
-            out.put("status", str(node, "brStatus", STATUS_IDLE));
-            out.put("startedAt", date(node, "brStartedAt"));
-            out.put("syncedAt", date(node, "brSyncedAt"));
-            out.put("latestAnswerAt", str(node, "brLatestAnswerAt", null) == null ? JSONObject.NULL
-                    : str(node, "brLatestAnswerAt", null));
-            out.put("message", str(node, "brMessage", ""));
-            out.put("citedPages", node.hasProperty("brCitedPages") ? node.getProperty("brCitedPages").getLong() : 0);
-            out.put("unresolved", jsonArray(node, "brUnresolved"));
-            out.put("mappings", jsonObject(node, "brMappings"));
+            out.put("status", str(node, P_STATUS, STATUS_IDLE));
+            out.put("startedAt", date(node, P_STARTED_AT));
+            out.put("syncedAt", date(node, P_SYNCED_AT));
+            out.put("latestAnswerAt", str(node, P_LATEST_ANSWER_AT, null) == null ? JSONObject.NULL
+                    : str(node, P_LATEST_ANSWER_AT, null));
+            out.put("message", str(node, P_MESSAGE, ""));
+            out.put("citedPages", node.hasProperty(P_CITED_PAGES) ? node.getProperty(P_CITED_PAGES).getLong() : 0);
+            out.put("unresolved", jsonArray(node, P_UNRESOLVED));
+            out.put("mappings", jsonObject(node, P_MAPPINGS));
             return out;
         });
     }
@@ -215,15 +235,15 @@ public final class CitationStore {
      */
     public static boolean tryBegin(String sitePath) throws RepositoryException {
         return in(sitePath, (node, session) -> {
-            if (STATUS_RUNNING.equals(str(node, "brStatus", STATUS_IDLE)) && node.hasProperty("brStartedAt")) {
-                long age = System.currentTimeMillis() - node.getProperty("brStartedAt").getDate().getTimeInMillis();
+            if (STATUS_RUNNING.equals(str(node, P_STATUS, STATUS_IDLE)) && node.hasProperty(P_STARTED_AT)) {
+                long age = System.currentTimeMillis() - node.getProperty(P_STARTED_AT).getDate().getTimeInMillis();
                 if (age < MAX_RUN_AGE_MS) {
                     return false;
                 }
             }
-            node.setProperty("brStatus", STATUS_RUNNING);
-            node.setProperty("brStartedAt", Calendar.getInstance());
-            node.setProperty("brMessage", "");
+            node.setProperty(P_STATUS, STATUS_RUNNING);
+            node.setProperty(P_STARTED_AT, Calendar.getInstance());
+            node.setProperty(P_MESSAGE, "");
             session.save();
             return true;
         });
@@ -237,7 +257,7 @@ public final class CitationStore {
      */
     public static void heartbeat(String sitePath) throws RepositoryException {
         in(sitePath, (node, session) -> {
-            node.setProperty("brStartedAt", Calendar.getInstance());
+            node.setProperty(P_STARTED_AT, Calendar.getInstance());
             session.save();
             return null;
         });
@@ -251,9 +271,9 @@ public final class CitationStore {
      */
     public static void disable(String sitePath, String message) throws RepositoryException {
         in(sitePath, (node, session) -> {
-            node.setProperty("brEnabled", false);
-            node.setProperty("brStatus", STATUS_FAILED);
-            node.setProperty("brMessage", message);
+            node.setProperty(P_ENABLED, false);
+            node.setProperty(P_STATUS, STATUS_FAILED);
+            node.setProperty(P_MESSAGE, message);
             session.save();
             return null;
         });
@@ -274,20 +294,20 @@ public final class CitationStore {
             if (node.hasNode(PAGES)) {
                 node.getNode(PAGES).remove();
             }
-            JCRNodeWrapper root = node.addNode(PAGES, "nt:unstructured");
+            JCRNodeWrapper root = node.addNode(PAGES, UNSTRUCTURED);
             for (JSONObject p : pages) {
-                JCRNodeWrapper n = root.addNode(pageName(p.getString("jcrPath"), p.getString("language")),
-                        "nt:unstructured");
-                n.setProperty("jcrPath", p.getString("jcrPath"));
-                n.setProperty("language", p.getString("language"));
+                JCRNodeWrapper n = root.addNode(pageName(p.getString(JCR_PATH), p.getString(LANGUAGE)),
+                        UNSTRUCTURED);
+                n.setProperty(JCR_PATH, p.getString(JCR_PATH));
+                n.setProperty(LANGUAGE, p.getString(LANGUAGE));
                 n.setProperty("data", p.toString());
             }
-            node.setProperty("brStatus", STATUS_DONE);
-            node.setProperty("brSyncedAt", Calendar.getInstance());
-            node.setProperty("brLatestAnswerAt", latestAnswerAt);
-            node.setProperty("brCitedPages", (long) pages.size());
-            node.setProperty("brUnresolved", unresolved.toString());
-            node.setProperty("brMessage", message);
+            node.setProperty(P_STATUS, STATUS_DONE);
+            node.setProperty(P_SYNCED_AT, Calendar.getInstance());
+            node.setProperty(P_LATEST_ANSWER_AT, latestAnswerAt);
+            node.setProperty(P_CITED_PAGES, pages.size());
+            node.setProperty(P_UNRESOLVED, unresolved.toString());
+            node.setProperty(P_MESSAGE, message);
             session.save();
             return null;
         });
@@ -301,8 +321,8 @@ public final class CitationStore {
      */
     public static void fail(String sitePath, String message) throws RepositoryException {
         in(sitePath, (node, session) -> {
-            node.setProperty("brStatus", STATUS_FAILED);
-            node.setProperty("brMessage", message);
+            node.setProperty(P_STATUS, STATUS_FAILED);
+            node.setProperty(P_MESSAGE, message);
             session.save();
             return null;
         });
@@ -315,8 +335,8 @@ public final class CitationStore {
      */
     public static void postpone(String sitePath, String message) throws RepositoryException {
         in(sitePath, (node, session) -> {
-            node.setProperty("brStatus", STATUS_IDLE);
-            node.setProperty("brMessage", message);
+            node.setProperty(P_STATUS, STATUS_IDLE);
+            node.setProperty(P_MESSAGE, message);
             session.save();
             return null;
         });
@@ -329,7 +349,7 @@ public final class CitationStore {
      * @throws RepositoryException on a repository failure
      */
     public static List<Scheduled> scheduled() throws RepositoryException {
-        return JCRTemplate.getInstance().doExecuteWithSystemSession(null, "default",
+        return JCRTemplate.getInstance().doExecuteWithSystemSessionAsUser(null, DEFAULT_WORKSPACE, null,
                 (JCRCallback<List<Scheduled>>) session -> {
                     List<Scheduled> out = new ArrayList<>();
                     JCRNodeWrapper sites;
@@ -357,15 +377,15 @@ public final class CitationStore {
     /** The node name of a page entry: a hash, so any path and language fit one segment. */
     static String pageName(String jcrPath, String language) {
         try {
-            byte[] h = MessageDigest.getInstance("SHA-1")
+            byte[] h = MessageDigest.getInstance("SHA-256")
                     .digest((jcrPath + "@" + language).getBytes(StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder("p");
             for (byte b : h) {
-                sb.append(String.format("%02x", b));
+                sb.append(Character.forDigit((b >> 4) & 0xf, 16)).append(Character.forDigit(b & 0xf, 16));
             }
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-1 missing", e);
+            throw new IllegalStateException("SHA-256 missing", e);
         }
     }
 
@@ -377,33 +397,33 @@ public final class CitationStore {
         if (sitePath == null || !sitePath.matches("/sites/[A-Za-z0-9_-]+")) {
             throw new PathNotFoundException("not a site path");
         }
-        return JCRTemplate.getInstance().doExecuteWithSystemSession(null, "default",
+        return JCRTemplate.getInstance().doExecuteWithSystemSessionAsUser(null, DEFAULT_WORKSPACE, null,
                 (JCRCallback<T>) session -> {
                     JCRNodeWrapper site = session.getNode(sitePath);
                     JCRNodeWrapper store = site.hasNode(ScanStore.STORE_NODE)
                             ? site.getNode(ScanStore.STORE_NODE)
-                            : site.addNode(ScanStore.STORE_NODE, "nt:unstructured");
+                            : site.addNode(ScanStore.STORE_NODE, UNSTRUCTURED);
                     if (!store.isNodeType("jmix:nolive")) {
                         store.addMixin("jmix:nolive");
                     }
                     JCRNodeWrapper node = store.hasNode(NODE) ? store.getNode(NODE)
-                            : store.addNode(NODE, "nt:unstructured");
+                            : store.addNode(NODE, UNSTRUCTURED);
                     return work.run(node, session);
                 });
     }
 
     private static Settings settingsOf(JCRNodeWrapper n) throws RepositoryException {
         List<String> hosts = new ArrayList<>();
-        if (n.hasProperty("brHosts")) {
-            for (javax.jcr.Value v : n.getProperty("brHosts").getValues()) {
+        if (n.hasProperty(P_HOSTS)) {
+            for (javax.jcr.Value v : n.getProperty(P_HOSTS).getValues()) {
                 hosts.add(v.getString());
             }
         }
-        String time = str(n, "brTime", "06:30");
-        return new Settings(str(n, "brConnection", ""), str(n, "brProject", ""), hosts,
-                n.hasProperty("brEnabled") && n.getProperty("brEnabled").getBoolean(),
-                time.matches("\\d{2}:\\d{2}") ? time : "06:30", str(n, "brOwner", ""),
-                jsonObject(n, "brMappings"));
+        String time = str(n, P_TIME, "06:30");
+        return new Settings(str(n, P_CONNECTION, ""), str(n, P_PROJECT, ""), hosts,
+                n.hasProperty(P_ENABLED) && n.getProperty(P_ENABLED).getBoolean(),
+                time.matches("\\d{2}:\\d{2}") ? time : "06:30", str(n, P_OWNER, ""),
+                jsonObject(n, P_MAPPINGS));
     }
 
     private static String str(JCRNodeWrapper n, String p, String def) throws RepositoryException {
