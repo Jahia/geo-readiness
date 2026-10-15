@@ -49,6 +49,22 @@ function syncAndWait(path: string): void {
     });
 }
 
+/**
+ * A cross-site write refused with 403, by the module or by the platform before it. Recent platform
+ * builds (jahia-ee-dev 8-SNAPSHOT) refuse a cross-site POST with their HTML 403 page before any
+ * servlet runs; 8.2.3.2 lets it through to the module, which answers its own JSON refusal. The
+ * module's check is covered by GeoServletCsrfTest either way.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function expectCrossSiteRefusal(r: Cypress.Response<any>, what: string): void {
+    expect(r.status, `${what}: refused`).to.eq(403);
+    if (r.body !== null && typeof r.body === 'object') {
+        expect(r.body.error, `${what}: the module's refusal`).to.eq('cross-site request refused');
+    } else {
+        expect(String(r.body), `${what}: the platform's refusal`).to.contain('403 - Forbidden');
+    }
+}
+
 describe('geo-readiness - BotRank citations', () => {
     const fixture = geoFixture('geocite');
 
@@ -128,16 +144,17 @@ describe('geo-readiness - BotRank citations', () => {
 
         it('refuses what the browser marks as another site', () => {
             asUser(fixture.publisher);
+            geoPost(ENDPOINTS.citations, status).then(r => expectJsonOk(r, 'liveness: the same call passes same-origin'));
             ['cross-site', 'same-site'].forEach(verdict => {
                 cy.request({
                     method: 'POST', url: ENDPOINTS.citations, failOnStatusCode: false, body: status,
                     headers: {'Content-Type': 'application/json', 'Sec-Fetch-Site': verdict}
-                }).then(r => expectRefusal(r, 403, 'cross-site request refused', `Sec-Fetch-Site: ${verdict}`));
+                }).then(r => expectCrossSiteRefusal(r, `Sec-Fetch-Site: ${verdict}`));
             });
             cy.request({
                 method: 'POST', url: ENDPOINTS.citations, failOnStatusCode: false, body: status,
                 headers: {'Content-Type': 'application/json', Origin: 'https://evil.example'}
-            }).then(r => expectRefusal(r, 403, 'cross-site request refused', 'a foreign Origin'));
+            }).then(r => expectCrossSiteRefusal(r, 'a foreign Origin'));
         });
 
         it('refuses settings that are not valid', () => {
@@ -219,9 +236,11 @@ describe('geo-readiness - BotRank citations', () => {
             openJContentPages(fixture.siteKey);
             cy.get(GEO_ACTION_SELECTOR, {timeout: 30000}).click();
             selectTab('AI citations');
-            cy.contains('Cited 12 times in AI answers over the last 30 days', {timeout: 30000}).should('be.visible');
-            cy.contains('Which <b>offer</b> fits a first home?').should('be.visible');
-            cy.contains('https://competitor.example/best-offer').should('be.visible');
+            // The drawer scrolls inside a fixed panel: bring each line into view before asserting it.
+            cy.contains('Cited 12 times in AI answers over the last 30 days', {timeout: 30000})
+                .scrollIntoView().should('be.visible');
+            cy.contains('Which <b>offer</b> fits a first home?').scrollIntoView().should('be.visible');
+            cy.contains('https://competitor.example/best-offer').scrollIntoView().should('be.visible');
         });
     });
 });
