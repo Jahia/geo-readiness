@@ -166,8 +166,12 @@ its figures come from the site's daily sync, not from the button.
 - Its rank among the site's cited pages, and the AI engines that cite it.
 - Citations per day. Read the trend: the same question gets different answers from one run to the
   next.
-- The tracked questions that cite it, the themes those questions belong to, and the other pages
-  the same answers cite, with how often they come first.
+- The tracked questions that cite it, with the AI engines behind each one, and the themes those
+  questions belong to. Each question and theme shows its own change on the previous 30 days, under
+  the same rule as the page.
+- The other pages the same answers cite: in how many answers they appear with this page, how often
+  they come first, their average position among the sources of those answers next to this page's
+  (1 is the first source), and how often they are cited overall.
 - "Not cited yet" when no tracked answer ever cited the page, or "Not cited recently" when it was
   cited before the last 30 days.
 

@@ -40,6 +40,23 @@ Variation.propTypes = {value: PropTypes.number, t: PropTypes.func.isRequired};
 Variation.defaultProps = {value: null};
 
 /**
+ * The variation of one row (a question, a theme, a competing page), or nothing. Unlike the page's
+ * own, a missing comparison is not repeated on every row: the page already says why.
+ */
+const RowVariation = ({value, t}) => (typeof value === 'number' ? <Variation value={value} t={t}/> : null);
+
+RowVariation.propTypes = {value: PropTypes.number, t: PropTypes.func.isRequired};
+RowVariation.defaultProps = {value: null};
+
+// A position as BotRank sends it (two decimals), shown with one.
+const formatRank = rank => Number(rank).toLocaleString(undefined, {maximumFractionDigits: 1});
+
+/** "ChatGPT 3, Perplexity 1": the engines of one question, most citations first. */
+const enginesOf = (surfaces, t) => (surfaces || [])
+    .map(s => t('citations.engineCount', {engine: t(`citations.surface.${s.aiSurface}`, s.aiSurface), count: s.citationCount}))
+    .join(', ');
+
+/**
  * GEO-4: whether AI answers cite this page, from the last BotRank sync of the site.
  *
  * Everything shown comes from BotRank, a partner system: prompt texts, tag names and URLs are
@@ -160,7 +177,13 @@ export const CitationsTab = ({data, failed}) => {
                                             day: formatDay(p.lastCitationDay)
                                         })}
                                     </span>
+                                    {(p.aiSurfaces || []).length > 0 && (
+                                        <span className={styles.checkMeta}>
+                                            {t('citations.promptEngines', {engines: enginesOf(p.aiSurfaces, t)})}
+                                        </span>
+                                    )}
                                 </div>
+                                <RowVariation value={p.variation} t={t}/>
                             </li>
                         ))}
                     </ul>
@@ -173,7 +196,11 @@ export const CitationsTab = ({data, failed}) => {
                     <Typography variant="caption" className={styles.explain}>{t('citations.tagsIntro')}</Typography>
                     <ul className={styles.facts}>
                         {tags.map(tag => (
-                            <li key={tag.id}>{t('citations.tagMeta', {name: tag.name, prompts: tag.promptCount, count: tag.citationCount})}</li>
+                            <li key={tag.id}>
+                                {t('citations.tagMeta', {name: tag.name, prompts: tag.promptCount, count: tag.citationCount})}
+                                {' '}
+                                <RowVariation value={tag.variation} t={t}/>
+                            </li>
                         ))}
                     </ul>
                 </>
@@ -191,7 +218,18 @@ export const CitationsTab = ({data, failed}) => {
                                     <span className={styles.checkMeta}>
                                         {t('citations.coCitedMeta', {shared: c.sharedAnswerCount, ahead: c.outrankingAnswerCount})}
                                     </span>
+                                    {typeof c.averageRank === 'number' && (
+                                        <span className={styles.checkMeta}>
+                                            {typeof c.requestedPageAverageRank === 'number'
+                                                ? t('citations.coCitedRanks', {theirs: formatRank(c.averageRank), ours: formatRank(c.requestedPageAverageRank)})
+                                                : t('citations.coCitedRankOnly', {theirs: formatRank(c.averageRank)})}
+                                        </span>
+                                    )}
+                                    <span className={styles.checkMeta}>
+                                        {t('citations.coCitedTotal', {count: c.citationCount})}
+                                    </span>
                                 </div>
+                                <RowVariation value={c.variation} t={t}/>
                             </li>
                         ))}
                     </ul>
