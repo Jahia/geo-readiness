@@ -12,6 +12,35 @@ vendor at all.
 
 ## Status of the partnership
 
+**Updated 15 October 2026: the public API is open for our tests.** BotRank published its
+[reference](https://api.botrank.ai/public/v1/reference), backed by an OpenAPI 3.1 document at
+`https://api.botrank.ai/public/v1/openapi.json`, and created a test organisation for Jahia with one
+project wired to our demo site. Every read the page screen (GEO-4) needs is there. No route has been
+called by us yet: the API key is created by an organisation owner in BotRank, and that is a step
+for a person.
+
+| Route (`GET`, base `https://api.botrank.ai/public/v1`) | Returns |
+|---|---|
+| `/projects` | The organisation's projects: `id`, `name` |
+| `/ai-visibility/data-freshness` | `latestCountedAnswerAt` (nullable), `refreshing` |
+| `/ai-visibility/pages` | A domain's cited pages, most cited first: `url`, `rank`, `citationCount`, `citationCountVariation`; `nextCursor`. Takes `domain` (required, read as the registrable domain), `host` (repeatable, up to 10, ranks computed within them), `limit` up to 100 |
+| `/ai-visibility/pages/citation-total` | `citationCount` (0 allowed), `citationCountVariation`, `aiSurfaces[]` |
+| `/ai-visibility/pages/citation-history` | `days[]` of `date`, `citationCount`; days without any answer in the project are omitted |
+| `/ai-visibility/pages/prompts` | Top prompts citing the page (default 10, max 100): `id`, `text`, `market`, `citationCount`, variation, `aiSurfaces[]`, `lastCitationDay` |
+| `/ai-visibility/pages/tags` | Top tags (default 5): `id`, `name`, `promptCount`, `citationCount`, variation. A prompt counts in each of its tags |
+| `/ai-visibility/pages/co-cited` | Top co-cited pages (default 5): `url`, `sharedAnswerCount`, `citationCount`, variation, `averageRank`, `requestedPageAverageRank`, `outrankingAnswerCount` |
+
+Every call sends `Authorization: Bearer brk_…` and a `Project-Id` header. Data routes take a
+`period` preset (`last_7_days`, `last_14_days`, `last_30_days` default, `all_time`) or `startDate` +
+`endDate`, days in Europe/Paris; the reference asks for explicit dates when results are stored. Only
+the pages list paginates. Errors are RFC 9457 problem documents with a stable `type` URI, among them
+`revoked-api-key` and `subscription-required` (a customer whose subscription lapses gets 403). A page
+is its URL: `www.`, a trailing slash, the anchor and a published list of tracking parameters are
+ignored; scheme, subdomain, path case and any other parameter make a different page.
+
+Not in v1: a changed-since parameter, published rate limits, a written deprecation policy, and UTC
+timestamps with an explicit day, which their CTO announced for later.
+
 **Updated 12 October 2026: the public API exists.** After a design session with their CTO and a
 requirements document from us, BotRank has put a public API in production behind a feature flag.
 It has organisation-scoped API keys, a route that lists the projects a key can read, and the first
@@ -27,16 +56,24 @@ What the design session and their reply settle:
 | **Site and project** | The customer's administrator pastes the key into Jahia and picks the BotRank project of each tracked site. A project is BotRank's access boundary; not every site is tracked |
 | **Order** | The page screen (GEO-4) comes first. The site dashboard follows once it works |
 | **Shape** | A list route of a domain's cited pages, ordered by citations (rank, citations, variation, cursor), drives the sync; per-page detail routes are read only for cited pages: totals and engines, prompts, tags, history, co-cited pages. Lookup tolerates `www.` and a trailing slash |
-| **Domain** | BotRank's domain is the registrable domain (`blog.example.com` falls under `example.com`). A Jahia site is often a subdomain, so we filter the list by host and have asked for a `host` parameter |
-| **URL identity** | `?page=2` stays a distinct page; session parameters such as `msockid` are stripped. We asked for the full list of stripped parameters |
-| **History** | One point per day the page is cited, no zero days. We asked for the project's run days so we can fill zeros ourselves |
-| **Sync time** | Their prompts run at night. Our daily sync runs at 06:30 Paris time by default, after their runs |
+| **Domain** | BotRank's domain is the registrable domain (`blog.example.com` falls under `example.com`). A Jahia site is often a subdomain, so the list takes a `host` parameter (added 13 October) |
+| **URL identity** | `?page=2` stays a distinct page; tracking and session parameters are stripped (list published 15 October). There is no page id: the URL is the id, any variant works, and our cache keys on the page's published Jahia URL |
+| **History** | One point per day the project received at least one answer, 0 when the page was not cited; a missing day means no run (13 October) |
+| **Sync time** | Prompts run one by one at their own frequency, mostly at night. Our daily sync runs at 06:30 Paris time by default, checks `refreshing` first and retries later while it is true |
 | **Page recommendations** | Deferred to their V2: a recommendation is generated text that may name a page, with no reliable link to its URL |
 | **Draft pages** | Out of scope: a draft is not public, so it cannot be cited |
 
-Still open with them: whether detail routes take a URL or a stable page id from the list, whether
-a URL lookup can tell "never cited" from "not cited in the period", and a timestamp for the last
-completed run.
+Settled on 13 October: detail routes take a URL, and a page never cited has an all-time total of
+0, while a positive all-time total with 0 in the period means cited, but not recently. Freshness is
+a project-level read rather than a run end, because there is no project run that ends.
+
+Still open: whether `refreshing` ever goes false between runs on a project whose prompts run every
+hour.
+
+**Jahia side, not theirs.** BotRank only folds `www.`, slash, anchor and tracking variants. A Jahia
+page also answers on its vanity URLs, its `/sites/…` path and old vanity URLs after a rename, so
+the sync resolves each cited URL to a node with Jahia's URL resolver, not by string comparison, and
+sums the citations of every URL that resolves to the same node.
 
 **Updated 5 October 2026, from their CTO's written answers to ten questions.** Before that reply,
 the only public information was thirteen MCP tool names in one article: no parameter names, no
@@ -67,9 +104,10 @@ links require *the user* to be authenticated on the project. *(Settled in the de
 anyone who opens BotRank uses their own BotRank account, so a plain link is enough; the data shown
 in Jahia comes through the organisation key. No signed link is needed.)*
 
-**What is verified now, and what is not.** The public API is not documented yet, so the response
-shapes of its first routes are still unknown to us. The public MCP can be read directly, and the
-section below records what it served on 5 October 2026, before the API existed. Its tool schemas
+**What is verified now, and what is not.** Since 15 October 2026 the public API is documented, and
+its route table above is copied from its OpenAPI document; none of its routes has been called by us
+yet. The public MCP is a separate surface, and the section below records what it served on 5 October
+2026, before the API existed. Its tool schemas
 give **inputs only**: no tool declares an output schema, so every response shape below was read
 off real responses, not off a specification. Treat those shapes as observed on 5 October 2026,
 unversioned, and liable to change without notice.
@@ -420,10 +458,10 @@ actually works on that host. Verified on 8.2.3.2. See `README.md` for the full l
 
 # Wave 2, needs the citation data
 
-Gate, 12 October 2026: **test access to the public API.** Organisation keys and the first page
-reads are in production behind a feature flag; test access and documentation are promised for the
-week of 12 October. GEO-4 is first, built against those routes. The gate on 5 October was the keys
-themselves.
+Gate, 15 October 2026: **none on BotRank's side for GEO-4.** The public API v1 is documented and
+open in a test organisation. What remains before code is an API key, which an organisation owner
+creates in BotRank. GEO-4 is first. The gate was test access on 12 October and the organisation
+keys themselves on 5 October.
 
 ## GEO-4 · Is this page one that AI engines quote?
 
@@ -449,10 +487,13 @@ is earning its keep in AI answers.
   The author never declares them, since the point is to discover how engines read the page.
 - Shows the competing pages cited on the same prompts, and which ones come before ours.
 
-**Data** public API (12 October 2026): the list of a domain's cited pages, filtered by host on our
-side, then per-page routes for totals and engines, prompts, tags, history and co-cited pages, read
-only for cited pages. The daily sync runs at 06:30 Paris time, after their night runs. Totals,
-engines and prompts are live behind a flag; tags, history and co-cited pages are announced.
+**Data** public API v1 (15 October 2026). The sync runs daily at 06:30 Paris time: it reads
+`data-freshness` and retries while `refreshing` is true, then reads `/ai-visibility/pages` for the
+site's domain with the site's hosts and explicit dates, resolves each cited URL to a node, and
+reads `citation-total`, `citation-history`, `prompts`, `tags` and `co-cited` for cited pages only,
+keyed on the page's published Jahia URL. A page absent from the list shows "not cited yet"; opening
+its drawer calls `citation-total` with `period=all_time` to tell "never cited" from "not recently".
+`prompts` gives `lastCitationDay`, the last day the prompt cited the page, not a run time.
 **Surface** page drawer. **Effort** M.
 
 ## GEO-5 · Tell me when a page stops being cited
@@ -726,14 +767,16 @@ front.
 
 ## For BotRank
 
-**Open on 12 October 2026**, asked in reply to their API proposal:
+**Open on 15 October 2026:**
 
-- A timestamp for the project's last completed run, so the sync knows it read complete data.
-- A `host` parameter on the cited-pages list, since a Jahia site is often a subdomain.
-- The project's run days over a period, to tell "not cited that day" from "no run that day".
-- The full list of URL parameters they strip (`msockid` is one; `utm_*`, `gclid`, `fbclid`?).
-- Whether detail routes take a URL or a stable page id returned by the list.
-- Whether a URL lookup can tell "never cited" from "not cited in the period".
+- Whether `refreshing` goes false between runs on a project whose prompts run every hour.
+- UTC timestamps and an explicit day, announced by them for later.
+- A written deprecation policy for `/public/v1`, and published rate limits.
+- A changed-since parameter, so the daily sync can skip pages that did not move.
+
+The six questions asked on 12 October were all answered on 13 October: a project-level freshness
+read instead of a run end, a `host` parameter, history with zeros on run days, the published list of
+stripped parameters, the URL as page id, and an all-time total of 0 for a page never cited.
 
 Settled since the list below was sent: 1 (a dedicated public API, separate from the MCP), 4
 (organisation API key, server to server), 5 (prompts run daily, at night), 6 (no rate limits), 10
@@ -806,7 +849,7 @@ In rough order of how likely they are to bite.
 
 | Risk | Shape | What reduces it |
 |---|---|---|
-| ~~The API contract never materializes~~ **Narrowed 12 Oct 2026: an undocumented, flagged API** | Organisation keys and the first page reads are in production behind a feature flag (12 Oct 2026). What remains is that the API is undocumented, unversioned in writing, and shaped by one partner's roadmap | Keep the thin internal abstraction so a second GEO vendor is a driver swap. Get versioning and deprecation in writing before a customer depends on it |
+| ~~The API contract never materializes~~ **Narrowed 15 Oct 2026: a young v1 with no deprecation policy** | The API is documented (OpenAPI 3.1) and versioned in its path since 15 Oct 2026. What remains is that it is days old, has no written deprecation policy or rate limits, and is shaped by one partner's roadmap | Keep the thin internal abstraction so a second GEO vendor is a driver swap. Code against `openapi.json`, not against observed responses. Get deprecation terms in writing before a customer depends on it |
 | Vendor lock-in of the UI | If BotRank's vocabulary leaks into our node types and GraphQL schema, the panel becomes theirs, not ours | Model the domain in Jahia's terms (cited page, tracked question, engine) and keep their field names inside the driver |
 | Machine-extracted entities reach the contributor unfiltered | Their discovered "market actors" include generic phrases, parent companies and adjacent-category brands. Passing that straight through names nonsense competitors to the person least able to judge it | Curate before display: filter by relationship classification, apply a visibility floor, let a site manager hide an actor. Never present the raw discovered list as "your competitors" |
 | Scraped data is probabilistic | Browser-simulated sessions against consumer chat interfaces. Numbers move for reasons unrelated to our content, and a contributor gets blamed. **Eased 5 Oct 2026:** prompts run daily, so a trend is built from real daily points rather than inferred from weekly ones | Show trends, not single-day values. Never present a day-over-day change as the result of an edit. Daily data makes this rule easier to keep, not less necessary |
@@ -847,6 +890,10 @@ Everything dated **12 October 2026** comes from a design session with their CTO,
 document that followed it, and his written reply. The routes it describes are announced or behind
 a feature flag; none has been called by us yet, and their response shapes are unknown until the
 documentation arrives.
+
+Everything dated **13 and 15 October 2026** comes from their CTO's written answers and from the
+published reference and `openapi.json`, read on 15 October 2026. The route table in the status
+section is copied from that document; no route had been called by us when it was written.
 
 One claim in the first draft, that Jahia had no llms.txt support, was wrong. The community
 `llms.txt manager` module (v1.0.0, August 2026, min 8.1.5.0, github.com/Jahia/llms) publishes and

@@ -476,16 +476,20 @@ time. The roll-up is the better presales artifact but needs crawl budgeting.
 
 ## The vendor gate, if you are about to call BotRank
 
-As of **12 October 2026** BotRank has a public API in production behind a feature flag, with
-organisation-scoped API keys. The integration is server to server: a Jahia module holds the
-customer's key, syncs once a day (06:30 Paris time, after their night runs) and re-exposes the data
-through Jahia GraphQL. The browser never calls BotRank. Each customer has its own BotRank
-organisation and key; Jahia holds none on their behalf.
+As of **15 October 2026** BotRank's public API v1 is documented and open in a test organisation:
+reference at `https://api.botrank.ai/public/v1/reference`, OpenAPI 3.1 at
+`https://api.botrank.ai/public/v1/openapi.json`. The integration is server to server: a Jahia
+module holds the customer's key (`Authorization: Bearer brk_…`, plus a `Project-Id` header), syncs
+once a day (06:30 Paris time, after their night runs) and re-exposes the data through Jahia
+GraphQL. The browser never calls BotRank. Each customer has its own BotRank organisation and key;
+Jahia holds none on their behalf.
 
-Do not code against response shapes yet: the API is undocumented until test access arrives, and
-the routes in `docs/botrank-backlog.md` are announced, not called. The sync reads a domain's
-cited-pages list first, filters it by host (their domain is the registrable domain, a Jahia site
-is often a subdomain), then reads per-page detail only for cited pages.
+Code against `openapi.json`, never against responses you happened to see, and keep the key out of
+the repository, of logs and of the browser. The sync reads `data-freshness` first and waits while
+`refreshing` is true, reads a domain's cited-pages list with the site's hosts (their domain is the
+registrable domain, a Jahia site is often a subdomain), resolves each cited URL to a node with
+Jahia's URL resolver, then reads per-page detail only for cited pages, keyed on the page's
+published Jahia URL. The route table and the open points are in `docs/botrank-backlog.md`.
 
 Three more facts worth knowing before designing anything against them, because each one has already
 sent a design the wrong way once:
@@ -498,6 +502,4 @@ sent a design the wrong way once:
   BotRank account, so a plain link is enough. Everything shown inside Jahia is rendered by us from
   the synced data.
 
-When any of this changes, `docs/botrank-backlog.md` is where it is recorded, with dates. Until
-their documentation arrives, everything in that file about the public API's routes is announced
-rather than specified.
+When any of this changes, `docs/botrank-backlog.md` is where it is recorded, with dates.
