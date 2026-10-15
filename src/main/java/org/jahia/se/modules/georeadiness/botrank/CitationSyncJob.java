@@ -45,10 +45,15 @@ public class CitationSyncJob extends BackgroundJob {
             logger.warn("BotRank sync job started without a site or before the module was ready");
             return;
         }
+        if (!CitationsAccess.moduleEnabled(sitePath)) {
+            stop(sitePath, "the daily sync stopped: the GEO readiness module is no longer enabled on the site");
+            return;
+        }
         if (!stillPermitted(owner, sitePath)) {
             logger.warn("BotRank sync of {} stopped: {} no longer holds {} on the site", sitePath, owner,
                     CitationsAccess.SETTINGS_PERMISSION);
-            CitationScheduler.unschedule(sitePath);
+            stop(sitePath, "the daily sync stopped: the administrator who saved the settings no longer administers"
+                    + " the site; a site administrator saves them again to restart it");
             return;
         }
         CitationSync.Result r = CitationSync.run(sitePath, connections, CitationLifecycle.baseUrl(sitePath),
@@ -57,6 +62,16 @@ public class CitationSyncJob extends BackgroundJob {
             CitationScheduler.runOnce(sitePath, owner, CitationScheduler.RETRY_DELAY_MS, attempt + 1);
         } else if (r.outcome != CitationSync.Outcome.DONE) {
             logger.info("BotRank sync of {}: {} ({})", sitePath, r.outcome, r.message);
+        }
+    }
+
+    /** Disables the sync of a site and says why, so Site Settings shows the reason. */
+    private static void stop(String sitePath, String message) {
+        CitationScheduler.unschedule(sitePath);
+        try {
+            CitationStore.disable(sitePath, message);
+        } catch (Exception e) {
+            logger.warn("Could not record why the BotRank sync of {} stopped", sitePath);
         }
     }
 

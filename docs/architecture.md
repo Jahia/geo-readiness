@@ -80,8 +80,10 @@ JavaScript-only page is still caught, by the word-count check.
 | `/geo-readiness/report` | One site | Only the stored report |
 | `/geo-readiness/citations` | One page (GET), one site (POST) | Settings, mappings and the sync record |
 
-All four: authenticated callers only, `application/json` required so a cross-site form post cannot
-reach them, per-user rate limiting on the expensive actions, and generic errors that leak no
+All five: authenticated callers only, an exact `application/json` media type required (a substring
+test would let `text/plain; application/json` through, which a browser sends cross-site without a
+preflight) and any request the browser marks as cross-site or same-site refused (`Sec-Fetch-Site`, or
+an `Origin` other than `Host` or `X-Forwarded-Host`), per-user rate limiting on the expensive actions, and generic errors that leak no
 upstream detail.
 
 `site-scan` and `site-files` additionally require the permission the dashboard route declares in the

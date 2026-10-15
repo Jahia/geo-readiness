@@ -48,12 +48,36 @@ public class BotRankConnections {
         if (id == null || id.isEmpty()) {
             return null;
         }
+        BotRankConnection found = null;
         for (BotRankConnection c : bound.keySet()) {
             if (id.equals(c.id())) {
-                return c.allows(siteKey) ? c : null;
+                if (found != null) {
+                    // Two files with one id: which key a site would use depends on iteration order.
+                    return null;
+                }
+                found = c;
             }
         }
-        return null;
+        return found != null && found.allows(siteKey) && found.problem() == null ? found : null;
+    }
+
+    /**
+     * Why a connection cannot be used, as administrators see it: its own problem, or a duplicate id.
+     *
+     * @param connection a bound connection
+     * @return the reason, or null when it can be used
+     */
+    public String problemOf(BotRankConnection connection) {
+        if (connection.problem() != null) {
+            return connection.problem();
+        }
+        int same = 0;
+        for (BotRankConnection c : bound.keySet()) {
+            if (c.id().equals(connection.id())) {
+                same++;
+            }
+        }
+        return same > 1 ? "another configuration file has the same id" : null;
     }
 
     /**

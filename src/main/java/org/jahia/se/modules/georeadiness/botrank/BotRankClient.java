@@ -34,6 +34,8 @@ public class BotRankClient {
 
     /** Upper bound on the pages of the cited-pages list read in one sync (100 entries each). */
     static final int MAX_LIST_PAGES = 50;
+    /** Upper bound on one answer; a list page of 100 entries is a few kilobytes. */
+    static final int MAX_BODY_BYTES = 5 * 1024 * 1024;
 
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -289,8 +291,14 @@ public class BotRankClient {
                 .header("Authorization", "Bearer " + apiKey)
                 .GET();
         Optional.ofNullable(projectId).ifPresent(p -> b.header("Project-Id", p));
-        HttpResponse<String> resp = HTTP.send(b.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        return new Response(resp.statusCode(), resp.body());
+        HttpResponse<java.io.InputStream> resp = HTTP.send(b.build(), HttpResponse.BodyHandlers.ofInputStream());
+        try (java.io.InputStream in = resp.body()) {
+            byte[] body = in.readNBytes(MAX_BODY_BYTES + 1);
+            if (body.length > MAX_BODY_BYTES) {
+                throw new IOException("answer larger than " + MAX_BODY_BYTES + " bytes");
+            }
+            return new Response(resp.statusCode(), new String(body, StandardCharsets.UTF_8));
+        }
     }
 
     private static void param(StringBuilder q, String name, String value) {

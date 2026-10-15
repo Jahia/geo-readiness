@@ -34,6 +34,33 @@ public final class CitationsAccess {
     private CitationsAccess() {
     }
 
+    /**
+     * Whether a site still enables the module, read with a system session: used by the scheduled job,
+     * which has no caller.
+     *
+     * @param sitePath {@code /sites/<key>}
+     * @return false when the site is gone or no longer lists the module
+     */
+    public static boolean moduleEnabled(String sitePath) {
+        try {
+            return Boolean.TRUE.equals(org.jahia.services.content.JCRTemplate.getInstance().doExecuteWithSystemSession(
+                    null, "default", (org.jahia.services.content.JCRCallback<Boolean>) session -> {
+                        JCRNodeWrapper site = session.getNode(sitePath);
+                        if (!site.hasProperty("j:installedModules")) {
+                            return false;
+                        }
+                        for (Value v : site.getProperty("j:installedModules").getValues()) {
+                            if (MODULE.equals(v.getString())) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    }));
+        } catch (RepositoryException e) {
+            return false;
+        }
+    }
+
     /** The site of a node, as the caller sees it. */
     public static final class Site {
         public final String path;

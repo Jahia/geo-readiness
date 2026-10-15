@@ -115,6 +115,60 @@ describe('geo-readiness - BotRank citations', () => {
         });
     });
 
+    describe('refusals that a working request would pass', () => {
+        // Each case changes one thing of a request the publisher may otherwise make.
+        const status = {action: 'status', path: fixture.sitePath, language: 'en'};
+
+        it('refuses a simple request that only mentions application/json', () => {
+            asUser(fixture.publisher);
+            geoPost(ENDPOINTS.citations, status).then(r => expectJsonOk(r, 'liveness: the same call passes as JSON'));
+            geoPost(ENDPOINTS.citations, status, {contentType: 'text/plain; application/json'}).then(r =>
+                expectRefusal(r, 400, 'json required', 'a browser sends this cross-site without a preflight'));
+        });
+
+        it('refuses what the browser marks as another site', () => {
+            asUser(fixture.publisher);
+            ['cross-site', 'same-site'].forEach(verdict => {
+                cy.request({
+                    method: 'POST', url: ENDPOINTS.citations, failOnStatusCode: false, body: status,
+                    headers: {'Content-Type': 'application/json', 'Sec-Fetch-Site': verdict}
+                }).then(r => expectRefusal(r, 403, 'cross-site request refused', `Sec-Fetch-Site: ${verdict}`));
+            });
+            cy.request({
+                method: 'POST', url: ENDPOINTS.citations, failOnStatusCode: false, body: status,
+                headers: {'Content-Type': 'application/json', Origin: 'https://evil.example'}
+            }).then(r => expectRefusal(r, 403, 'cross-site request refused', 'a foreign Origin'));
+        });
+
+        it('refuses settings that are not valid', () => {
+            asUser(fixture.publisher);
+            const save = {action: 'save', path: fixture.sitePath, language: 'en', connection: 'cypress', project: 'p1',
+                hosts: ['stub-site.example'], enabled: false, time: '06:30'};
+            geoPost(ENDPOINTS.citations, save).then(r => expectJsonOk(r, 'liveness: the valid settings save'));
+            geoPost(ENDPOINTS.citations, {...save, hosts: ['not a host']}).then(r => expectRefusal(r, 400, 'invalid host', 'host'));
+            geoPost(ENDPOINTS.citations, {...save, time: '25:00'}).then(r => expectRefusal(r, 400, 'invalid time', 'time'));
+            geoPost(ENDPOINTS.citations, {...save, project: 'p1/../x'}).then(r => expectRefusal(r, 400, 'invalid project', 'project'));
+            geoPost(ENDPOINTS.citations, {...save, connection: 'nope'}).then(r => expectRefusal(r, 400, 'unknown connection', 'connection'));
+        });
+
+        it('refuses a mapping target that is not a page of the site', () => {
+            asUser(fixture.publisher);
+            const map = {action: 'map', path: fixture.sitePath, language: 'en', url: OFFER, target: fixture.homePath};
+            geoPost(ENDPOINTS.citations, {...map, action: 'unmap'}).then(r => expectJsonOk(r, 'liveness: unmap answers'));
+            geoPost(ENDPOINTS.citations, {...map, target: fixture.sitePath}).then(r =>
+                expectRefusal(r, 400, 'the target is not a page of this site', 'the site node is not a page'));
+            geoPost(ENDPOINTS.citations, {...map, target: '/sites/systemsite/home'}).then(r =>
+                expectRefusal(r, 400, 'the target is not a page of this site', 'another site'));
+        });
+
+        it('opens the drawer read on pages only', () => {
+            asUser(fixture.contributor);
+            geoGet(ENDPOINTS.citations, {path: fixture.homePath, language: 'en'}).then(r => expectJsonOk(r, 'liveness: a page reads'));
+            geoGet(ENDPOINTS.citations, {path: fixture.sitePath, language: 'en'}).then(r =>
+                expectRefusal(r, 403, 'cannot read node', 'the site node is not a page'));
+        });
+    });
+
     describe('sync, mapping and the drawer', () => {
         it('syncs, lists the unmatched cited URL, then counts it once mapped', () => {
             asUser(fixture.publisher);

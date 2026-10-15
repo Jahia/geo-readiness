@@ -64,6 +64,9 @@ public class BotRankConnection {
             logger.warn("BotRank connection {} is not usable: {}", s.id, s.problem);
         } else {
             logger.info("BotRank connection {} ready ({})", s.id, s.baseUrl);
+            if (s.baseUrl.startsWith("http://")) {
+                logger.warn("BotRank connection {} sends its API key over plain http; use https outside a test stack", s.id);
+            }
         }
     }
 
@@ -113,7 +116,7 @@ public class BotRankConnection {
         return "BotRankConnection[" + s.id + ", " + s.baseUrl + ", key " + (s.apiKey.isEmpty() ? "missing" : "set") + "]";
     }
 
-    private static final class Settings {
+    static final class Settings {
         static final Settings EMPTY = new Settings("unconfigured", "unconfigured", "", DEFAULT_BASE_URL,
                 Collections.emptySet(), "no configuration");
 
@@ -142,14 +145,24 @@ public class BotRankConnection {
             }
             String label = str(c, "label");
             Set<String> sites = new LinkedHashSet<>();
-            for (String s : str(c, "sites").split(",")) {
-                String k = s.trim();
-                if (SITE_KEY.matcher(k).matches()) {
-                    sites.add(k);
+            boolean badSite = false;
+            String rawSites = str(c, "sites");
+            if (!rawSites.isEmpty()) {
+                for (String s : rawSites.split(",")) {
+                    String k = s.trim();
+                    if (SITE_KEY.matcher(k).matches()) {
+                        sites.add(k);
+                    } else {
+                        badSite = true;
+                    }
                 }
             }
             String problem = null;
-            if (apiKey.isEmpty()) {
+            // A restriction that cannot be read closes the connection: dropping the bad entries would
+            // leave an empty list, which means "every site", and open the key to every administrator.
+            if (badSite) {
+                problem = "the sites list has an entry that is not a site key (sites)";
+            } else if (apiKey.isEmpty()) {
                 problem = "the API key is missing (apiKey)";
             } else if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://")) {
                 problem = "the base URL is not an http or https URL (baseUrl)";

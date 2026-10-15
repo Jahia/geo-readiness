@@ -4,6 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -97,5 +98,53 @@ class CitationSyncTest {
         }
         assertThat(CitationSync.text(sb.toString())).hasSize(CitationSync.MAX_TEXT);
         assertThat(CitationSync.text(null)).isEmpty();
+    }
+
+    private static CitationSync.Group group(int variation) {
+        CitationSync.Group g = new CitationSync.Group(new PageResolver.Target("/sites/demo/home", "fr", "published"));
+        g.add(page("https://example.com/fr/home.html", 1, 14, variation));
+        return g;
+    }
+
+    private static final LocalDate START = LocalDate.of(2026, 9, 16);
+    private static final LocalDate END = LocalDate.of(2026, 10, 15);
+
+    private static BotRankClient answering(String history) {
+        return new BotRankClient("https://api.example/v1", "brk_x", (uri, key, project) -> {
+            String path = uri.getPath();
+            if (path.endsWith("citation-history")) {
+                return new BotRankClient.Response(200, history);
+            }
+            if (path.endsWith("citation-total")) {
+                return new BotRankClient.Response(200, "{\"citationCount\":14,\"aiSurfaces\":[]}");
+            }
+            return new BotRankClient.Response(200, "{}");
+        });
+    }
+
+    @Test
+    void aVariationIsKeptWhenThePreviousWindowHadARun() throws Exception {
+        JSONObject e = CitationSync.recentEntry(answering("{\"days\":[{\"date\":\"2026-09-01\",\"citationCount\":0},{\"date\":\"2026-10-01\",\"citationCount\":14}]}"),
+                "p", group(14), 14, 3, START, END, new int[1]);
+        assertThat(e.getInt("variation")).isEqualTo(14);
+        assertThat(e.getInt("previousRunDays")).isEqualTo(1);
+    }
+
+    @Test
+    void aVariationAgainstAnEmptyPreviousWindowIsDropped() throws Exception {
+        JSONObject e = CitationSync.recentEntry(answering("{\"days\":[{\"date\":\"2026-10-01\",\"citationCount\":14}]}"),
+                "p", group(14), 14, 3, START, END, new int[1]);
+        assertThat(e.isNull("variation")).isTrue();
+    }
+
+    @Test
+    void aPageWhoseDetailsFailNeverCarriesTheRawVariation() throws Exception {
+        BotRankClient failing = new BotRankClient("https://api.example/v1", "brk_x",
+                (uri, key, project) -> new BotRankClient.Response(503, "down"));
+        int[] failures = new int[1];
+        JSONObject e = CitationSync.recentEntry(failing, "p", group(14), 14, 3, START, END, failures);
+        assertThat(e.isNull("variation")).isTrue();
+        assertThat(e.getBoolean("detailsMissing")).isTrue();
+        assertThat(failures[0]).isEqualTo(1);
     }
 }

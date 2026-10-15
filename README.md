@@ -310,6 +310,21 @@ baseUrl =
   model; the per-page examples are what gets trimmed.
 - **A scheduled scan runs as the account that saved it** and re-checks that account's permission on
   every run, so revoking the permission stops the schedule rather than merely hiding the screen.
+- **A BotRank connection without `sites` is open to every site administrator of the instance**, and
+  each of them can bind a site to that organisation's key. List the sites of each connection on a
+  shared instance. A `sites` value that cannot be read closes the connection rather than opening it.
+- **A BotRank sync reads the details of the 200 most cited pages of a site.** The others keep their
+  total and rank. One run makes at most about 2,600 calls (two list walks, then up to thirteen calls
+  per detailed page), one at a time; a run still going is never taken for dead and doubled.
+- **A cited address mapped by hand counts in the language the settings screen was showing**, and a
+  mapping takes effect at the next sync.
+- **The module's servlets are not under Jahia's CSRF guard.** Their control is an exact
+  `application/json` media type plus the refusal of any request the browser marks as coming from
+  another site (`Sec-Fetch-Site`, or an `Origin` other than the host). Clients without a browser
+  (curl, scripts with an API token) are not affected.
+- **A site that disables the module, or whose administrator who saved the BotRank settings loses
+  site-admin, stops syncing** at the next run; Site Settings says why, and a site administrator saves
+  the settings again to restart it.
 
 ## Documentation
 

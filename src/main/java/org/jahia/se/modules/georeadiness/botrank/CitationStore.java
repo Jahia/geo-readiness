@@ -230,6 +230,36 @@ public final class CitationStore {
     }
 
     /**
+     * Tells the store a running sync is alive, so {@link #tryBegin} never takes it for dead and starts a
+     * second run beside it.
+     *
+     * @throws RepositoryException on a repository failure
+     */
+    public static void heartbeat(String sitePath) throws RepositoryException {
+        in(sitePath, (node, session) -> {
+            node.setProperty("brStartedAt", Calendar.getInstance());
+            session.save();
+            return null;
+        });
+    }
+
+    /**
+     * Stops the daily sync of a site and says why, keeping the pages of the last sync.
+     *
+     * @param message a sentence for administrators
+     * @throws RepositoryException on a repository failure
+     */
+    public static void disable(String sitePath, String message) throws RepositoryException {
+        in(sitePath, (node, session) -> {
+            node.setProperty("brEnabled", false);
+            node.setProperty("brStatus", STATUS_FAILED);
+            node.setProperty("brMessage", message);
+            session.save();
+            return null;
+        });
+    }
+
+    /**
      * Replaces every stored page with the result of a sync and marks it done.
      *
      * @param pages          page entries keyed by {@code jcrPath@language}

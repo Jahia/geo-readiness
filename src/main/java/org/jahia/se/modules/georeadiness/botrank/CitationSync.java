@@ -55,6 +55,10 @@ public final class CitationSync {
     static final int DAYS = 30;
     static final int MAX_URLS_PER_PAGE = 5;
     static final int MAX_PAGE_FAILURES = 20;
+    /** Pages whose details are read in one run, most cited first; the others keep their list figures. */
+    static final int MAX_DETAILED_PAGES = 200;
+    /** How often (in detailed pages) the run tells the store it is alive, so it is never taken for dead. */
+    static final int HEARTBEAT_EVERY = 10;
     static final int MAX_UNRESOLVED = 100;
     static final int MAX_TEXT = 500;
 
@@ -137,25 +141,26 @@ public final class CitationSync {
             JSONArray unresolved = unresolved(ever, hosts, resolver::resolve);
 
             List<JSONObject> pages = new ArrayList<>();
-            int failures = 0;
-            for (Group g : recentGroups.values()) {
+            int[] failures = {0};
+            int skipped = 0;
+            List<Group> byCitations = new ArrayList<>(recentGroups.values());
+            byCitations.sort(Comparator.comparingInt((Group g) -> g.citations).reversed());
+            for (int i = 0; i < byCitations.size(); i++) {
+                Group g = byCitations.get(i);
                 Group all = everGroups.get(g.key());
-                JSONObject entry = base(g, all == null ? g.citations : all.citations);
-                entry.put("recent", true);
-                entry.put("rankOf", recent.size());
-                try {
-                    details(client, settings.project, g, start, today, entry);
-                } catch (BotRankException e) {
-                    if (!e.isTransient() && e.status() != 404) {
-                        throw e;
+                int everCitations = all == null ? g.citations : all.citations;
+                if (i < MAX_DETAILED_PAGES) {
+                    pages.add(recentEntry(client, settings.project, g, everCitations, recent.size(), start, today, failures));
+                    if (i % HEARTBEAT_EVERY == 0) {
+                        CitationStore.heartbeat(sitePath);
                     }
-                    failures++;
-                    entry.put("detailsMissing", true);
-                    if (failures > MAX_PAGE_FAILURES) {
-                        throw new BotRankException(e.type(), e.status(), "too many pages could not be read: " + e.getMessage());
-                    }
+                } else {
+                    JSONObject entry = base(g, everCitations);
+                    entry.put("recent", true).put("rankOf", recent.size()).put("variation", JSONObject.NULL);
+                    entry.put("detailsSkipped", true);
+                    pages.add(entry);
+                    skipped++;
                 }
-                pages.add(entry);
             }
             for (Group g : everGroups.values()) {
                 if (!recentGroups.containsKey(g.key())) {
@@ -166,7 +171,15 @@ public final class CitationSync {
                     pages.add(entry);
                 }
             }
-            String note = failures == 0 ? "" : failures + " page(s) kept their totals only: BotRank did not answer for their details";
+            List<String> notes = new ArrayList<>();
+            if (failures[0] > 0) {
+                notes.add(failures[0] + " page(s) kept their totals only: BotRank did not answer for their details");
+            }
+            if (skipped > 0) {
+                notes.add(skipped + " less cited page(s) kept their totals only: details are read for the "
+                        + MAX_DETAILED_PAGES + " most cited pages");
+            }
+            String note = String.join(". ", notes);
             CitationStore.finish(sitePath, pages, unresolved, fresh.latestCountedAnswerAt, note);
             logger.info("BotRank sync of {}: {} cited page(s), {} unmatched URL(s)", sitePath, pages.size(), unresolved.length());
             return new Result(Outcome.DONE, note);
@@ -177,6 +190,38 @@ public final class CitationSync {
             logger.warn("BotRank sync of {} failed: {}", sitePath, e.toString());
             return fail(sitePath, "the sync failed on the Jahia side; see the server log");
         }
+    }
+
+    /**
+     * The entry of a page cited in the last 30 days, details included when BotRank answers for them.
+     *
+     * <p>The variation starts null and is set only once the history shows a run day in the previous
+     * window: a page whose details fail never carries BotRank's raw variation.</p>
+     *
+     * @param failures incremented when the details could not be read; the run fails above
+     *                 {@link #MAX_PAGE_FAILURES}
+     * @throws BotRankException on a refusal that concerns the whole run (key, project, subscription)
+     */
+    static JSONObject recentEntry(BotRankClient client, String project, Group g, int everCitations, int rankOf,
+            LocalDate start, LocalDate end, int[] failures) throws BotRankException {
+        JSONObject entry = base(g, everCitations);
+        entry.put("recent", true);
+        entry.put("rankOf", rankOf);
+        entry.put("variation", JSONObject.NULL);
+        try {
+            details(client, project, g, start, end, entry);
+        } catch (BotRankException e) {
+            if (!e.isTransient() && e.status() != 404) {
+                throw e;
+            }
+            failures[0]++;
+            entry.put("variation", JSONObject.NULL);
+            entry.put("detailsMissing", true);
+            if (failures[0] > MAX_PAGE_FAILURES) {
+                throw new BotRankException(e.type(), e.status(), "too many pages could not be read: " + e.getMessage());
+            }
+        }
+        return entry;
     }
 
     /** The cited URLs of one page, added up. */
@@ -307,9 +352,7 @@ public final class CitationSync {
         boolean trusted = previousRunDays > 0;
         entry.put("history", history);
         entry.put("previousRunDays", previousRunDays);
-        if (!trusted) {
-            entry.put("variation", JSONObject.NULL);
-        }
+        entry.put("variation", trusted && g.variation != null ? g.variation : JSONObject.NULL);
 
         entry.put("prompts", prompts(client.pageRead(project, "prompts", best, current, 20).optJSONArray("prompts"), trusted));
         entry.put("tags", tags(client.pageRead(project, "tags", best, current, 10).optJSONArray("tags"), trusted));

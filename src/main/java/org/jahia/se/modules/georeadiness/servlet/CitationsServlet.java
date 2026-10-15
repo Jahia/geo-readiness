@@ -94,6 +94,12 @@ public class CitationsServlet extends GeoServlet {
             if (site == null) {
                 return;
             }
+            // The drawer opens on pages and main resources only. Any other readable node under /sites
+            // (a site user's own profile node, for one) would otherwise read the site's sync status.
+            if (resolvePage(path, language) == null) {
+                deny(resp, HttpServletResponse.SC_FORBIDDEN, "cannot read node");
+                return;
+            }
             CitationStore.Settings settings = CitationStore.settings(site.path);
             JSONObject out = new JSONObject();
             out.put("canConfigure", site.mayChangeSettings);
@@ -193,7 +199,7 @@ public class CitationsServlet extends GeoServlet {
         JSONArray list = new JSONArray();
         for (BotRankConnection c : connections.visibleTo(site.key)) {
             list.put(new JSONObject().put("id", c.id()).put("label", c.label())
-                    .put("problem", c.problem() == null ? JSONObject.NULL : c.problem()));
+                    .put("problem", connections.problemOf(c) == null ? JSONObject.NULL : connections.problemOf(c)));
         }
         out.put("connections", list);
         out.put("serverNames", new JSONArray(site.serverNames));
@@ -311,12 +317,19 @@ public class CitationsServlet extends GeoServlet {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "the URL is not on a host of this site");
             return;
         }
-        String target = body.optString("target", "");
-        if (!target.startsWith(site.path + "/") || !isPageOrMainResource(target, language)) {
+        // Resolved, not compared as a string: the stored path is the node's own, and its site is checked.
+        JCRNodeWrapper target = resolvePage(body.optString("target", ""), language);
+        String targetPath;
+        try {
+            targetPath = target == null || !site.path.equals(target.getResolveSite().getPath()) ? null : target.getPath();
+        } catch (RepositoryException e) {
+            targetPath = null;
+        }
+        if (targetPath == null) {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "the target is not a page of this site");
             return;
         }
-        if (!CitationStore.saveMapping(site.path, key, target + "@" + language)) {
+        if (!CitationStore.saveMapping(site.path, key, targetPath + "@" + language)) {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "too many mappings");
             return;
         }
@@ -334,14 +347,17 @@ public class CitationsServlet extends GeoServlet {
         writeJson(resp, HttpServletResponse.SC_OK, status(site));
     }
 
-    /** Whether the caller can read the target in default and it is a page or a main resource. */
-    private static boolean isPageOrMainResource(String path, String language) {
+    /** The node, when the caller can read it in default and it is a page or a main resource; else null. */
+    private static JCRNodeWrapper resolvePage(String path, String language) {
+        if (path == null || !path.startsWith("/sites/")) {
+            return null;
+        }
         try {
             JCRNodeWrapper n = JCRSessionFactory.getInstance()
                     .getCurrentUserSession("default", Locale.forLanguageTag(language)).getNode(path);
-            return n.isNodeType("jnt:page") || n.isNodeType("jmix:mainResource");
+            return n.isNodeType("jnt:page") || n.isNodeType("jmix:mainResource") ? n : null;
         } catch (RepositoryException e) {
-            return false;
+            return null;
         }
     }
 
