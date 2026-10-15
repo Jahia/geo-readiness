@@ -50,10 +50,10 @@ function syncAndWait(path: string): void {
 }
 
 /**
- * A cross-site write refused with 403, by the module or by the platform before it. Recent platform
- * builds (jahia-ee-dev 8-SNAPSHOT) refuse a cross-site POST with their HTML 403 page before any
- * servlet runs; 8.2.3.2 lets it through to the module, which answers its own JSON refusal. The
- * module's check is covered by GeoServletCsrfTest either way.
+ * A cross-site write refused with 403, by the module or by the platform before it. jahia-ee-dev
+ * 8-SNAPSHOT (CI, 2026-10-15) refuses a cross-site POST with its HTML 403 page before any servlet
+ * runs; a platform that lets it through gets the module's own JSON refusal. The module's check is
+ * covered by GeoServletCsrfTest either way.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function expectCrossSiteRefusal(r: Cypress.Response<any>, what: string): void {
