@@ -5,7 +5,9 @@ Stories GEO-1 to GEO-16. These come from the first-pass analysis of integrating
 
 **Wave 1 is built.** GEO-1, GEO-2, GEO-3 and GEO-16 all ship in this module, with two deliberate
 deviations from the original scope and one thing that turned out to be impossible. Those are
-called out in each story. Wave 2 onward is unbuilt and gated on BotRank.
+called out in each story. **GEO-4 is built** on BotRank's public API v1, in review in
+[Jahia/geo-readiness#34](https://github.com/Jahia/geo-readiness/pull/34) (15 October 2026). The rest
+of Wave 2 onward is unbuilt.
 
 Read `geo-backlog.md` for GEO-17 to GEO-25, which are the Jahia-native stories that need no
 vendor at all.
@@ -15,9 +17,9 @@ vendor at all.
 **Updated 15 October 2026: the public API is open for our tests.** BotRank published its
 [reference](https://api.botrank.ai/public/v1/reference), backed by an OpenAPI 3.1 document at
 `https://api.botrank.ai/public/v1/openapi.json`, and created a test organisation for Jahia with one
-project wired to our demo site. Every read the page screen (GEO-4) needs is there. No route has been
-called by us yet: the API key is created by an organisation owner in BotRank, and that is a step
-for a person.
+project wired to our demo site. Every read the page screen (GEO-4) needs is there. The API key is
+created by an organisation owner in BotRank, a step for a person; with ours, every route was called
+the same day (below), and GEO-4 is built on them.
 
 | Route (`GET`, base `https://api.botrank.ai/public/v1`) | Returns |
 |---|---|
@@ -134,8 +136,8 @@ anyone who opens BotRank uses their own BotRank account, so a plain link is enou
 in Jahia comes through the organisation key. No signed link is needed.)*
 
 **What is verified now, and what is not.** Since 15 October 2026 the public API is documented, and
-its route table above is copied from its OpenAPI document; none of its routes has been called by us
-yet. The public MCP is a separate surface, and the section below records what it served on 5 October
+its route table above is copied from its OpenAPI document, and every route was called with our test
+key the same day (see "Tested on 15 October 2026" above). The public MCP is a separate surface, and the section below records what it served on 5 October
 2026, before the API existed. Its tool schemas
 give **inputs only**: no tool declares an output schema, so every response shape below was read
 off real responses, not off a specification. Treat those shapes as observed on 5 October 2026,
@@ -487,12 +489,19 @@ actually works on that host. Verified on 8.2.3.2. See `README.md` for the full l
 
 # Wave 2, needs the citation data
 
-Gate, 15 October 2026: **none on BotRank's side for GEO-4.** The public API v1 is documented and
-open in a test organisation. What remains before code is an API key, which an organisation owner
-creates in BotRank. GEO-4 is first. The gate was test access on 12 October and the organisation
-keys themselves on 5 October.
+Gate, 15 October 2026: **none on BotRank's side for GEO-4**, which is now built (below). The public API
+v1 is documented and open in a test organisation, and our test key reads it. The gate was test access
+on 12 October and the organisation keys themselves on 5 October. The other Wave 2 stories reuse
+GEO-4's connection, sync and store.
 
 ## GEO-4 · Is this page one that AI engines quote?
+
+**BUILT, in review** in [Jahia/geo-readiness#34](https://github.com/Jahia/geo-readiness/pull/34),
+ready for review on 15 October 2026: SonarQube gate green, 417 unit tests green; the integration
+tests, the citations spec included, are running again after two spec fixes. The drawer's **AI
+citations** tab, a Site Settings entry **AI citations (BotRank)** for site administrators, and a
+daily sync per site. Checked on a local Jahia with our test key: the drawer showed the same total
+as `citation-total` for the cited addresses mapped to a page.
 
 The keystone. It is the only story that puts external AI-visibility data on a specific node, and
 every later story reuses its plumbing.
@@ -503,27 +512,44 @@ is earning its keep in AI answers.
 
 **Acceptance**
 - Citation count for this exact URL, matched on the node's published absolute URL per language,
-  with a trend over the period.
-- The prompts this page is cited for, listed and clickable.
+  with a trend over the period. *(done: 30 days with the variation on the previous 30 and a 60-day
+  daily chart. Matched on the published URL, every vanity URL, `/sites/...` paths and manual
+  mappings; several addresses of one page add up. The variation is withheld when no tracked
+  question ran in the previous window, because BotRank computes one against an empty period)*
+- The prompts this page is cited for, listed and clickable. *(listed with market, citations,
+  engines and last citation day; not clickable: the API gives no address for a prompt)*
 - Uses the node's own title, not the title BotRank extracted. Theirs falls back to a body snippet
-  and looks broken.
+  and looks broken. *(done: the tab sits on the node, and the API returns no title)*
 - Header reads "as of <date>" from the last run timestamp. No refresh button that cannot deliver
-  fresher data.
-- A page with no citation record says "not cited yet", never "0".
-- Works for the published URL. States clearly that a draft has no data yet.
+  fresher data. *(done: "BotRank data as of" the latest counted answer, plus the sync date. No
+  button in the drawer; "Sync now" is in Site Settings)*
+- A page with no citation record says "not cited yet", never "0". *(done, and "not cited
+  recently" when it was cited before the last 30 days)*
+- Works for the published URL. States clearly that a draft has no data yet. *(done)*
 - Shows where this page stands against the site's other cited pages, so "3 citations" has a scale.
+  *(done: "rank N of M cited pages of the site")*
 - Shows the themes the page answers: the tags of the prompts that cite it, as BotRank finds them.
-  The author never declares them, since the point is to discover how engines read the page.
-- Shows the competing pages cited on the same prompts, and which ones come before ours.
+  The author never declares them, since the point is to discover how engines read the page. *(done)*
+- Shows the competing pages cited on the same prompts, and which ones come before ours. *(done: in
+  how many answers each appears with ours, and in how many it is listed ahead)*
 
-**Data** public API v1 (15 October 2026). The sync runs daily at 06:30 Paris time: it reads
-`data-freshness` and retries while `refreshing` is true, then reads `/ai-visibility/pages` for the
-site's domain with the site's hosts and explicit dates, resolves each cited URL to a node, and
-reads `citation-total`, `citation-history`, `prompts`, `tags` and `co-cited` for cited pages only,
-keyed on the page's published Jahia URL. A page absent from the list shows "not cited yet"; opening
-its drawer calls `citation-total` with `period=all_time` to tell "never cited" from "not recently".
+**Data** public API v1 (15 October 2026). One organisation key per connection file on the server,
+chosen per site in Site Settings with a project and up to 10 hosts; the key never reaches the
+browser or a log. The sync runs daily at the saved time (06:30 Paris time by default) on the
+processing server: it reads `data-freshness` and retries every 30 minutes while `refreshing` is
+true, until 10:30; then reads `/ai-visibility/pages` for the site's hosts over the last 30 days and
+over all time, resolves each cited URL to a node, and reads `citation-total`, `citation-history`,
+`prompts`, `tags` and `co-cited` for the 200 most cited pages. The all-time list tells "never
+cited" from "not recently" during the sync, so opening the drawer never calls BotRank. Cited
+addresses that match no page are listed in Site Settings, each with "Match to a page".
 `prompts` gives `lastCitationDay`, the last day the prompt cited the page, not a run time.
-**Surface** page drawer. **Effort** M.
+**Surface** page drawer, and Site Settings for the connection. **Effort** M (as estimated).
+
+**Deviations from the original scope.** The manual mapping of cited addresses to pages was not in
+the story: a migrated site's old URLs keep being cited, and only a person knows which page replaced
+them. The drawer read needs only read access to the page; the settings need `site-admin`, because
+binding a site spends the customer's organisation key. Runs on publication are not part of it: the
+data changes once a day.
 
 ## GEO-5 · Tell me when a page stops being cited
 
@@ -925,7 +951,8 @@ documentation arrives.
 
 Everything dated **13 and 15 October 2026** comes from their CTO's written answers and from the
 published reference and `openapi.json`, read on 15 October 2026. The route table in the status
-section is copied from that document; no route had been called by us when it was written.
+section is copied from that document; no route had been called by us when it was written. The test
+run of the same day, and the GEO-4 connector built on the routes, checked it against the live API.
 
 One claim in the first draft, that Jahia had no llms.txt support, was wrong. The community
 `llms.txt manager` module (v1.0.0, August 2026, min 8.1.5.0, github.com/Jahia/llms) publishes and
