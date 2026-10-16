@@ -6,6 +6,7 @@ import {previewRobots, applyRobots} from '../api/siteFiles';
 import {runCrawlerCheck} from '../api/crawlerCheck';
 import {DiffView} from './DiffView';
 import styles from './Tabs.module.css';
+import {fetchErrorHint} from '../util/fetchError';
 
 const NS = 'geo-readiness';
 
@@ -16,6 +17,21 @@ const NS = 'geo-readiness';
  * rather than reproducing the rules in JavaScript. One implementation, so the
  * diff on screen is always the file that would actually be written.
  */
+/** What the server answered one crawler: served, refused with a status, or no answer at all. */
+const AccessChip = ({live, t}) => {
+    if (live.status === 200) {
+        return <Chip label={t('files.robots.control.served', {ms: live.ms})} color="success"/>;
+    }
+
+    if (live.status === null) {
+        return <Chip label={t('files.robots.control.noAnswer')} color="warning"/>;
+    }
+
+    return <Chip label={t('files.robots.control.refused', {status: live.status})} color="danger"/>;
+};
+
+AccessChip.propTypes = {live: PropTypes.object.isRequired, t: PropTypes.func.isRequired};
+
 export const RobotsControlPanel = ({path, language}) => {
     const {t} = useTranslation(NS);
     const [preview, setPreview] = useState(null);
@@ -181,7 +197,8 @@ export const RobotsControlPanel = ({path, language}) => {
 
                     const stance = decisions[a.token] || a.current;
                     const live = access && access.byName[a.name];
-                    return stance === 'block' || (live && live.status !== 200);
+                    // A crawler the server could not reach (no status) is unknown, not blocked.
+                    return stance === 'block' || (live && live.status !== null && live.status !== 200);
                 });
                 if (blocked.length === 0) {
                     return null;
@@ -199,19 +216,36 @@ export const RobotsControlPanel = ({path, language}) => {
 
             {access && (() => {
                 const bots = (preview.agents || []).map(a => access.byName[a.name]).filter(Boolean);
-                const refused = bots.filter(b => b.status !== 200).length;
+                const unreachable = bots.filter(b => b.status === null);
+                const refused = bots.filter(b => b.status !== null && b.status !== 200).length;
                 const mismatched = bots.filter(b => b.mismatch).length;
-                const tone = refused > 0 ? 'danger' : (mismatched > 0 ? 'warning' : 'info');
+                if (unreachable.length > 0 && refused === 0) {
+                    // Nothing answered: the server could not reach the page, so this says nothing
+                    // about what the site does with these crawlers.
+                    return (
+                        <Banner
+                            variant="warning"
+                            title={t('files.robots.control.verdictUnreachable', {count: unreachable.length})}
+                        >
+                            {fetchErrorHint(t, unreachable[0].error)}
+                        </Banner>
+                    );
+                }
+
                 const title = refused > 0 ?
                     t('files.robots.control.verdictRefused', {count: refused}) :
                     t('files.robots.control.verdictServed', {count: bots.length});
-                return (
-                    <Banner variant={tone} title={title}>
-                        {mismatched > 0 ?
-                            t('files.robots.control.verdictMismatch', {count: mismatched}) :
-                            t('files.robots.control.verdictAgree')}
-                    </Banner>
-                );
+                const agreement = mismatched > 0 ?
+                    t('files.robots.control.verdictMismatch', {count: mismatched}) :
+                    t('files.robots.control.verdictAgree');
+                let tone = 'info';
+                if (refused > 0) {
+                    tone = 'danger';
+                } else if (mismatched > 0) {
+                    tone = 'warning';
+                }
+
+                return <Banner variant={tone} title={title}>{agreement}</Banner>;
             })()}
 
             <ul className={styles.checkList}>
@@ -238,14 +272,7 @@ export const RobotsControlPanel = ({path, language}) => {
                                             t('files.robots.byWildcard')}
                                         color={a.named ? 'accent' : 'default'}
                                     />
-                                    {live && (
-                                        <Chip
-                                            label={live.status === 200 ?
-                                                t('files.robots.control.served', {ms: live.ms}) :
-                                                t('files.robots.control.refused', {status: live.status === null ? '—' : live.status})}
-                                            color={live.status === 200 ? 'success' : 'danger'}
-                                        />
-                                    )}
+                                    {live && <AccessChip live={live} t={t}/>}
                                     {live && live.mismatch && (
                                         <Chip label={t(`crawler.mismatch.${live.mismatch}`)} color="warning"/>
                                     )}

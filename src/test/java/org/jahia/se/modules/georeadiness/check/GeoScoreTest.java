@@ -221,6 +221,25 @@ class GeoScoreTest {
         }
 
         @Test
+        @DisplayName("a fetch with no answer is not a refusal: fetched fails, reachable is not judged")
+        void unreachable_isNotBlocked() {
+            JSONObject report = emptyReport();
+            report.put("unreachableCount", 16);
+            report.put("unreachableError", "ConnectException");
+            JSONObject score = GeoScore.compute(report);
+
+            assertThat(passed(score, "fetched")).isFalse();
+            assertThat(check(score, "fetched").getString("value")).isEqualTo("ConnectException");
+            assertThat(score.getJSONArray("checks").toString()).doesNotContain("\"reachable\"");
+
+            // A real refusal next to the failures is still reported as one.
+            report.put("blockedCount", 2);
+            score = GeoScore.compute(report);
+            assertThat(passed(score, "reachable")).isFalse();
+            assertThat(check(score, "reachable").getInt("value")).isEqualTo(2);
+        }
+
+        @Test
         @DisplayName("policyMatchesReality sums BOTH kinds of contradiction")
         void policyMatchesReality_sumsBothMismatchKinds() {
             JSONObject report = emptyReport();
