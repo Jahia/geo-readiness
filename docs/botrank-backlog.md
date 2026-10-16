@@ -6,8 +6,9 @@ Stories GEO-1 to GEO-16. These come from the first-pass analysis of integrating
 **Wave 1 is built.** GEO-1, GEO-2, GEO-3 and GEO-16 all ship in this module, with two deliberate
 deviations from the original scope and one thing that turned out to be impossible. Those are
 called out in each story. **GEO-4 is built** on BotRank's public API v1, in review in
-[Jahia/geo-readiness#34](https://github.com/Jahia/geo-readiness/pull/34) (15 October 2026). The rest
-of Wave 2 onward is unbuilt.
+[Jahia/geo-readiness#34](https://github.com/Jahia/geo-readiness/pull/34) and
+[#35](https://github.com/Jahia/geo-readiness/pull/35), and demonstrated on a Jahia Cloud instance
+(16 October 2026). The rest of Wave 2 onward is unbuilt.
 
 Read `geo-backlog.md` for GEO-17 to GEO-25, which are the Jahia-native stories that need no
 vendor at all.
@@ -512,11 +513,25 @@ GEO-4's connection, sync and store.
 ## GEO-4 · Is this page one that AI engines quote?
 
 **BUILT, in review** in [Jahia/geo-readiness#34](https://github.com/Jahia/geo-readiness/pull/34),
-ready for review on 15 October 2026: SonarQube gate green, 417 unit tests green; the integration
-tests, the citations spec included, are running again after two spec fixes. The drawer's **AI
-citations** tab, a Site Settings entry **AI citations (BotRank)** for site administrators, and a
-daily sync per site. Checked on a local Jahia with our test key: the drawer showed the same total
-as `citation-total` for the cited addresses mapped to a page.
+with a second iteration in [#35](https://github.com/Jahia/geo-readiness/pull/35) (stacked on #34).
+SonarQube gate green; 419 unit tests green; the integration tests, the citations spec included,
+passed on 15 October. The drawer's **AI citations** tab, a Site Settings entry **AI citations
+(BotRank)** for site administrators, and a daily sync per site. Checked on a local Jahia with our
+test key: the drawer showed the same total as `citation-total` for the cited addresses mapped to a
+page.
+
+- **Second iteration (#35, 15 October):** the AI engines behind each prompt, the variation of each
+  prompt and tag, and, for each co-cited page, its average position among the sources of the shared
+  answers next to ours (`averageRank`, `requestedPageAverageRank`) and its own total. No new call:
+  the sync already stored them.
+- **Fixed on 16 October (#34):** the sync read the cited pages of the first host's registrable domain
+  only, so the hosts of another domain were dropped without a word (a site on `example.fr` and
+  `example.com` saw half its citations). The list is now read once per host, pages read twice are
+  kept once, and ranks are recomputed across the site in BotRank's order.
+- **Demo (16 October):** on the Jahia Cloud instance of the BotRank demo, site Clairsève, project
+  2188. Its prompts never cite the fictional site, so a domain they cite is declared as a host and
+  five of its pages are matched by hand to Clairsève pages: four pages show citations (38, 31 with
+  two addresses added up, 6 and 1, ranks 1, 2, 8 and 32 of 32), the others "not cited yet".
 
 The keystone. It is the only story that puts external AI-visibility data on a specific node, and
 every later story reuses its plumbing.
