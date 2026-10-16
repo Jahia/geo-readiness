@@ -532,7 +532,11 @@ public final class SiteScorer {
             report.put("agents", agents);
             JSONObject html = agent.optJSONObject("html");
             report.put("controlWords", html == null ? 0 : html.optInt("words", 0));
-            report.put("blockedCount", agent.optInt(STATUS, 0) == 200 ? 0 : 1);
+            int status = agent.optInt(STATUS, 0);
+            // 0 is "no HTTP answer": the page could not be reached, which is not a refusal.
+            report.put("blockedCount", status == 200 || status == 0 ? 0 : 1);
+            report.put("unreachableCount", status == 0 ? 1 : 0);
+            report.put("unreachableError", status == 0 ? agent.opt("error") : JSONObject.NULL);
             report.put("visibility", visibility);
             report.put("blockedButAllowedCount", 0);
             report.put("reachableButDisallowedCount", contradicts(agent, rules, url) ? 1 : 0);

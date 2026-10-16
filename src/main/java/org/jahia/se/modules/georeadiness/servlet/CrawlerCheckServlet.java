@@ -420,6 +420,11 @@ public class CrawlerCheckServlet extends GeoServlet {
         JSONArray results = new JSONArray();
         int controlWords = -1;
         int blocked = 0;
+        // No HTTP answer at all (connection refused, timeout, certificate): nothing refused the
+        // crawler, the server could not reach the page. Counted apart, or a network problem on
+        // our side reads as a firewall rule of the site.
+        int unreachable = 0;
+        String unreachableError = null;
         int blockedButAllowed = 0;
         int reachableButDisallowed = 0;
 
@@ -428,7 +433,12 @@ public class CrawlerCheckServlet extends GeoServlet {
             if (controlWords < 0 && status == 200) {
                 controlWords = wordsOf(r);
             }
-            if (status != 200) {
+            if (status == 0) {
+                unreachable++;
+                if (unreachableError == null) {
+                    unreachableError = r.optString("error", null);
+                }
+            } else if (status != 200) {
                 blocked++;
             }
             String mismatch = crossCheck(r, rules, tokens.get(r.optString("name", "")), pagePath, status);
@@ -442,6 +452,8 @@ public class CrawlerCheckServlet extends GeoServlet {
 
         out.put(AGENTS, results);
         out.put("blockedCount", blocked);
+        out.put("unreachableCount", unreachable);
+        out.put("unreachableError", unreachableError == null ? JSONObject.NULL : unreachableError);
         out.put("blockedButAllowedCount", blockedButAllowed);
         out.put("reachableButDisallowedCount", reachableButDisallowed);
         out.put("controlWords", Math.max(controlWords, 0));
