@@ -126,6 +126,42 @@ class CitationSyncTest {
         return new CitationSync.Window(client, "p", START, END, 3);
     }
 
+    /** Like BotRank: one registrable domain per call, here the last two labels of the domain parameter. */
+    private static BotRankClient twoDomains() {
+        return new BotRankClient("https://api.example/v1", "brk_x", (uri, key, project) -> {
+            String q = uri.getRawQuery();
+            String pages = "[]";
+            if (q.contains("domain=a.com") || q.contains("domain=fr.a.com")) {
+                pages = "[{\"url\":\"https://a.com/x\",\"rank\":1,\"citationCount\":9,\"citationCountVariation\":null},"
+                        + "{\"url\":\"https://fr.a.com/y\",\"rank\":2,\"citationCount\":3,\"citationCountVariation\":1}]";
+            } else if (q.contains("domain=b.org")) {
+                pages = "[{\"url\":\"https://b.org/z\",\"rank\":1,\"citationCount\":5,\"citationCountVariation\":2}]";
+            }
+            return new BotRankClient.Response(200, "{\"pages\":" + pages + ",\"nextCursor\":null}");
+        });
+    }
+
+    @Test
+    void hostsOnSeveralDomainsAreAllReadAndRankedAcrossTheSite() throws Exception {
+        List<BotRankClient.CitedPage> pages = CitationSync.citedPages(twoDomains(), "p",
+                Arrays.asList("a.com", "fr.a.com", "b.org"), BotRankClient.Period.allTime());
+
+        // Both domains are read; the a.com pages, listed for a.com and again for fr.a.com, count once.
+        assertThat(pages).extracting(p -> p.url)
+                .containsExactly("https://a.com/x", "https://b.org/z", "https://fr.a.com/y");
+        // One ranking for the site, most cited first.
+        assertThat(pages).extracting(p -> p.rank).containsExactly(1, 2, 3);
+        assertThat(pages.get(1).variation).isEqualTo(2);
+    }
+
+    @Test
+    void aSingleDomainKeepsBotRankOrder() throws Exception {
+        List<BotRankClient.CitedPage> pages = CitationSync.citedPages(twoDomains(), "p",
+                Arrays.asList("a.com"), BotRankClient.Period.allTime());
+        assertThat(pages).extracting(p -> p.url).containsExactly("https://a.com/x", "https://fr.a.com/y");
+        assertThat(pages).extracting(p -> p.rank).containsExactly(1, 2);
+    }
+
     @Test
     void aVariationIsKeptWhenThePreviousWindowHadARun() throws Exception {
         JSONObject e = CitationSync.recentEntry(window(answering("{\"days\":[{\"date\":\"2026-09-01\",\"citationCount\":0},{\"date\":\"2026-10-01\",\"citationCount\":14}]}")),

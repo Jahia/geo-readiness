@@ -282,7 +282,9 @@ baseUrl =
 - A site restricted out of a connection does not see it and cannot use it, with no fallback.
 - The daily sync runs at the time saved for the site (06:30 Paris time by default), on the
   processing server only, and waits while BotRank is still collecting answers, until 10:30 at the
-  latest. It reads the cited pages of the site's hosts, matches each cited address to a page (manual
+  latest. It reads the cited pages of the site's hosts, one list per host since BotRank lists one
+  domain per call (a site on `example.fr` and `example.com` gets both), ranks them across the site,
+  matches each cited address to a page (manual
   mappings, published URLs, every vanity URL, `/sites/...` paths) and stores one entry per cited
   page under the site's hidden `geo-readiness` node. Editors never cause a call to BotRank.
 
@@ -319,8 +321,9 @@ baseUrl =
   each of them can bind a site to that organisation's key. List the sites of each connection on a
   shared instance. A `sites` value that cannot be read closes the connection rather than opening it.
 - **A BotRank sync reads the details of the 200 most cited pages of a site.** The others keep their
-  total and rank. One run makes at most about 2,600 calls (two list walks, then up to thirteen calls
-  per detailed page), one at a time; a run still going is never taken for dead and doubled.
+  total and rank. One run walks two lists per host (the last 30 days and all time, 50 pages of 100 at
+  most each), then makes up to thirteen calls per detailed page, one at a time: about 2,600 calls for
+  a site with one host; a run still going is never taken for dead and doubled.
 - **A cited address mapped by hand counts in the language the settings screen was showing**, and a
   mapping takes effect at the next sync.
 - **The module's servlets are not under Jahia's CSRF guard.** Their control is an exact
