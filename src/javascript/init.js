@@ -3,6 +3,7 @@ import i18next from 'i18next';
 import {registry} from '@jahia/ui-extender';
 import {GeoReadinessAction} from './GeoReadiness/GeoReadinessAction';
 import {GeoDashboard} from './GeoReadiness/dashboard/GeoDashboard';
+import {CitationsSettings} from './GeoReadiness/settings/CitationsSettings';
 import en from '../main/resources/javascript/locales/en.json';
 import fr from '../main/resources/javascript/locales/fr.json';
 
@@ -41,6 +42,17 @@ function register() {
         requiredPermission: 'publish',
         requireModuleInstalledOnSite: 'geo-readiness',
         render: () => <GeoDashboard/>
+    });
+    // BotRank citations are bound per site by a site administrator: the binding spends the
+    // customer's organisation key, so it sits in Site Settings behind site-admin, not in the SEO
+    // dashboard that editors with publish can open. The component checks the module again.
+    registry.add('adminRoute', 'geoReadinessCitations', {
+        targets: ['administration-sites:95'],
+        label: `${NS}:citationsSettings.navLabel`,
+        isSelectable: true,
+        requiredPermission: 'site-admin',
+        requireModuleInstalledOnSite: 'geo-readiness',
+        render: () => <CitationsSettings/>
     });
 }
 
