@@ -529,7 +529,8 @@ is earning its keep in AI answers.
   with a trend over the period. *(done: 30 days with the variation on the previous 30 and a 60-day
   daily chart. Matched on the published URL, every vanity URL, `/sites/...` paths and manual
   mappings; several addresses of one page add up. The variation is withheld when no tracked
-  question ran in the previous window, because BotRank computes one against an empty period)*
+  question ran in the previous window; BotRank returns `null` there too since 16 October, and the
+  guard stays for a previous window covered only in part, which BotRank does not detect)*
 - The prompts this page is cited for, listed and clickable. *(listed with market, citations,
   engines and last citation day; not clickable: the API gives no address for a prompt)*
 - Uses the node's own title, not the title BotRank extracted. Theirs falls back to a body snippet
