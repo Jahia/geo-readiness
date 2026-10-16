@@ -14,6 +14,20 @@ vendor at all.
 
 ## Status of the partnership
 
+**Updated 16 October 2026: the four findings of our test run are fixed.** Their CTO answered the
+same day and every point checks out against the live API (16 October, our test key):
+
+| Finding | Now |
+|---|---|
+| A variation against a period with no run | `null` whenever the previous period of the same length is not comparable: `all_time`, a project history that starts after that period begins, or no AI answer in the project during it. Otherwise a page, prompt or tag that was not cited starts from zero, so its variation is its total. Checked: `null` over 7 and 30 days on the test project, which had no answer from 1 to 12 October |
+| The variation rules | Written in the reference, section "Variations", with two stated limits: a previous period covered only in part is not detected, and adding an AI engine or prompts raises the figures mechanically (Claude and Copilot were enabled on the test project on 14 October) |
+| `aiSurface` values | Listed in the reference with their labels (`chatgpt`, `perplexity`, `gemini`, `mistral`, `aioverview`, `grok`, `copilot`, `aimode`, `claude`), and the markets (20 country codes). The list may grow: a value missing from it is still a valid response. The module's nine labels match, and an unknown value shows as sent |
+| Headers | `Cache-Control: private, no-cache` on every answer. `If-None-Match` honoured: an unchanged answer comes back 304 (lighter transfer, same server computation). No rate limit today. CORS removed: a browser preflight now gets 404, so the key stays server side |
+
+What we do with it: the module keeps its own guard (a variation is shown only when the previous
+window had a run day), now in line with their `null` and still useful for the partly covered
+period they do not detect. Conditional requests in the daily sync are the next step on our side.
+
 **Updated 15 October 2026: the public API is open for our tests.** BotRank published its
 [reference](https://api.botrank.ai/public/v1/reference), backed by an OpenAPI 3.1 document at
 `https://api.botrank.ai/public/v1/openapi.json`, and created a test organisation for Jahia with one
@@ -40,8 +54,8 @@ the pages list paginates. Errors are RFC 9457 problem documents with a stable `t
 is its URL: `www.`, a trailing slash, the anchor and a published list of tracking parameters are
 ignored; scheme, subdomain, path case and any other parameter make a different page.
 
-Not in v1: a changed-since parameter, published rate limits, a written deprecation policy, and UTC
-timestamps with an explicit day, which their CTO announced for later.
+Not in v1: a changed-since parameter, a written deprecation policy, and UTC timestamps with an
+explicit day, which their CTO announced for later. There is no rate limit today (16 October).
 
 **Tested on 15 October 2026.** All eight routes behave as their OpenAPI document says, over about 75
 read-only calls with our test key. The key sees one project. Our demo site is never cited in it, so
@@ -57,7 +71,7 @@ the tests ran on the real sites its prompts cite.
 | Never-cited page | `all_time` total 0, empty `aiSurfaces`, zero days on run days, no prompts |
 | Errors | Every documented problem type tried comes back as `application/problem+json` with its `type` and a readable `detail`. `public-api-not-enabled` and `subscription-required` were not reachable |
 
-Undocumented behaviour found, raised with them:
+Undocumented behaviour found, raised with them (all four fixed on 16 October, see above):
 
 - **A variation against a period with no run.** Over 7 days a page shows `+14`, while no prompt ran
   in the previous 7 days. A contributor would read growth that was never measured. Until it is
@@ -822,15 +836,20 @@ front.
 
 ## For BotRank
 
-**Open on 15 October 2026:**
+**Open on 16 October 2026** (sent with our progress update the same day):
 
-- Whether `refreshing` goes false between runs on a project whose prompts run every hour.
+- **New:** the dates of the project's configuration changes (an AI engine enabled, prompts added),
+  per project or per engine, so the panel can tell a contributor that a rise comes from there and not
+  from the page.
 - UTC timestamps and an explicit day, announced by them for later.
-- A written deprecation policy for `/public/v1`, and published rate limits.
-- A changed-since parameter, so the daily sync can skip pages that did not move.
-- `null` for a variation whose previous period had no run, and the variation rules written down.
-- The list of `aiSurface` values.
-- Whether the `ETag` supports conditional requests.
+- Whether `refreshing` goes false between runs on a project whose prompts run every hour.
+- A written deprecation policy for `/public/v1` (not in the reference on 16 October).
+- A changed-since parameter: the 304 saves transfer but not calls, and the daily sync could then
+  read only the pages that moved.
+
+Answered on 16 October: `null` for a variation whose previous period is not comparable and the
+rules written down, the list of `aiSurface` values and markets, conditional requests (304), no rate
+limit today, and no CORS.
 
 The six questions asked on 12 October were all answered on 13 October: a project-level freshness
 read instead of a run end, a `host` parameter, history with zeros on run days, the published list of
