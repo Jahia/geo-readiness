@@ -4,7 +4,9 @@ When ChatGPT, Claude or Perplexity fetch one of your pages, what do they actuall
 answers that for the page you have open, and tells you which parts are yours to fix.
 
 Open it by selecting a page in jContent and choosing **GEO readiness**. Nothing in the panel
-changes your page: it only reads and reports.
+changes your page: it only reads and reports. It closes with Escape, its Close button, the same
+button again, or a click anywhere outside it: the page under edit, the content tree, or another
+panel's button.
 
 A companion guide covers the site-wide screen: [`dashboard-guide.md`](dashboard-guide.md).
 
