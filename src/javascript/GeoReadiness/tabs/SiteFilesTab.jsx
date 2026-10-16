@@ -5,8 +5,50 @@ import {
     Chip, Table, TableBody, TableBodyCell, TableHead, TableHeadCell, TableRow, Typography
 } from '@jahia/moonstone';
 import styles from './Tabs.module.css';
+import {fetchErrorHint} from '../util/fetchError';
 
 const NS = 'geo-readiness';
+
+/**
+ * What the llms.txt check found. A fetch that failed is told apart from a file that is not there:
+ * the first is a connection problem, the second a finding about the site.
+ */
+const LlmsVerdict = ({llms, t}) => {
+    if (llms.servedHtmlInstead) {
+        return <div className={`${styles.verdict} ${styles.bad}`}>{t('files.llms.servedHtml')}</div>;
+    }
+
+    if (llms.present) {
+        return (
+            <>
+                <div className={`${styles.verdict} ${styles.good}`}>{t('files.llms.present')}</div>
+                <ul className={styles.facts}>
+                    <li>{t('files.llms.h1')}: <strong>{llms.h1 || t('crawler.missing')}</strong></li>
+                    <li>{t('files.llms.summary')}: <strong>{llms.hasSummary ? t('crawler.present') : t('crawler.missing')}</strong></li>
+                    <li>{t('files.llms.sections')}: <strong>{llms.sections ?? 0}</strong></li>
+                    <li>{t('files.llms.links')}: <strong>{llms.links ?? 0}</strong></li>
+                    <li>{t('files.llms.contentType')}: <strong>{llms.contentType || '—'}</strong></li>
+                </ul>
+            </>
+        );
+    }
+
+    if (llms.error && llms.status === null) {
+        return (
+            <div className={`${styles.verdict} ${styles.warn}`}>
+                {t('files.llms.unreachable')} {fetchErrorHint(t, llms.error)}
+            </div>
+        );
+    }
+
+    return (
+        <div className={`${styles.verdict} ${styles.warn}`}>
+            {t('files.llms.absent', {status: llms.status ?? '—'})}
+        </div>
+    );
+};
+
+LlmsVerdict.propTypes = {llms: PropTypes.object.isRequired, t: PropTypes.func.isRequired};
 
 export const SiteFilesTab = ({report}) => {
     const {t} = useTranslation(NS);
@@ -24,11 +66,18 @@ export const SiteFilesTab = ({report}) => {
             {/* robots.txt */}
             <Typography variant="subheading" component="h3" className={styles.sectionTitle}>{t('files.robots.title')}</Typography>
 
-            {!robots.present ? (
+            {/* A failed fetch is not an absent file: "everything is allowed" would be a finding we never made. */}
+            {!robots.present && robots.error && (
+                <div className={`${styles.verdict} ${styles.warn}`}>
+                    {t('files.robots.unreachable')} {fetchErrorHint(t, robots.error)}
+                </div>
+            )}
+            {!robots.present && !robots.error && (
                 <div className={`${styles.verdict} ${styles.warn}`}>
                     {t('files.robots.absent')}
                 </div>
-            ) : (
+            )}
+            {robots.present && (
                 <>
                     <div className={`${styles.verdict} ${named === 0 ? styles.warn : styles.good}`}>
                         {named === 0
@@ -83,24 +132,7 @@ export const SiteFilesTab = ({report}) => {
             {/* llms.txt */}
             <Typography variant="subheading" component="h3" className={styles.sectionTitle}>{t('files.llms.title')}</Typography>
 
-            {llms.servedHtmlInstead ? (
-                <div className={`${styles.verdict} ${styles.bad}`}>{t('files.llms.servedHtml')}</div>
-            ) : llms.present ? (
-                <>
-                    <div className={`${styles.verdict} ${styles.good}`}>{t('files.llms.present')}</div>
-                    <ul className={styles.facts}>
-                        <li>{t('files.llms.h1')}: <strong>{llms.h1 || t('crawler.missing')}</strong></li>
-                        <li>{t('files.llms.summary')}: <strong>{llms.hasSummary ? t('crawler.present') : t('crawler.missing')}</strong></li>
-                        <li>{t('files.llms.sections')}: <strong>{llms.sections ?? 0}</strong></li>
-                        <li>{t('files.llms.links')}: <strong>{llms.links ?? 0}</strong></li>
-                        <li>{t('files.llms.contentType')}: <strong>{llms.contentType || '—'}</strong></li>
-                    </ul>
-                </>
-            ) : (
-                <div className={`${styles.verdict} ${styles.warn}`}>
-                    {t('files.llms.absent', {status: llms.status ?? '—'})}
-                </div>
-            )}
+            <LlmsVerdict llms={llms} t={t}/>
 
             <p className={styles.explain}>
                 {t('files.llmsFull.label')}:{' '}

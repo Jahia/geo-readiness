@@ -112,6 +112,7 @@ public class CrawlerCheckServlet extends GeoServlet {
 
     /** Set by the site-files check when the file was actually served. */
     private static final String PRESENT = "present";
+    private static final String ERROR = "error";
 
     /** robots.txt allows this agent, but something on the way refused it. */
     private static final String BLOCKED_BUT_ALLOWED = "blockedButAllowed";
@@ -403,7 +404,7 @@ public class CrawlerCheckServlet extends GeoServlet {
             r.put("status", JSONObject.NULL);
             r.put("ms", 0);
             r.put("bytes", 0);
-            r.put("error", "FetchFailed");
+            r.put(ERROR, "FetchFailed");
             return r;
         }
     }
@@ -637,12 +638,21 @@ public class CrawlerCheckServlet extends GeoServlet {
                 .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
         String sitePath = live.getNode(path).getResolveSite().getPath();
 
-        JSONObject sitemap = ScanStore.read(sitePath, language).optJSONObject("sitemap");
+        JSONObject stored = ScanStore.read(sitePath, language);
+        JSONObject sitemap = stored.optJSONObject("sitemap");
         if (sitemap == null) {
             return out;
         }
 
+        // When these facts were found. The drawer never fetches a sitemap itself, so
+        // without the date its answer reads as current while the dashboard may say otherwise.
+        out.put("checkedAt", stored.opt("sitemapCheckedAt"));
         out.put(PRESENT, sitemap.optBoolean(PRESENT, false));
+        if ("unreachable".equals(sitemap.optString("reason"))) {
+            out.put("unreachable", true);
+            out.put("url", sitemap.optString("url"));
+            out.put(ERROR, sitemap.opt(ERROR));
+        }
         out.put("missing", SitemapCheck.isMissing(sitemap, path, language));
         out.put("noindexListed", SitemapCheck.isNoindexListed(sitemap, path, language));
         String stale = SitemapCheck.staleDetail(sitemap, path, language);
