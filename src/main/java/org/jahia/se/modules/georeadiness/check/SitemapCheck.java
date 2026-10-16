@@ -78,16 +78,7 @@ public final class SitemapCheck {
         out.put("url", base + "/sitemap.xml");
 
         if (!present) {
-            // Not a defect in itself, but everything below is unanswerable, and
-            // the three ways of having no usable sitemap call for three
-            // different responses, so name which one this is.
-            out.put("reason", answered ? "notSitemap"
-                    : (index.status == null ? "unreachable" : "none"));
-            if (index.status == null && index.error != null) {
-                // The exception's class only, never its message: it names the layer that
-                // failed (connection, timeout, certificate, name) and echoes nothing else.
-                out.put("error", index.error);
-            }
+            absent(out, answered, index);
             return out;
         }
 
@@ -98,84 +89,133 @@ public final class SitemapCheck {
         Map<String, PublishedMap.Entry> published = PublishedMap.forSite(sitePath, base);
         out.put("published", published.size());
 
-        JSONArray missing = new JSONArray();
-        JSONArray unknown = new JSONArray();
-        JSONArray staleDate = new JSONArray();
-        JSONArray noindexListed = new JSONArray();
-        JSONArray redirects = new JSONArray();
+        compare(out, sitePath, entries, published);
+        return out;
+    }
 
-        // The sitemap module does not use vanity urls, so a page that has one is
-        // listed under the address Jahia redirects *from*. Left alone that reads
-        // as two unrelated findings - the real address missing, the listed one
-        // unknown - when it is one thing: the sitemap is handing crawlers a
-        // redirect instead of the page. Recognise the pair and report it once.
-        Set<String> pairedPrimary = new LinkedHashSet<>();
-        Set<String> pairedAlt = new LinkedHashSet<>();
+    /**
+     * Compares the listed entries (address to claimed date) with the published pages and writes the
+     * findings into {@code out}. Package-private for tests: the fetch and the repository read stay
+     * in {@link #check}.
+     */
+    static void compare(JSONObject out, String sitePath, Map<String, String> entries,
+            Map<String, PublishedMap.Entry> published) {
+        Findings f = new Findings();
+        pairRedirects(sitePath, entries, published, f);
+        missingPages(entries, published, f);
+        listedEntries(entries, published, f);
+
+        out.put("missing", f.missing);
+        out.put("unknown", f.unknown);
+        out.put("staleDate", f.staleDate);
+        out.put("noindexListed", f.noindexListed);
+        out.put("redirects", f.redirects);
+        out.put("agrees", f.missing.length() == 0 && f.unknown.length() == 0
+                && f.staleDate.length() == 0 && f.noindexListed.length() == 0
+                && f.redirects.length() == 0);
+    }
+
+    /** What a comparison of the sitemap with the published pages found, bounded per list. */
+    private static final class Findings {
+        final JSONArray missing = new JSONArray();
+        final JSONArray unknown = new JSONArray();
+        final JSONArray staleDate = new JSONArray();
+        final JSONArray noindexListed = new JSONArray();
+        final JSONArray redirects = new JSONArray();
+        /** The published address and the listed one of each redirect pair, reported once as the pair. */
+        final Set<String> pairedPrimary = new LinkedHashSet<>();
+        final Set<String> pairedAlt = new LinkedHashSet<>();
+    }
+
+    /**
+     * No usable sitemap. Not a defect in itself, but everything else is unanswerable, and the three
+     * ways of having no usable sitemap call for three different responses, so name which one this is.
+     */
+    private static void absent(JSONObject out, boolean answered, SiteFilesChecker.Fetched index) {
+        String reason = "none";
+        if (answered) {
+            reason = "notSitemap";
+        } else if (index.status == null) {
+            reason = "unreachable";
+        }
+        out.put("reason", reason);
+        if (index.status == null && index.error != null) {
+            // The exception's class only, never its message: it names the layer that
+            // failed (connection, timeout, certificate, name) and echoes nothing else.
+            out.put("error", index.error);
+        }
+    }
+
+    /**
+     * The sitemap module does not use vanity urls, so a page that has one is listed under the address
+     * Jahia redirects *from*. Left alone that reads as two unrelated findings - the real address
+     * missing, the listed one unknown - when it is one thing: the sitemap is handing crawlers a
+     * redirect instead of the page. Recognise the pair and report it once.
+     */
+    private static void pairRedirects(String sitePath, Map<String, String> entries,
+            Map<String, PublishedMap.Entry> published, Findings f) {
         for (String listed : entries.keySet()) {
             PublishedMap.Entry moved = PublishedMap.movedFrom(published, sitePath, listed);
-            if (moved == null) {
-                continue;
-            }
             // The node is published, at an address the sitemap does not list,
             // while the sitemap lists one that redirects to it. One problem.
-            String now = null;
-            for (Map.Entry<String, PublishedMap.Entry> p : published.entrySet()) {
-                if (p.getValue() == moved && !entries.containsKey(p.getKey())) {
-                    now = p.getKey();
-                    break;
-                }
-            }
+            String now = moved == null ? null : unlistedAddressOf(moved, entries, published);
             if (now == null) {
                 continue;
             }
-            if (redirects.length() < MAX_REPORTED) {
-                redirects.put(row(moved, now, listed));
+            if (f.redirects.length() < MAX_REPORTED) {
+                f.redirects.put(row(moved, now, listed));
             }
-            pairedPrimary.add(now);
-            pairedAlt.add(listed);
+            f.pairedPrimary.add(now);
+            f.pairedAlt.add(listed);
         }
+    }
 
+    /** The published address of a node that the sitemap does not list, or null. */
+    private static String unlistedAddressOf(PublishedMap.Entry node, Map<String, String> entries,
+            Map<String, PublishedMap.Entry> published) {
         for (Map.Entry<String, PublishedMap.Entry> p : published.entrySet()) {
-            if (!entries.containsKey(p.getKey()) && !pairedPrimary.contains(p.getKey())
-                    && missing.length() < MAX_REPORTED) {
-                missing.put(row(p.getValue(), p.getKey(), null));
+            if (p.getValue() == node && !entries.containsKey(p.getKey())) {
+                return p.getKey();
             }
         }
+        return null;
+    }
 
+    /** Published pages the sitemap does not list, redirect pairs excluded. */
+    private static void missingPages(Map<String, String> entries, Map<String, PublishedMap.Entry> published,
+            Findings f) {
+        for (Map.Entry<String, PublishedMap.Entry> p : published.entrySet()) {
+            if (!entries.containsKey(p.getKey()) && !f.pairedPrimary.contains(p.getKey())
+                    && f.missing.length() < MAX_REPORTED) {
+                f.missing.put(row(p.getValue(), p.getKey(), null));
+            }
+        }
+    }
+
+    /** What is wrong with the listed entries: unknown addresses, noindex pages, wrong dates. */
+    private static void listedEntries(Map<String, String> entries, Map<String, PublishedMap.Entry> published,
+            Findings f) {
         for (Map.Entry<String, String> e : entries.entrySet()) {
             PublishedMap.Entry node = published.get(e.getKey());
             if (node == null) {
-                if (pairedAlt.contains(e.getKey())) {
-                    // Already reported, as the redirect it is.
-                    continue;
-                }
-                if (unknown.length() < MAX_REPORTED) {
+                // A redirect pair is already reported, as the redirect it is.
+                if (!f.pairedAlt.contains(e.getKey()) && f.unknown.length() < MAX_REPORTED) {
                     JSONObject r = new JSONObject();
                     r.put("path", e.getKey());
-                    unknown.put(r);
+                    f.unknown.put(r);
                 }
                 continue;
             }
-            if (node.noindex && noindexListed.length() < MAX_REPORTED) {
-                noindexListed.put(row(node, e.getKey(), null));
+            if (node.noindex && f.noindexListed.length() < MAX_REPORTED) {
+                f.noindexListed.put(row(node, e.getKey(), null));
             }
             String claimed = e.getValue();
             String actual = node.modifiedOn;
             if (claimed != null && actual != null && !claimed.startsWith(actual)
-                    && staleDate.length() < MAX_REPORTED) {
-                staleDate.put(row(node, e.getKey(), claimed + " → " + actual));
+                    && f.staleDate.length() < MAX_REPORTED) {
+                f.staleDate.put(row(node, e.getKey(), claimed + " → " + actual));
             }
         }
-
-        out.put("missing", missing);
-        out.put("unknown", unknown);
-        out.put("staleDate", staleDate);
-        out.put("noindexListed", noindexListed);
-        out.put("redirects", redirects);
-        out.put("agrees", missing.length() == 0 && unknown.length() == 0
-                && staleDate.length() == 0 && noindexListed.length() == 0
-                && redirects.length() == 0);
-        return out;
     }
 
     /**

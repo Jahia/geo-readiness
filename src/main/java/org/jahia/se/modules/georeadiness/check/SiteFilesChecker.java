@@ -54,6 +54,18 @@ public final class SiteFilesChecker {
         return robotsJson.optBoolean("present", false) ? RobotsRules.parse(rawBody) : RobotsRules.empty();
     }
 
+    /**
+     * No robots.txt means every crawler is allowed everywhere. Worth saying out loud, because
+     * "no file" reads as "not configured" to most people. A fetch that failed says nothing about
+     * the file, so it claims nothing.
+     */
+    private static JSONObject noRobots(JSONObject o, Fetched f) {
+        if (f.error == null) {
+            o.put("everythingAllowed", true);
+        }
+        return o;
+    }
+
     static JSONObject robots(Fetched f, String pagePath) {
         JSONObject o = new JSONObject();
         o.put("status", f.status == null ? JSONObject.NULL : f.status);
@@ -63,13 +75,7 @@ public final class SiteFilesChecker {
             o.put("error", f.error);
         }
         if (!o.optBoolean("present")) {
-            // No robots.txt means every crawler is allowed everywhere. Worth saying
-            // out loud, because "no file" reads as "not configured" to most people.
-            // A fetch that failed says nothing about the file, so it claims nothing.
-            if (f.error == null) {
-                o.put("everythingAllowed", true);
-            }
-            return o;
+            return noRobots(o, f);
         }
 
         RobotsRules rules = RobotsRules.parse(f.body);

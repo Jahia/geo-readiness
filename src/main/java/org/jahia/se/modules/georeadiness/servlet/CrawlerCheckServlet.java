@@ -112,6 +112,7 @@ public class CrawlerCheckServlet extends GeoServlet {
 
     /** Set by the site-files check when the file was actually served. */
     private static final String PRESENT = "present";
+    private static final String ERROR = "error";
 
     /** robots.txt allows this agent, but something on the way refused it. */
     private static final String BLOCKED_BUT_ALLOWED = "blockedButAllowed";
@@ -403,7 +404,7 @@ public class CrawlerCheckServlet extends GeoServlet {
             r.put("status", JSONObject.NULL);
             r.put("ms", 0);
             r.put("bytes", 0);
-            r.put("error", "FetchFailed");
+            r.put(ERROR, "FetchFailed");
             return r;
         }
     }
@@ -662,7 +663,7 @@ public class CrawlerCheckServlet extends GeoServlet {
         if ("unreachable".equals(sitemap.optString("reason"))) {
             out.put("unreachable", true);
             out.put("url", sitemap.optString("url"));
-            out.put("error", sitemap.opt("error"));
+            out.put(ERROR, sitemap.opt(ERROR));
         }
         out.put("missing", SitemapCheck.isMissing(sitemap, path, language));
         out.put("noindexListed", SitemapCheck.isNoindexListed(sitemap, path, language));
