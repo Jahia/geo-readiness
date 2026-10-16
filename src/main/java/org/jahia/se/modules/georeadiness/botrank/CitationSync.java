@@ -149,10 +149,9 @@ public final class CitationSync {
         LocalDate today = now.toLocalDate();
         LocalDate start = today.minusDays(DAYS - 1L);
         List<String> hosts = hosts(settings.hosts);
-        String domain = hosts.get(0);
-        List<BotRankClient.CitedPage> recent = client.citedPages(settings.project, domain, hosts,
+        List<BotRankClient.CitedPage> recent = citedPages(client, settings.project, hosts,
                 BotRankClient.Period.between(start, today));
-        List<BotRankClient.CitedPage> ever = client.citedPages(settings.project, domain, hosts,
+        List<BotRankClient.CitedPage> ever = citedPages(client, settings.project, hosts,
                 BotRankClient.Period.allTime());
         PageResolver resolver = PageResolver.build(sitePath, baseUrl, settings.mappings);
 
@@ -176,6 +175,35 @@ public final class CitationSync {
         CitationStore.finish(sitePath, pages, unresolved, fresh.latestCountedAnswerAt, note);
         logger.info("BotRank sync of {}: {} cited page(s), {} unmatched URL(s)", sitePath, pages.size(), unresolved.length());
         return new Result(Outcome.DONE, note);
+    }
+
+    /**
+     * The cited pages of every host of the site, most cited first, ranked across the site.
+     *
+     * <p>BotRank lists the pages of one registrable domain per call and only keeps the hosts within
+     * it, so a site served on two domains ({@code example.fr} and {@code example.com}) needs one list
+     * per domain. Without a public suffix list we cannot group hosts by domain ourselves: each host is
+     * passed as the domain once, with all the hosts, and pages read twice (hosts of the same domain)
+     * are kept once. Ranks are recomputed over the merged list in BotRank's own order, most citations
+     * first then by URL, so that one site has one ranking.</p>
+     */
+    static List<BotRankClient.CitedPage> citedPages(BotRankClient client, String project, List<String> hosts,
+            BotRankClient.Period period) throws BotRankException {
+        Map<String, BotRankClient.CitedPage> byUrl = new LinkedHashMap<>();
+        for (String host : hosts) {
+            for (BotRankClient.CitedPage p : client.citedPages(project, host, hosts, period)) {
+                byUrl.putIfAbsent(p.url, p);
+            }
+        }
+        List<BotRankClient.CitedPage> merged = new ArrayList<>(byUrl.values());
+        merged.sort(Comparator.comparingInt((BotRankClient.CitedPage p) -> p.citations).reversed()
+                .thenComparing(p -> p.url));
+        List<BotRankClient.CitedPage> ranked = new ArrayList<>(merged.size());
+        for (int i = 0; i < merged.size(); i++) {
+            BotRankClient.CitedPage p = merged.get(i);
+            ranked.add(new BotRankClient.CitedPage(p.url, i + 1, p.citations, p.variation));
+        }
+        return ranked;
     }
 
     /** The configured hosts, folded, distinct and bounded. */
