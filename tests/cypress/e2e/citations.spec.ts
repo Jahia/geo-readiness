@@ -240,7 +240,9 @@ describe('geo-readiness - BotRank citations', () => {
             cy.contains('Cited 12 times in AI answers over the last 30 days', {timeout: 30000})
                 .scrollIntoView().should('be.visible');
             cy.contains('Which <b>offer</b> fits a first home?').scrollIntoView().should('be.visible');
-            cy.contains('https://competitor.example/best-offer').scrollIntoView().should('be.visible');
+            // The co-cited address shows as its host, then its path.
+            cy.contains('competitor.example').scrollIntoView().should('be.visible');
+            cy.contains('/best-offer').should('be.visible');
         });
     });
 });
