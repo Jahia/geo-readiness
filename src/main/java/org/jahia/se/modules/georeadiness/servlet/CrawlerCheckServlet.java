@@ -437,7 +437,7 @@ public class CrawlerCheckServlet extends GeoServlet {
             if (status == 0) {
                 unreachable++;
                 if (unreachableError == null) {
-                    unreachableError = r.optString("error", null);
+                    unreachableError = r.optString(ERROR, null);
                 }
             } else if (status != 200) {
                 blocked++;
