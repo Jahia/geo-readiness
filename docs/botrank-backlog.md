@@ -25,8 +25,9 @@ same day and every point checks out against the live API (16 October, our test k
 | Headers | `Cache-Control: private, no-cache` on every answer. `If-None-Match` honoured: an unchanged answer comes back 304 (lighter transfer, same server computation). No rate limit today. CORS removed: a browser preflight now gets 404, so the key stays server side |
 
 What we do with it: the module keeps its own guard (a variation is shown only when the previous
-window had a run day), now in line with their `null` and still useful for the partly covered
-period they do not detect. Conditional requests in the daily sync are the next step on our side.
+window had a run day). It now checks the same condition as their `null`, so it stays as defence in
+depth only. Neither side detects a previous period covered only in part: one run day is enough to
+show a variation. Conditional requests in the daily sync are the next step on our side.
 
 **Updated 15 October 2026: the public API is open for our tests.** BotRank published its
 [reference](https://api.botrank.ai/public/v1/reference), backed by an OpenAPI 3.1 document at
@@ -530,7 +531,8 @@ is earning its keep in AI answers.
   daily chart. Matched on the published URL, every vanity URL, `/sites/...` paths and manual
   mappings; several addresses of one page add up. The variation is withheld when no tracked
   question ran in the previous window; BotRank returns `null` there too since 16 October, and the
-  guard stays for a previous window covered only in part, which BotRank does not detect)*
+  guard stays as defence in depth. A previous window covered only in part is not detected, by
+  either side)*
 - The prompts this page is cited for, listed and clickable. *(listed with market, citations,
   engines and last citation day; not clickable: the API gives no address for a prompt)*
 - Uses the node's own title, not the title BotRank extracted. Theirs falls back to a body snippet
