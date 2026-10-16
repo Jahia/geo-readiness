@@ -83,6 +83,11 @@ public final class SitemapCheck {
             // different responses, so name which one this is.
             out.put("reason", answered ? "notSitemap"
                     : (index.status == null ? "unreachable" : "none"));
+            if (index.status == null && index.error != null) {
+                // The exception's class only, never its message: it names the layer that
+                // failed (connection, timeout, certificate, name) and echoes nothing else.
+                out.put("error", index.error);
+            }
             return out;
         }
 

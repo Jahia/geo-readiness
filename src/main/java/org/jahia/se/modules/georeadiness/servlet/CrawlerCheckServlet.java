@@ -637,12 +637,21 @@ public class CrawlerCheckServlet extends GeoServlet {
                 .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
         String sitePath = live.getNode(path).getResolveSite().getPath();
 
-        JSONObject sitemap = ScanStore.read(sitePath, language).optJSONObject("sitemap");
+        JSONObject stored = ScanStore.read(sitePath, language);
+        JSONObject sitemap = stored.optJSONObject("sitemap");
         if (sitemap == null) {
             return out;
         }
 
+        // When these facts were found. The drawer never fetches a sitemap itself, so
+        // without the date its answer reads as current while the dashboard may say otherwise.
+        out.put("checkedAt", stored.opt("sitemapCheckedAt"));
         out.put(PRESENT, sitemap.optBoolean(PRESENT, false));
+        if ("unreachable".equals(sitemap.optString("reason"))) {
+            out.put("unreachable", true);
+            out.put("url", sitemap.optString("url"));
+            out.put("error", sitemap.opt("error"));
+        }
         out.put("missing", SitemapCheck.isMissing(sitemap, path, language));
         out.put("noindexListed", SitemapCheck.isNoindexListed(sitemap, path, language));
         String stale = SitemapCheck.staleDetail(sitemap, path, language);

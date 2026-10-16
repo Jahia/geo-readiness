@@ -6,6 +6,7 @@ import {scanStatus, checkSitemap} from '../api/siteScore';
 import {jcontentUrl} from '../util/jcontentUrl';
 import {Paged} from '../util/Paged';
 import styles from './Tabs.module.css';
+import {fetchErrorHint} from '../util/fetchError';
 
 const NS = 'geo-readiness';
 // Enough rows to act on, few enough that one bad group cannot bury the rest.
@@ -197,6 +198,7 @@ export const SitemapPanel = ({path, language}) => {
                                 url: sitemap.url,
                                 status: sitemap.status === null ? '-' : sitemap.status
                             })}
+                            {sitemap.reason === 'unreachable' && sitemap.error && ` ${fetchErrorHint(t, sitemap.error)}`}
                         </Banner>
                     )}
                     {/* How the comparison works, so only worth saying when one happened. */}

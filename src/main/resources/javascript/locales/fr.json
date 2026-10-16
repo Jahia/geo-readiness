@@ -141,7 +141,8 @@
           "searchBlockedTitle": "{{count}} robot qui répond aux questions est bloqué",
           "searchBlockedTitle_plural": "{{count}} robots qui répondent aux questions sont bloqués",
           "searchBlocked": "Bloquer un robot qui construit les réponses vous retire des réponses de cet assistant. Bloquer un robot qui ne fait qu'entraîner les modèles, non. Vérifiez que c'est bien votre intention : {{names}}."
-        }
+        },
+        "unreachable": "Le robots.txt n'a pas pu être récupéré : on ne sait donc pas ce qu'il autorise. C'est un problème de connexion, pas un constat sur le fichier."
       },
       "llms": {
         "title": "llms.txt",
@@ -190,7 +191,8 @@
         "fresh": {
           "title": "llms.txt est à jour",
           "summary": "Les {{count}} entrées correspondent à ce que produirait une génération maintenant : régénérer ne changerait rien."
-        }
+        },
+        "unreachable": "Le llms.txt n'a pas pu être récupéré : on ne sait donc pas si le site en publie un. C'est un problème de connexion, pas un constat sur le fichier."
       },
       "llmsFull": {
         "label": "llms-full.txt"
@@ -482,7 +484,10 @@
         "notSitemap": "{{url}} renvoie HTTP {{status}}, mais la réponse n'est pas un sitemap - le plus souvent une page ou une page d'erreur servie avec un code de succès. Tant que cette adresse ne renvoie pas un vrai sitemap, les robots n'ont pas de carte exploitable et rien ne peut être comparé ici.",
         "unreachableTitle": "Le sitemap n'a pas pu être atteint",
         "unreachable": "{{url}} n'a pas pu être récupéré : l'existence d'un sitemap est donc inconnue. Il s'agit d'un problème de connexion, pas d'un constat sur votre contenu."
-      }
+      },
+      "fromScan": "D'après le scan du site du {{date}}.",
+      "unreachablePageTitle": "Le dernier scan du site n'a pas pu joindre le sitemap",
+      "unreachablePage": "{{url}} n'a pas pu être récupéré lors du scan du site du {{date}} : on ne sait donc pas si cette page figure dans le sitemap."
     },
     "links": {
       "title": "Pages vers lesquelles rien ne pointe",
@@ -757,6 +762,13 @@
         "owner": "Responsable : {{owner}}",
         "effort": "Effort : {{effort}}"
       }
+    },
+    "fetchError": {
+      "ConnectException": "Le serveur n'a pas pu ouvrir de connexion vers cette adresse ({{error}}). Un serveur Jahia Cloud, par exemple, ne peut pas joindre sa propre adresse publique : demandez à l'autoriser, ou réglez PUBLIC_BASE_URL sur une adresse que le serveur peut joindre.",
+      "SocketTimeoutException": "L'adresse n'a pas répondu à temps ({{error}}).",
+      "SSLHandshakeException": "Le Java du serveur ne fait pas confiance au certificat de cette adresse ({{error}}).",
+      "UnknownHostException": "Le serveur ne sait pas résoudre ce nom d'hôte ({{error}}).",
+      "other": "La récupération a échoué avec {{error}}."
     }
   }
 }

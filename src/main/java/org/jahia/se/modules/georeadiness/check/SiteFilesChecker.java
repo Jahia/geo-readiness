@@ -54,7 +54,7 @@ public final class SiteFilesChecker {
         return robotsJson.optBoolean("present", false) ? RobotsRules.parse(rawBody) : RobotsRules.empty();
     }
 
-    private static JSONObject robots(Fetched f, String pagePath) {
+    static JSONObject robots(Fetched f, String pagePath) {
         JSONObject o = new JSONObject();
         o.put("status", f.status == null ? JSONObject.NULL : f.status);
         o.put("present", f.status != null && f.status == 200);
@@ -65,7 +65,10 @@ public final class SiteFilesChecker {
         if (!o.optBoolean("present")) {
             // No robots.txt means every crawler is allowed everywhere. Worth saying
             // out loud, because "no file" reads as "not configured" to most people.
-            o.put("everythingAllowed", true);
+            // A fetch that failed says nothing about the file, so it claims nothing.
+            if (f.error == null) {
+                o.put("everythingAllowed", true);
+            }
             return o;
         }
 
