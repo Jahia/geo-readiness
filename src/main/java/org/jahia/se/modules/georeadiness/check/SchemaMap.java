@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * GEO-23. Which schema.org type each content type is, and what each schema
@@ -26,6 +27,17 @@ import java.util.Map;
  * finds them without anyone configuring anything. Where no candidate matches,
  * the property is reported as having no source - which is the point, and the
  * one thing the story is explicit about: say so rather than invent one.
+ *
+ * **Some values are made of several properties.** A model that follows
+ * schema.org field by field (a store locator's `streetAddress`, `postalCode`,
+ * `addressLocality`...) holds a PostalAddress without any property called
+ * `address`. {@link #compositeFor} names those parts, so such a model fills
+ * `address` and `geo` instead of being reported as having no source for them.
+ *
+ * **A suggestion is a hint, never a mapping.** {@link #suggestFor} reads the
+ * properties a type declares (an address, a telephone, opening hours), never
+ * its name, and the panel only offers it: the person who owns the model still
+ * chooses.
  */
 public final class SchemaMap {
 
@@ -92,9 +104,10 @@ public final class SchemaMap {
         RECOMMENDED.put("Product", new String[]{"description", "offers", "priceCurrency", "brand"});
         RECOMMENDED.put("Event", new String[]{"description", "image", "endDate"});
         RECOMMENDED.put("Organization", new String[]{"description", "image", "address", "telephone", "email"});
-        RECOMMENDED.put("LocalBusiness", new String[]{"description", "image", "telephone", "email"});
+        RECOMMENDED.put("LocalBusiness", new String[]{"description", "image", "telephone", "email", "geo",
+                "openingHours", "priceRange"});
         RECOMMENDED.put("Person", new String[]{"description", "image", "jobTitle", "telephone", "email"});
-        RECOMMENDED.put("Place", new String[]{"description", "image"});
+        RECOMMENDED.put("Place", new String[]{"description", "image", "geo", "telephone"});
         RECOMMENDED.put("Service", new String[]{"description", "image"});
     }
 
@@ -106,6 +119,8 @@ public final class SchemaMap {
      * either being configured.
      */
     private static final Map<String, String[]> SOURCES = new LinkedHashMap<>();
+    /** Values built from several properties; filled with SOURCES below. */
+    private static final Map<String, Composite> COMPOSITES = new LinkedHashMap<>();
 
     static {
         SOURCES.put("name", new String[]{"jcr:title", "title", "name", "fullName", "label"});
@@ -132,6 +147,81 @@ public final class SchemaMap {
         SOURCES.put("brand", new String[]{"brand", "manufacturer"});
         SOURCES.put("location", new String[]{"location", "venue", "address", "place"});
         SOURCES.put("offers", new String[]{"price"});
+        SOURCES.put("priceRange", new String[]{"priceRange"});
+        SOURCES.put("openingHours", new String[]{"openingHours", "openingHoursSpecification", "hours"});
+
+        COMPOSITES.put("address", new Composite("PostalAddress",
+                new String[]{"streetAddress", "addressLocality", "addressRegion", "postalCode", "addressCountry"},
+                false, "streetAddress", "addressLocality"));
+        COMPOSITES.put("geo", new Composite("GeoCoordinates", new String[]{"latitude", "longitude"},
+                true, "latitude", "longitude"));
+    }
+
+    /**
+     * A schema.org value built from several content properties, named as schema.org names its
+     * own fields.
+     */
+    public static final class Composite {
+        /** The schema.org type of the built value, such as PostalAddress. */
+        public final String type;
+        /** The content properties that make it, in the order they are written. */
+        public final List<String> parts;
+        /** True when every anchor must be present, false when one is enough. */
+        public final boolean allAnchors;
+        /** The parts without which the value means nothing (a street or a town; both coordinates). */
+        public final List<String> anchors;
+
+        Composite(String type, String[] parts, boolean allAnchors, String... anchors) {
+            this.type = type;
+            this.parts = Arrays.asList(parts);
+            this.allAnchors = allAnchors;
+            this.anchors = Arrays.asList(anchors);
+        }
+
+        /** Whether the given part names (as a type declares or a node holds them) make this value. */
+        public boolean madeOf(Set<String> present) {
+            int found = 0;
+            for (String anchor : anchors) {
+                if (declares(present, anchor) != null) {
+                    found++;
+                }
+            }
+            return allAnchors ? found == anchors.size() : found > 0;
+        }
+    }
+
+    /** The composite a schema property can be built as, or null. */
+    public static Composite compositeFor(String schemaProperty) {
+        return COMPOSITES.get(schemaProperty);
+    }
+
+    /** The declared name matching {@code name} case-insensitively, or null. */
+    public static String declares(Set<String> declared, String name) {
+        for (String d : declared) {
+            if (d.equalsIgnoreCase(name)) {
+                return d;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The schema type a model's properties point to, as a hint for the mapping: an address with a
+     * telephone, opening hours or a price range is a LocalBusiness; an address or coordinates alone
+     * are a Place. Null when the properties say nothing either way.
+     *
+     * @param declared the property names a content type declares
+     * @return "LocalBusiness", "Place" or null
+     */
+    public static String suggestFor(Set<String> declared) {
+        boolean address = COMPOSITES.get("address").madeOf(declared) || declares(declared, "address") != null;
+        boolean geo = COMPOSITES.get("geo").madeOf(declared);
+        if (!address && !geo) {
+            return null;
+        }
+        boolean business = declares(declared, "telephone") != null || declares(declared, "openingHours") != null
+                || declares(declared, "priceRange") != null;
+        return address && business ? "LocalBusiness" : "Place";
     }
 
     private SchemaMap() {

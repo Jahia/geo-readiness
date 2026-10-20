@@ -553,3 +553,6 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* The structured data panel's type suggestion: a caption and the button that applies it to the draft. */
+.suggestion { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; }

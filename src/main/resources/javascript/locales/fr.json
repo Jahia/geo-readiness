@@ -657,7 +657,9 @@
           "complete": "Peut émettre un JSON-LD complet",
           "incomplete": "Associé, mais une propriété requise n'a pas de source",
           "unmapped": "Non associé"
-        }
+        },
+        "suggested": "D'après les propriétés qu'il contient, {{type}} décrit mieux ce modèle.",
+        "useSuggested": "Utiliser {{type}}"
       },
       "mapping": {
         "unmapped": "Non associé",

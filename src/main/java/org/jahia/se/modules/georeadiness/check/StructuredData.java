@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * GEO-23. Schema.org output derived from the content model.
@@ -93,6 +94,11 @@ public final class StructuredData {
             row.put("count", n);
             String schemaType = SchemaMap.typeFor(overrides, nodeType);
             row.put("muted", SchemaMap.muted(overrides, nodeType));
+            // A hint from what the model holds, shown beside the choice and never applied.
+            String suggested = SchemaMap.suggestFor(propertiesByType.getOrDefault(nodeType, new LinkedHashSet<>()));
+            if (suggested != null && !suggested.equals(schemaType)) {
+                row.put("suggested", suggested);
+            }
             if (schemaType == null) {
                 row.put("mapped", false);
                 types.put(row);
@@ -108,13 +114,13 @@ public final class StructuredData {
             Set<String> available = propertiesByType.getOrDefault(nodeType, new LinkedHashSet<>());
             JSONArray missing = new JSONArray();
             for (String required : SchemaMap.requiredFor(schemaType)) {
-                if (sourceFor(available, required) == null) {
+                if (!hasSource(available, required)) {
                     missing.put(required);
                 }
             }
             JSONArray thin = new JSONArray();
             for (String rec : SchemaMap.recommendedFor(schemaType)) {
-                if (sourceFor(available, rec) == null) {
+                if (!hasSource(available, rec)) {
                     thin.put(rec);
                 }
             }
@@ -186,13 +192,23 @@ public final class StructuredData {
 
                     for (String prop : allProperties(schemaType)) {
                         String source = sourceFor(available, prop);
-                        if (source == null) {
+                        SchemaMap.Composite composite = source == null ? SchemaMap.compositeFor(prop) : null;
+                        if (source == null && composite == null) {
                             if (isRequired(schemaType, prop)) {
                                 missing.put(prop);
                             }
                             continue;
                         }
-                        Object value = valueOf(n, source, prop, base);
+                        Object value;
+                        if (composite != null) {
+                            Map<String, String> parts = partsOf(n, available, composite, base);
+                            value = composite(composite, parts);
+                            source = String.join(", ", parts.keySet());
+                        } else if ("openingHours".equals(prop)) {
+                            value = openingHours(allValues(n, source));
+                        } else {
+                            value = valueOf(n, source, prop, base);
+                        }
                         if (value == null) {
                             if (isRequired(schemaType, prop)) {
                                 missing.put(prop);
@@ -260,6 +276,115 @@ public final class StructuredData {
             }
         }
         return false;
+    }
+
+    /** Whether a schema property has a source: one property, or the parts of a composite value. */
+    static boolean hasSource(Set<String> available, String schemaProperty) {
+        if (sourceFor(available, schemaProperty) != null) {
+            return true;
+        }
+        SchemaMap.Composite c = SchemaMap.compositeFor(schemaProperty);
+        return c != null && c.madeOf(available);
+    }
+
+    /** The parts of a composite this node holds, by schema.org field name, in the composite's order. */
+    private static Map<String, String> partsOf(JCRNodeWrapper n, Set<String> available, SchemaMap.Composite c,
+            String base) {
+        Map<String, String> parts = new LinkedHashMap<>();
+        for (String part : c.parts) {
+            String actual = SchemaMap.declares(available, part);
+            Object v = actual == null ? null : valueOf(n, actual, part, base);
+            if (v instanceof String) {
+                parts.put(part, (String) v);
+            }
+        }
+        return parts;
+    }
+
+    /**
+     * A composite value from its parts, or null when its anchors are missing: an address needs a
+     * street or a town, coordinates need both numbers. Coordinates are written as numbers, as
+     * schema.org expects them.
+     */
+    static JSONObject composite(SchemaMap.Composite c, Map<String, String> parts) {
+        if (!c.madeOf(parts.keySet())) {
+            return null;
+        }
+        JSONObject out = new JSONObject();
+        out.put("@type", c.type);
+        for (Map.Entry<String, String> e : parts.entrySet()) {
+            if ("GeoCoordinates".equals(c.type)) {
+                try {
+                    out.put(e.getKey(), Double.parseDouble(e.getValue()));
+                } catch (NumberFormatException ex) {
+                    return null;
+                }
+            } else {
+                out.put(e.getKey(), e.getValue());
+            }
+        }
+        return out;
+    }
+
+    private static final Pattern TIME = Pattern.compile("\\d{1,2}:\\d{2}");
+    private static final Pattern DAY = Pattern.compile("[A-Za-z]{3,12}");
+
+    /**
+     * Opening hours as schema.org writes them. Values stored as JSON objects
+     * ({@code {"dayOfWeek": "Monday", "opens": "09:00", "closes": "18:00"}}, the shape the store
+     * locator saves) become an {@code openingHoursSpecification}; plain text such as
+     * {@code Mo-Fr 09:00-18:00} stays {@code openingHours}. Anything else is left out rather than
+     * guessed.
+     *
+     * @return {@code {openingHoursSpecification: [...]}}, {@code {openingHours: [...]}} or null
+     */
+    static JSONObject openingHours(List<String> values) {
+        JSONArray specs = new JSONArray();
+        JSONArray text = new JSONArray();
+        for (String raw : values) {
+            String v = raw == null ? "" : raw.trim();
+            if (v.startsWith("{")) {
+                try {
+                    JSONObject o = new JSONObject(v);
+                    String day = o.optString("dayOfWeek", "");
+                    String opens = o.optString("opens", "");
+                    String closes = o.optString("closes", "");
+                    if (DAY.matcher(day).matches() && TIME.matcher(opens).matches() && TIME.matcher(closes).matches()) {
+                        specs.put(new JSONObject().put("@type", "OpeningHoursSpecification")
+                                .put("dayOfWeek", day).put("opens", opens).put("closes", closes));
+                    }
+                } catch (Exception e) {
+                    // Not the JSON it looked like: left out.
+                }
+            } else if (!v.isEmpty() && v.length() <= 80) {
+                text.put(v);
+            }
+        }
+        if (specs.length() > 0) {
+            return new JSONObject().put("openingHoursSpecification", specs);
+        }
+        return text.length() > 0 ? new JSONObject().put("openingHours", text) : null;
+    }
+
+    /** Every value of a property as text, single or multiple. */
+    private static List<String> allValues(JCRNodeWrapper n, String source) {
+        List<String> out = new ArrayList<>();
+        try {
+            if (!n.hasProperty(source)) {
+                return out;
+            }
+            Property p = n.getProperty(source);
+            if (p.isMultiple()) {
+                for (Value v : p.getValues()) {
+                    out.add(v.getString());
+                }
+            } else {
+                out.add(p.getString());
+            }
+        } catch (RepositoryException e) {
+            logger.debug("could not read {}", source, e);
+        }
+        return out;
     }
 
     /** The first candidate source this node type actually declares. */
@@ -342,6 +467,14 @@ public final class StructuredData {
 
     /** `price` is only meaningful to schema.org wrapped in an Offer. */
     private static void put(JSONObject ld, String property, Object value) {
+        if ("openingHours".equals(property) && value instanceof JSONObject) {
+            // openingHours() names its own key: the specification or the text form.
+            JSONObject hours = (JSONObject) value;
+            for (String key : hours.keySet()) {
+                ld.put(key, hours.get(key));
+            }
+            return;
+        }
         if ("price".equals(property)) {
             JSONObject offer = ld.optJSONObject("offers");
             if (offer == null) {

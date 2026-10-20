@@ -136,6 +136,22 @@ export const SchemaPanel = ({path, language}) => {
                                                 })}
                                             </Typography>
                                         )}
+                                        {/* A hint from the properties the model holds; the choice stays the person's. */}
+                                        {row.suggested && current !== row.suggested && (
+                                            <span className={styles.suggestion}>
+                                                <Typography variant="caption" className={styles.checkFix}>
+                                                    {t('schema.panel.suggested', {type: row.suggested})}
+                                                </Typography>
+                                                <Button
+                                                    size="small"
+                                                    variant="ghost"
+                                                    color="accent"
+                                                    isDisabled={busy}
+                                                    label={t('schema.panel.useSuggested', {type: row.suggested})}
+                                                    onClick={() => setDraft(d => ({...d, [row.nodeType]: row.suggested}))}
+                                                />
+                                            </span>
+                                        )}
                                     </span>
                                     <span className={styles.checkMeta}>
                                         {row.mapped && (

@@ -104,7 +104,10 @@ produces it.
 
 Nothing is guessed: a type is whatever the person who defines it says it is. Required properties
 with no source in the content model are named rather than invented, and a value that would
-contradict the page is reported instead of emitted.
+contradict the page is reported instead of emitted. An address split into its schema.org fields
+(street, postal code, town, country) and a pair of coordinates count as a source. When the
+properties of a type point to a better fit, such as a store with an address, a telephone and opening
+hours, the panel suggests `LocalBusiness` with a button that puts it in the mapping; save to keep it.
 
 Nothing is written into your pages. The drawer shows the finished snippet for somebody to place,
 normally in a template.

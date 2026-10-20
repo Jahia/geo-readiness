@@ -657,7 +657,9 @@
           "complete": "Can emit complete JSON-LD",
           "incomplete": "Mapped, but a required property has no source",
           "unmapped": "Not mapped"
-        }
+        },
+        "suggested": "From the properties it holds, {{type}} describes this model better.",
+        "useSuggested": "Use {{type}}"
       },
       "mapping": {
         "unmapped": "Not mapped",
