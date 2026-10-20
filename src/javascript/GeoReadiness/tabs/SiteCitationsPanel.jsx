@@ -98,8 +98,8 @@ Change.propTypes = {
 };
 Change.defaultProps = {value: null, points: false, inverse: false};
 
-/** A small line of the share per day, for the share card. */
-const Sparkline = ({values, label}) => {
+/** A small line of the share per day, for the share card; decorative, the figure is written beside it. */
+const Sparkline = ({values}) => {
     const points = values.filter(v => v !== null && v !== undefined);
     if (points.length < 2) {
         return null;
@@ -115,7 +115,7 @@ const Sparkline = ({values, label}) => {
     const line = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
     const [lx, ly] = xy[xy.length - 1];
     return (
-        <svg className={own.spark} viewBox={`-2 0 ${w + 4} ${h}`} width={w} height={h} role="img" aria-label={label}>
+        <svg className={own.spark} viewBox={`-2 0 ${w + 4} ${h}`} width={w} height={h} aria-hidden="true" focusable="false">
             <polyline points={`0,${h} ${line} ${w},${h}`} className={own.sparkArea}/>
             <polyline points={line} className={own.sparkLine}/>
             <circle cx={lx} cy={ly} r="3" className={own.sparkDot}/>
@@ -123,17 +123,17 @@ const Sparkline = ({values, label}) => {
     );
 };
 
-Sparkline.propTypes = {values: PropTypes.arrayOf(PropTypes.number), label: PropTypes.string.isRequired};
+Sparkline.propTypes = {values: PropTypes.arrayOf(PropTypes.number)};
 Sparkline.defaultProps = {values: []};
 
-/** A ring gauge for a 0..1 score. */
-const Ring = ({value, label, text}) => {
+/** A ring gauge for a 0..1 score; the drawing is decorative, the score is the text inside it. */
+const Ring = ({value, text}) => {
     const r = 46;
     const c = 2 * Math.PI * r;
     const v = Math.max(0, Math.min(1, value || 0));
     return (
         <div className={own.ring}>
-            <svg viewBox="0 0 120 120" width="132" height="132" role="img" aria-label={label}>
+            <svg viewBox="0 0 120 120" width="132" height="132" aria-hidden="true" focusable="false">
                 <circle cx="60" cy="60" r={r} className={own.ringTrack}/>
                 <circle
                     cx="60"
@@ -149,7 +149,7 @@ const Ring = ({value, label, text}) => {
     );
 };
 
-Ring.propTypes = {value: PropTypes.number, label: PropTypes.string.isRequired, text: PropTypes.string.isRequired};
+Ring.propTypes = {value: PropTypes.number, text: PropTypes.string.isRequired};
 Ring.defaultProps = {value: 0};
 
 const Card = ({title, intro, children, className}) => (
@@ -230,7 +230,7 @@ const Overview = ({data, f, t}) => {
                                 <div className={`${own.kpi} ${own.kpiAccent}`}>
                                     <span className={own.kpiLabel}>{t('siteCitations.share')}</span>
                                     <span className={own.kpiValue}>{f.pct(d.share)}</span>
-                                    <Sparkline values={(d.shareHistory || []).map(x => x.share)} label={t('siteCitations.shareHistory')}/>
+                                    <Sparkline values={(d.shareHistory || []).map(x => x.share)}/>
                                     <Change value={d.shareVariation} points f={f} t={t}/>
                                 </div>
                                 <div className={own.kpi}>
@@ -259,7 +259,7 @@ const Overview = ({data, f, t}) => {
                             {visibility && (
                                 <Card title={t('siteCitations.visibility')}>
                                     <div className={own.visibility}>
-                                        <Ring value={visibility.score} label={t('siteCitations.visibility')} text={f.pct(visibility.score)}/>
+                                        <Ring value={visibility.score} text={f.pct(visibility.score)}/>
                                         <div className={own.visibilityText}>
                                             <p>{t('siteCitations.visibilityScore', {count: visibility.answers, answers: f.int(visibility.answers)})}</p>
                                             <Change value={visibility.variation} points f={f} t={t}/>
