@@ -112,14 +112,12 @@ const Sparkline = ({values}) => {
     const min = Math.min(...points);
     const span = max - min || 1;
     const step = w / (points.length - 1);
-    const xy = points.map((v, i) => [i * step, h - 3 - ((v - min) / span) * (h - 6)]);
-    const line = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
-    const [lx, ly] = xy[xy.length - 1];
+    const line = points.map((v, i) => `${(i * step).toFixed(1)},${(h - 3 - ((v - min) / span) * (h - 6)).toFixed(1)}`).join(' ');
+    // Stretched to the card's width: the line keeps a 2px stroke whatever the scale.
     return (
-        <svg className={own.spark} viewBox={`-2 0 ${w + 4} ${h}`} width={w} height={h} aria-hidden="true" focusable="false">
+        <svg className={own.spark} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
             <polyline points={`0,${h} ${line} ${w},${h}`} className={own.sparkArea}/>
-            <polyline points={line} className={own.sparkLine}/>
-            <circle cx={lx} cy={ly} r="3" className={own.sparkDot}/>
+            <polyline points={line} className={own.sparkLine} vectorEffect="non-scaling-stroke"/>
         </svg>
     );
 };
