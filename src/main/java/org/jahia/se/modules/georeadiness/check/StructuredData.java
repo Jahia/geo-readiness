@@ -54,6 +54,7 @@ public final class StructuredData {
 
     private static final int MAX_NODES = 10_000;
     private static final String TYPE = "@type";
+    private static final String MAPPED = "mapped";
     private static final String OPENING_HOURS = "openingHours";
     private static final int MAX_DESC = 320;
 
@@ -91,7 +92,7 @@ public final class StructuredData {
             total += n;
             JSONObject row = typeRow(e.getKey(), n, overrides,
                     propertiesByType.getOrDefault(e.getKey(), new LinkedHashSet<>()));
-            if (row.getBoolean("mapped")) {
+            if (row.getBoolean(MAPPED)) {
                 mappedItems += n;
             }
             if (row.optBoolean("complete")) {
@@ -124,7 +125,7 @@ public final class StructuredData {
         if (suggested != null && !suggested.equals(schemaType)) {
             row.put("suggested", suggested);
         }
-        row.put("mapped", schemaType != null);
+        row.put(MAPPED, schemaType != null);
         if (schemaType == null) {
             return row;
         }
@@ -158,69 +159,75 @@ public final class StructuredData {
     public static JSONObject forNode(String jcrPath, String language, String base, JSONObject overrides,
             String pageTitle) throws RepositoryException {
         return JCRTemplate.getInstance().doExecuteWithSystemSession(null, "live",
-                Locale.forLanguageTag(language), (JCRCallback<JSONObject>) session -> {
-                    JSONObject out = new JSONObject();
-                    JCRNodeWrapper n;
-                    try {
-                        n = session.getNode(jcrPath);
-                    } catch (javax.jcr.PathNotFoundException e) {
-                        out.put("published", false);
-                        return out;
-                    }
-                    out.put("published", true);
-                    String nodeType = n.getPrimaryNodeTypeName();
-                    out.put("nodeType", nodeType);
+                Locale.forLanguageTag(language),
+                (JCRCallback<JSONObject>) session -> forNodeIn(session, jcrPath, base, overrides, pageTitle));
+    }
 
-                    String schemaType = SchemaMap.typeFor(overrides, nodeType);
-                    if (schemaType == null) {
-                        out.put("mapped", false);
-                        return out;
-                    }
-                    out.put("mapped", true);
-                    out.put("schemaType", schemaType);
+    /** {@link #forNode} inside its live session. */
+    private static JSONObject forNodeIn(JCRSessionWrapper session, String jcrPath, String base, JSONObject overrides,
+            String pageTitle) throws RepositoryException {
+        JSONObject out = new JSONObject();
+        JCRNodeWrapper n;
+        try {
+            n = session.getNode(jcrPath);
+        } catch (javax.jcr.PathNotFoundException e) {
+            out.put("published", false);
+            return out;
+        }
+        out.put("published", true);
+        String nodeType = n.getPrimaryNodeTypeName();
+        out.put("nodeType", nodeType);
 
-                    JSONObject ld = new JSONObject();
-                    ld.put("@context", "https://schema.org");
-                    ld.put(TYPE, schemaType);
-                    try {
-                        ld.put("url", PublicUrls.forNode(n, base));
-                    } catch (Exception e) {
-                        logger.debug("no url for {}", jcrPath, e);
-                    }
+        String schemaType = SchemaMap.typeFor(overrides, nodeType);
+        out.put(MAPPED, schemaType != null);
+        if (schemaType == null) {
+            return out;
+        }
+        out.put("schemaType", schemaType);
 
-                    JSONArray missing = new JSONArray();
-                    JSONArray sourced = new JSONArray();
-                    Set<String> available = new LinkedHashSet<>();
-                    javax.jcr.PropertyIterator pi = n.getProperties();
-                    while (pi.hasNext()) {
-                        available.add(pi.nextProperty().getName());
-                    }
+        JSONObject ld = new JSONObject();
+        ld.put("@context", "https://schema.org");
+        ld.put(TYPE, schemaType);
+        try {
+            ld.put("url", PublicUrls.forNode(n, base));
+        } catch (Exception e) {
+            logger.debug("no url for {}", jcrPath, e);
+        }
 
-                    for (String prop : allProperties(schemaType)) {
-                        Filled filled = fill(n, available, prop, base);
-                        if (filled == null) {
-                            if (isRequired(schemaType, prop)) {
-                                missing.put(prop);
-                            }
-                            continue;
-                        }
-                        put(ld, prop, filled.value);
-                        sourced.put(new JSONObject().put("property", prop).put("from", filled.from));
-                    }
+        JSONArray missing = new JSONArray();
+        JSONArray sourced = new JSONArray();
+        fillAll(n, schemaType, base, ld, missing, sourced);
+        out.put("jsonLd", ld);
+        out.put("missing", missing);
+        out.put("sourced", sourced);
+        out.put("valid", missing.length() == 0);
 
-                    out.put("jsonLd", ld);
-                    out.put("missing", missing);
-                    out.put("sourced", sourced);
-                    out.put("valid", missing.length() == 0);
+        // The contradiction check. Only meaningful when the page's
+        // own title is known, which is why it is passed in.
+        JSONObject conflict = conflict(ld, pageTitle);
+        if (conflict != null) {
+            out.put("conflict", conflict);
+        }
+        return out;
+    }
 
-                    // The contradiction check. Only meaningful when the page's
-                    // own title is known, which is why it is passed in.
-                    JSONObject conflict = conflict(ld, pageTitle);
-                    if (conflict != null) {
-                        out.put("conflict", conflict);
-                    }
-                    return out;
-                });
+    /** Fills every property of the schema type it can, and lists the required ones it cannot. */
+    private static void fillAll(JCRNodeWrapper n, String schemaType, String base, JSONObject ld, JSONArray missing,
+            JSONArray sourced) throws RepositoryException {
+        Set<String> available = new LinkedHashSet<>();
+        javax.jcr.PropertyIterator pi = n.getProperties();
+        while (pi.hasNext()) {
+            available.add(pi.nextProperty().getName());
+        }
+        for (String prop : allProperties(schemaType)) {
+            Filled filled = fill(n, available, prop, base);
+            if (filled != null) {
+                put(ld, prop, filled.value);
+                sourced.put(new JSONObject().put("property", prop).put("from", filled.from));
+            } else if (isRequired(schemaType, prop)) {
+                missing.put(prop);
+            }
+        }
     }
 
     /**
