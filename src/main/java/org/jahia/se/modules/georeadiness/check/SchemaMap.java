@@ -41,6 +41,17 @@ import java.util.Set;
  */
 public final class SchemaMap {
 
+    // Names used across the tables below.
+    private static final String TELEPHONE = "telephone";
+    private static final String LOCAL_BUSINESS = "LocalBusiness";
+    private static final String DESCRIPTION = "description";
+    private static final String EMAIL = "email";
+    private static final String PRICE_RANGE = "priceRange";
+    private static final String OPENING_HOURS = "openingHours";
+    private static final String ADDRESS = "address";
+    private static final String IMAGE = "image";
+    private static final String PLACE = "Place";
+
     /** Jahia's own types, where the answer is not a matter of opinion. */
     private static final Map<String, String> BUILT_IN = new LinkedHashMap<>();
 
@@ -60,7 +71,7 @@ public final class SchemaMap {
      */
     public static final List<String> OFFERED = Arrays.asList(
             "WebPage", "Article", "BlogPosting", "NewsArticle", "Product", "Event",
-            "Organization", "LocalBusiness", "Person", "Place", "Service", "Offer",
+            "Organization", LOCAL_BUSINESS, "Person", PLACE, "Service", "Offer",
             "FAQPage", "Recipe", "Course", "JobPosting", "VideoObject", "ImageObject");
 
     /**
@@ -79,36 +90,36 @@ public final class SchemaMap {
         REQUIRED.put("Article", new String[]{"headline", "datePublished"});
         REQUIRED.put("BlogPosting", new String[]{"headline", "datePublished"});
         REQUIRED.put("NewsArticle", new String[]{"headline", "datePublished"});
-        REQUIRED.put("Product", new String[]{"name", "image"});
+        REQUIRED.put("Product", new String[]{"name", IMAGE});
         REQUIRED.put("Event", new String[]{"name", "startDate", "location"});
         REQUIRED.put("Organization", new String[]{"name"});
-        REQUIRED.put("LocalBusiness", new String[]{"name", "address"});
+        REQUIRED.put(LOCAL_BUSINESS, new String[]{"name", ADDRESS});
         REQUIRED.put("Person", new String[]{"name"});
-        REQUIRED.put("Place", new String[]{"name", "address"});
+        REQUIRED.put(PLACE, new String[]{"name", ADDRESS});
         REQUIRED.put("Service", new String[]{"name"});
         REQUIRED.put("Offer", new String[]{"price", "priceCurrency"});
         REQUIRED.put("FAQPage", new String[]{"name"});
-        REQUIRED.put("Recipe", new String[]{"name", "image"});
-        REQUIRED.put("Course", new String[]{"name", "description"});
+        REQUIRED.put("Recipe", new String[]{"name", IMAGE});
+        REQUIRED.put("Course", new String[]{"name", DESCRIPTION});
         REQUIRED.put("JobPosting", new String[]{"title", "datePosted"});
         REQUIRED.put("VideoObject", new String[]{"name", "uploadDate"});
         REQUIRED.put("ImageObject", new String[]{"contentUrl"});
 
-        RECOMMENDED.put("WebPage", new String[]{"description", "dateModified"});
-        RECOMMENDED.put("Article", new String[]{"image", "author", "description", "dateModified"});
-        RECOMMENDED.put("BlogPosting", new String[]{"image", "author", "description", "dateModified"});
-        RECOMMENDED.put("NewsArticle", new String[]{"image", "author", "description", "dateModified"});
+        RECOMMENDED.put("WebPage", new String[]{DESCRIPTION, "dateModified"});
+        RECOMMENDED.put("Article", new String[]{IMAGE, "author", DESCRIPTION, "dateModified"});
+        RECOMMENDED.put("BlogPosting", new String[]{IMAGE, "author", DESCRIPTION, "dateModified"});
+        RECOMMENDED.put("NewsArticle", new String[]{IMAGE, "author", DESCRIPTION, "dateModified"});
         // priceCurrency after offers, so the Offer exists by the time it is
         // added - and so a model with a price but no currency is told, since a
         // price without one is ambiguous to every consumer of it.
-        RECOMMENDED.put("Product", new String[]{"description", "offers", "priceCurrency", "brand"});
-        RECOMMENDED.put("Event", new String[]{"description", "image", "endDate"});
-        RECOMMENDED.put("Organization", new String[]{"description", "image", "address", "telephone", "email"});
-        RECOMMENDED.put("LocalBusiness", new String[]{"description", "image", "telephone", "email", "geo",
-                "openingHours", "priceRange"});
-        RECOMMENDED.put("Person", new String[]{"description", "image", "jobTitle", "telephone", "email"});
-        RECOMMENDED.put("Place", new String[]{"description", "image", "geo", "telephone"});
-        RECOMMENDED.put("Service", new String[]{"description", "image"});
+        RECOMMENDED.put("Product", new String[]{DESCRIPTION, "offers", "priceCurrency", "brand"});
+        RECOMMENDED.put("Event", new String[]{DESCRIPTION, IMAGE, "endDate"});
+        RECOMMENDED.put("Organization", new String[]{DESCRIPTION, IMAGE, ADDRESS, TELEPHONE, EMAIL});
+        RECOMMENDED.put(LOCAL_BUSINESS, new String[]{DESCRIPTION, IMAGE, TELEPHONE, EMAIL, "geo",
+                OPENING_HOURS, PRICE_RANGE});
+        RECOMMENDED.put("Person", new String[]{DESCRIPTION, IMAGE, "jobTitle", TELEPHONE, EMAIL});
+        RECOMMENDED.put(PLACE, new String[]{DESCRIPTION, IMAGE, "geo", TELEPHONE});
+        RECOMMENDED.put("Service", new String[]{DESCRIPTION, IMAGE});
     }
 
     /**
@@ -126,10 +137,10 @@ public final class SchemaMap {
         SOURCES.put("name", new String[]{"jcr:title", "title", "name", "fullName", "label"});
         SOURCES.put("headline", new String[]{"jcr:title", "title", "headline", "name"});
         SOURCES.put("title", new String[]{"jcr:title", "title", "jobPosition", "jobTitle"});
-        SOURCES.put("description", new String[]{"description", "jcr:description", "summary",
+        SOURCES.put(DESCRIPTION, new String[]{DESCRIPTION, "jcr:description", "summary",
                 "subtitle", "abstract", "intro", "teaser", "body"});
-        SOURCES.put("image", new String[]{"image", "images", "picture", "photo", "thumbnail", "visual"});
-        SOURCES.put("contentUrl", new String[]{"image", "file", "video"});
+        SOURCES.put(IMAGE, new String[]{IMAGE, "images", "picture", "photo", "thumbnail", "visual"});
+        SOURCES.put("contentUrl", new String[]{IMAGE, "file", "video"});
         SOURCES.put("datePublished", new String[]{"date", "publicationDate", "publishedOn",
                 "creationDate", "jcr:created"});
         SOURCES.put("datePosted", new String[]{"date", "publicationDate", "jcr:created"});
@@ -139,18 +150,18 @@ public final class SchemaMap {
         SOURCES.put("endDate", new String[]{"endDate", "end"});
         SOURCES.put("price", new String[]{"price", "amount", "cost"});
         SOURCES.put("priceCurrency", new String[]{"currency", "priceCurrency"});
-        SOURCES.put("address", new String[]{"address", "street", "location"});
-        SOURCES.put("telephone", new String[]{"phone", "telephone", "tel", "mobile"});
-        SOURCES.put("email", new String[]{"email", "mail"});
+        SOURCES.put(ADDRESS, new String[]{ADDRESS, "street", "location"});
+        SOURCES.put(TELEPHONE, new String[]{"phone", TELEPHONE, "tel", "mobile"});
+        SOURCES.put(EMAIL, new String[]{EMAIL, "mail"});
         SOURCES.put("jobTitle", new String[]{"jobPosition", "jobTitle", "position", "role"});
         SOURCES.put("author", new String[]{"author", "writtenBy", "realtor"});
         SOURCES.put("brand", new String[]{"brand", "manufacturer"});
-        SOURCES.put("location", new String[]{"location", "venue", "address", "place"});
+        SOURCES.put("location", new String[]{"location", "venue", ADDRESS, "place"});
         SOURCES.put("offers", new String[]{"price"});
-        SOURCES.put("priceRange", new String[]{"priceRange"});
-        SOURCES.put("openingHours", new String[]{"openingHours", "openingHoursSpecification", "hours"});
+        SOURCES.put(PRICE_RANGE, new String[]{PRICE_RANGE});
+        SOURCES.put(OPENING_HOURS, new String[]{OPENING_HOURS, "openingHoursSpecification", "hours"});
 
-        COMPOSITES.put("address", new Composite("PostalAddress",
+        COMPOSITES.put(ADDRESS, new Composite("PostalAddress",
                 new String[]{"streetAddress", "addressLocality", "addressRegion", "postalCode", "addressCountry"},
                 false, "streetAddress", "addressLocality"));
         COMPOSITES.put("geo", new Composite("GeoCoordinates", new String[]{"latitude", "longitude"},
@@ -211,17 +222,17 @@ public final class SchemaMap {
      * are a Place. Null when the properties say nothing either way.
      *
      * @param declared the property names a content type declares
-     * @return "LocalBusiness", "Place" or null
+     * @return LOCAL_BUSINESS, PLACE or null
      */
     public static String suggestFor(Set<String> declared) {
-        boolean address = COMPOSITES.get("address").madeOf(declared) || declares(declared, "address") != null;
+        boolean address = COMPOSITES.get(ADDRESS).madeOf(declared) || declares(declared, ADDRESS) != null;
         boolean geo = COMPOSITES.get("geo").madeOf(declared);
         if (!address && !geo) {
             return null;
         }
-        boolean business = declares(declared, "telephone") != null || declares(declared, "openingHours") != null
-                || declares(declared, "priceRange") != null;
-        return address && business ? "LocalBusiness" : "Place";
+        boolean business = declares(declared, TELEPHONE) != null || declares(declared, OPENING_HOURS) != null
+                || declares(declared, PRICE_RANGE) != null;
+        return address && business ? LOCAL_BUSINESS : PLACE;
     }
 
     private SchemaMap() {

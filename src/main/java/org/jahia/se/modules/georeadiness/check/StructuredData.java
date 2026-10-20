@@ -53,6 +53,8 @@ public final class StructuredData {
     private static final Logger logger = LoggerFactory.getLogger(StructuredData.class);
 
     private static final int MAX_NODES = 10_000;
+    private static final String TYPE = "@type";
+    private static final String OPENING_HOURS = "openingHours";
     private static final int MAX_DESC = 320;
 
     private StructuredData() {
@@ -85,49 +87,14 @@ public final class StructuredData {
         int completeItems = 0;
         int total = 0;
         for (Map.Entry<String, int[]> e : counts.entrySet()) {
-            String nodeType = e.getKey();
             int n = e.getValue()[0];
             total += n;
-
-            JSONObject row = new JSONObject();
-            row.put("nodeType", nodeType);
-            row.put("count", n);
-            String schemaType = SchemaMap.typeFor(overrides, nodeType);
-            row.put("muted", SchemaMap.muted(overrides, nodeType));
-            // A hint from what the model holds, shown beside the choice and never applied.
-            String suggested = SchemaMap.suggestFor(propertiesByType.getOrDefault(nodeType, new LinkedHashSet<>()));
-            if (suggested != null && !suggested.equals(schemaType)) {
-                row.put("suggested", suggested);
+            JSONObject row = typeRow(e.getKey(), n, overrides,
+                    propertiesByType.getOrDefault(e.getKey(), new LinkedHashSet<>()));
+            if (row.getBoolean("mapped")) {
+                mappedItems += n;
             }
-            if (schemaType == null) {
-                row.put("mapped", false);
-                types.put(row);
-                continue;
-            }
-            row.put("mapped", true);
-            row.put("schemaType", schemaType);
-            mappedItems += n;
-
-            // Whether the *model* can fill what the schema type needs. One
-            // answer for the type, because a missing property is a modelling
-            // gap: it is absent from every item of that type, not from some.
-            Set<String> available = propertiesByType.getOrDefault(nodeType, new LinkedHashSet<>());
-            JSONArray missing = new JSONArray();
-            for (String required : SchemaMap.requiredFor(schemaType)) {
-                if (!hasSource(available, required)) {
-                    missing.put(required);
-                }
-            }
-            JSONArray thin = new JSONArray();
-            for (String rec : SchemaMap.recommendedFor(schemaType)) {
-                if (!hasSource(available, rec)) {
-                    thin.put(rec);
-                }
-            }
-            row.put("missing", missing);
-            row.put("recommendedMissing", thin);
-            row.put("complete", missing.length() == 0);
-            if (missing.length() == 0) {
+            if (row.optBoolean("complete")) {
                 completeItems += n;
             }
             types.put(row);
@@ -138,6 +105,45 @@ public final class StructuredData {
         out.put("mappedItems", mappedItems);
         out.put("completeItems", completeItems);
         out.put("language", language);
+        return out;
+    }
+
+    /**
+     * One content type's line of the coverage: its schema type, a suggestion from its properties,
+     * and what the model cannot fill. One answer for the type, because a missing property is a
+     * modelling gap: it is absent from every item of that type, not from some.
+     */
+    static JSONObject typeRow(String nodeType, int count, JSONObject overrides, Set<String> available) {
+        JSONObject row = new JSONObject();
+        row.put("nodeType", nodeType);
+        row.put("count", count);
+        String schemaType = SchemaMap.typeFor(overrides, nodeType);
+        row.put("muted", SchemaMap.muted(overrides, nodeType));
+        // A hint from what the model holds, shown beside the choice and never applied.
+        String suggested = SchemaMap.suggestFor(available);
+        if (suggested != null && !suggested.equals(schemaType)) {
+            row.put("suggested", suggested);
+        }
+        row.put("mapped", schemaType != null);
+        if (schemaType == null) {
+            return row;
+        }
+        row.put("schemaType", schemaType);
+        JSONArray missing = unsourced(available, SchemaMap.requiredFor(schemaType));
+        row.put("missing", missing);
+        row.put("recommendedMissing", unsourced(available, SchemaMap.recommendedFor(schemaType)));
+        row.put("complete", missing.length() == 0);
+        return row;
+    }
+
+    /** The schema properties of the list that the declared properties cannot fill. */
+    private static JSONArray unsourced(Set<String> available, String[] schemaProperties) {
+        JSONArray out = new JSONArray();
+        for (String p : schemaProperties) {
+            if (!hasSource(available, p)) {
+                out.put(p);
+            }
+        }
         return out;
     }
 
@@ -175,7 +181,7 @@ public final class StructuredData {
 
                     JSONObject ld = new JSONObject();
                     ld.put("@context", "https://schema.org");
-                    ld.put("@type", schemaType);
+                    ld.put(TYPE, schemaType);
                     try {
                         ld.put("url", PublicUrls.forNode(n, base));
                     } catch (Exception e) {
@@ -191,35 +197,15 @@ public final class StructuredData {
                     }
 
                     for (String prop : allProperties(schemaType)) {
-                        String source = sourceFor(available, prop);
-                        SchemaMap.Composite composite = source == null ? SchemaMap.compositeFor(prop) : null;
-                        if (source == null && composite == null) {
+                        Filled filled = fill(n, available, prop, base);
+                        if (filled == null) {
                             if (isRequired(schemaType, prop)) {
                                 missing.put(prop);
                             }
                             continue;
                         }
-                        Object value;
-                        if (composite != null) {
-                            Map<String, String> parts = partsOf(n, available, composite, base);
-                            value = composite(composite, parts);
-                            source = String.join(", ", parts.keySet());
-                        } else if ("openingHours".equals(prop)) {
-                            value = openingHours(allValues(n, source));
-                        } else {
-                            value = valueOf(n, source, prop, base);
-                        }
-                        if (value == null) {
-                            if (isRequired(schemaType, prop)) {
-                                missing.put(prop);
-                            }
-                            continue;
-                        }
-                        put(ld, prop, value);
-                        JSONObject s = new JSONObject();
-                        s.put("property", prop);
-                        s.put("from", source);
-                        sourced.put(s);
+                        put(ld, prop, filled.value);
+                        sourced.put(new JSONObject().put("property", prop).put("from", filled.from));
                     }
 
                     out.put("jsonLd", ld);
@@ -229,13 +215,8 @@ public final class StructuredData {
 
                     // The contradiction check. Only meaningful when the page's
                     // own title is known, which is why it is passed in.
-                    String name = ld.optString("name", ld.optString("headline", ""));
-                    if (pageTitle != null && !pageTitle.isEmpty() && !name.isEmpty()
-                            && !alike(name, pageTitle)) {
-                        JSONObject conflict = new JSONObject();
-                        conflict.put("property", ld.has("name") ? "name" : "headline");
-                        conflict.put("generated", name);
-                        conflict.put("page", pageTitle);
+                    JSONObject conflict = conflict(ld, pageTitle);
+                    if (conflict != null) {
                         out.put("conflict", conflict);
                     }
                     return out;
@@ -278,6 +259,46 @@ public final class StructuredData {
         return false;
     }
 
+    /** A value read for a schema property, and the content properties it came from. */
+    private static final class Filled {
+        final Object value;
+        final String from;
+
+        Filled(Object value, String from) {
+            this.value = value;
+            this.from = from;
+        }
+    }
+
+    /** The value of one schema property for a node, or null when nothing fills it. */
+    private static Filled fill(JCRNodeWrapper n, Set<String> available, String prop, String base) {
+        String source = sourceFor(available, prop);
+        if (source != null) {
+            Object value = OPENING_HOURS.equals(prop) ? openingHours(allValues(n, source)) : valueOf(n, source, prop, base);
+            return value == null ? null : new Filled(value, source);
+        }
+        SchemaMap.Composite composite = SchemaMap.compositeFor(prop);
+        if (composite == null) {
+            return null;
+        }
+        Map<String, String> parts = partsOf(n, available, composite, base);
+        JSONObject value = composite(composite, parts);
+        return value == null ? null : new Filled(value, String.join(", ", parts.keySet()));
+    }
+
+    /** The generated name against the page's own title, when they disagree; else null. */
+    private static JSONObject conflict(JSONObject ld, String pageTitle) {
+        String name = ld.optString("name", ld.optString("headline", ""));
+        if (pageTitle == null || pageTitle.isEmpty() || name.isEmpty() || alike(name, pageTitle)) {
+            return null;
+        }
+        JSONObject conflict = new JSONObject();
+        conflict.put("property", ld.has("name") ? "name" : "headline");
+        conflict.put("generated", name);
+        conflict.put("page", pageTitle);
+        return conflict;
+    }
+
     /** Whether a schema property has a source: one property, or the parts of a composite value. */
     static boolean hasSource(Set<String> available, String schemaProperty) {
         if (sourceFor(available, schemaProperty) != null) {
@@ -311,7 +332,7 @@ public final class StructuredData {
             return null;
         }
         JSONObject out = new JSONObject();
-        out.put("@type", c.type);
+        out.put(TYPE, c.type);
         for (Map.Entry<String, String> e : parts.entrySet()) {
             if ("GeoCoordinates".equals(c.type)) {
                 try {
@@ -344,17 +365,9 @@ public final class StructuredData {
         for (String raw : values) {
             String v = raw == null ? "" : raw.trim();
             if (v.startsWith("{")) {
-                try {
-                    JSONObject o = new JSONObject(v);
-                    String day = o.optString("dayOfWeek", "");
-                    String opens = o.optString("opens", "");
-                    String closes = o.optString("closes", "");
-                    if (DAY.matcher(day).matches() && TIME.matcher(opens).matches() && TIME.matcher(closes).matches()) {
-                        specs.put(new JSONObject().put("@type", "OpeningHoursSpecification")
-                                .put("dayOfWeek", day).put("opens", opens).put("closes", closes));
-                    }
-                } catch (Exception e) {
-                    // Not the JSON it looked like: left out.
+                JSONObject spec = specification(v);
+                if (spec != null) {
+                    specs.put(spec);
                 }
             } else if (!v.isEmpty() && v.length() <= 80) {
                 text.put(v);
@@ -363,7 +376,25 @@ public final class StructuredData {
         if (specs.length() > 0) {
             return new JSONObject().put("openingHoursSpecification", specs);
         }
-        return text.length() > 0 ? new JSONObject().put("openingHours", text) : null;
+        return text.length() > 0 ? new JSONObject().put(OPENING_HOURS, text) : null;
+    }
+
+    /** One OpeningHoursSpecification from its JSON form, or null when a field is not what it claims. */
+    private static JSONObject specification(String json) {
+        try {
+            JSONObject o = new JSONObject(json);
+            String day = o.optString("dayOfWeek", "");
+            String opens = o.optString("opens", "");
+            String closes = o.optString("closes", "");
+            if (!DAY.matcher(day).matches() || !TIME.matcher(opens).matches() || !TIME.matcher(closes).matches()) {
+                return null;
+            }
+            return new JSONObject().put(TYPE, "OpeningHoursSpecification")
+                    .put("dayOfWeek", day).put("opens", opens).put("closes", closes);
+        } catch (Exception e) {
+            // Not the JSON it looked like: left out.
+            return null;
+        }
     }
 
     /** Every value of a property as text, single or multiple. */
@@ -467,7 +498,7 @@ public final class StructuredData {
 
     /** `price` is only meaningful to schema.org wrapped in an Offer. */
     private static void put(JSONObject ld, String property, Object value) {
-        if ("openingHours".equals(property) && value instanceof JSONObject) {
+        if (OPENING_HOURS.equals(property) && value instanceof JSONObject) {
             // openingHours() names its own key: the specification or the text form.
             JSONObject hours = (JSONObject) value;
             for (String key : hours.keySet()) {
@@ -479,7 +510,7 @@ public final class StructuredData {
             JSONObject offer = ld.optJSONObject("offers");
             if (offer == null) {
                 offer = new JSONObject();
-                offer.put("@type", "Offer");
+                offer.put(TYPE, "Offer");
                 ld.put("offers", offer);
             }
             offer.put("price", value);
@@ -499,7 +530,7 @@ public final class StructuredData {
             JSONObject offer = ld.optJSONObject("offers");
             if (offer == null) {
                 offer = new JSONObject();
-                offer.put("@type", "Offer");
+                offer.put(TYPE, "Offer");
                 ld.put("offers", offer);
             }
             offer.put("price", value);
