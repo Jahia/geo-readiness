@@ -8,6 +8,10 @@ language at a time, plus **AI citations** when the site is connected to BotRank.
 
 A companion guide covers the per-page panel: [`drawer-guide.md`](drawer-guide.md).
 
+Every tab is laid out the same way: a title and what the tab is for, the dates of the data as small
+pills, then one card per section. The numbers that matter come first, in large type, coloured
+green, amber or red only when the tab itself judges them.
+
 ## Three things that explain everything else
 
 - **Most of it is instant, one part is not.** Nearly every panel is a question put to the content

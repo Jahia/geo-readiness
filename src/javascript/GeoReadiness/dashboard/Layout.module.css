@@ -1,0 +1,144 @@
+/*
+ * The dashboard's one layout and type scale (see Layout.jsx). Colours: Moonstone tokens where one
+ * exists, otherwise the module's AAA values on white (#131c21, #24343f, #44505a 8.26:1). The accent
+ * dark (#0072b1, 5.19:1) marks large figures, bars and rings, never small text.
+ */
+.panel {
+    --dl-accent: var(--moon-color-accent_dark, #0072b1);
+    --dl-accent-ink: #004d70;
+    --dl-accent-bg: #e8f3fa;
+    --dl-line: var(--moon-color-gray_light, #dfe3e8);
+    --dl-soft: #f6f8fa;
+    --dl-ink: #131c21;
+    --dl-ink2: #24343f;
+    --dl-ink3: #44505a;
+    --dl-good: #0b5643;
+    --dl-good-mark: #267729;
+    --dl-good-bg: #dff0ea;
+    --dl-warn: #654700;
+    --dl-warn-mark: #b07c00;
+    --dl-warn-bg: #fbefd9;
+    --dl-bad: #8c2921;
+    --dl-bad-mark: #c23a2c;
+    --dl-bad-bg: #fae6e4;
+
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding-bottom: 1rem;
+    color: var(--dl-ink2);
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+/*
+ * Moonstone text inside a panel follows the same scale: body 14/1.55, captions 12.5/1.55 in the
+ * muted grey. Paragraph captions only, so chips, buttons and dropdowns keep their own metrics.
+ */
+.panel :global(p.moonstone-variant_body),
+.panel :global(span.moonstone-variant_body:not(.moonstone-nowrap)) {
+    font-size: 14px;
+    line-height: 1.55;
+}
+.panel :global(p.moonstone-variant_caption) {
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--dl-ink3);
+}
+.panel :global(.moonstone-banner) { margin: 0; }
+
+/* ---- header ---------------------------------------------------------------------------- */
+.header { display: flex; flex-direction: column; gap: 8px; }
+.title { margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; color: var(--dl-ink); }
+.intro { margin: 0; max-width: 72ch; font-size: 14px; line-height: 1.6; color: var(--dl-ink3); }
+
+.meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; }
+.meta li {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--dl-soft);
+    border: 1px solid var(--dl-line);
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--dl-ink3);
+}
+.meta .meta_warn { background: var(--dl-warn-bg); color: var(--dl-warn); border-color: transparent; }
+
+/* ---- cards ----------------------------------------------------------------------------- */
+.card {
+    min-width: 0;
+    padding: 20px 22px;
+    border: 1px solid var(--dl-line);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(19, 28, 33, 0.04);
+}
+.cardHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.cardHeadText { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cardTitle { margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; color: var(--dl-ink); }
+.cardIntro { margin: 0; max-width: 72ch; font-size: 13px; line-height: 1.55; color: var(--dl-ink3); }
+.cardAside { flex: none; }
+.card > :last-child { margin-bottom: 0; }
+
+.columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+
+/* ---- key figures ----------------------------------------------------------------------- */
+.figures:not(:last-child) { margin-bottom: 18px; }
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+.figure {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    min-width: 0;
+    padding: 18px 18px 16px;
+    border: 1px solid var(--dl-line);
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+}
+.figure::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--dl-line); }
+.figureLabel { font-size: 11.5px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--dl-ink3); }
+.figureValue { font-size: 32px; line-height: 1.1; font-weight: 700; color: var(--dl-ink); font-variant-numeric: tabular-nums; }
+.figureSub { font-size: 12px; line-height: 1.45; color: var(--dl-ink3); }
+
+.tone_accent.figure::before { background: var(--dl-accent); }
+.tone_accent .figureValue { color: var(--dl-accent-ink); }
+.tone_good.figure::before { background: var(--dl-good-mark); }
+.tone_good .figureValue { color: var(--dl-good); }
+.tone_warn.figure::before { background: var(--dl-warn-mark); }
+.tone_warn .figureValue { color: var(--dl-warn); }
+.tone_bad.figure::before { background: var(--dl-bad-mark); }
+.tone_bad .figureValue { color: var(--dl-bad); }
+
+/* ---- ring and hero --------------------------------------------------------------------- */
+.ring { position: relative; flex: none; width: 132px; height: 132px; }
+.ringTrack { fill: none; stroke: #e6eaee; stroke-width: 12; }
+.ringValue { fill: none; stroke: var(--dl-accent); stroke-width: 12; stroke-linecap: round; }
+.ringText {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--dl-accent-ink);
+    font-variant-numeric: tabular-nums;
+}
+.ring.tone_good .ringValue { stroke: var(--dl-good-mark); }
+.ring.tone_good .ringText { color: var(--dl-good); }
+.ring.tone_warn .ringValue { stroke: var(--dl-warn-mark); }
+.ring.tone_warn .ringText { color: var(--dl-warn); }
+.ring.tone_bad .ringValue { stroke: var(--dl-bad-mark); }
+.ring.tone_bad .ringText { color: var(--dl-bad); }
+
+.hero { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.heroTitle { margin: 0; font-size: 18px; line-height: 26px; font-weight: 600; color: var(--dl-ink); }
+.heroText { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; flex: 1 1 260px; min-width: 0; }
+
+/* ---- actions, notes, source ------------------------------------------------------------ */
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; margin-top: 16px; }
+.note { margin: 12px 0 0; max-width: 80ch; font-size: 12.5px; line-height: 1.55; color: var(--dl-ink3); }
+.source { margin: 0; padding-top: 14px; border-top: 1px solid var(--dl-line); font-size: 12px; line-height: 1.5; color: var(--dl-ink3); }

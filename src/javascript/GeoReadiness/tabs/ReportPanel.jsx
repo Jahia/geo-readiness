@@ -1,10 +1,11 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Button, Chip, Loader, Separator, Typography} from '@jahia/moonstone';
+import {Banner, Button, Chip, Loader, Typography} from '@jahia/moonstone';
 import {fetchReportStatus, generateReport, readReport} from '../api/geoReport';
 import {jcontentUrl} from '../util/jcontentUrl';
 import {downloadText, reportFilename, reportToMarkdown} from '../util/exportReport';
+import {Actions, Card, Meta, Note, Panel, PanelHeader} from '../dashboard/Layout';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -97,13 +98,12 @@ export const ReportPanel = ({path, language, reportLanguage, siteKey, siteName})
     }
 
     return (
-        <div>
-            <Typography variant="subheading" component="h2" className={styles.panelTitle}>
-                {t('report.title')}
-            </Typography>
-            <Typography variant="caption" className={styles.panelIntro}>
-                {t('report.intro')}
-            </Typography>
+        <Panel>
+            <PanelHeader title={t('report.title')} intro={t('report.intro')}>
+                {status && status.enabled && (
+                    <Meta items={[{key: 'provider', text: t('report.provider', {provider: status.provider, model: status.model})}]}/>
+                )}
+            </PanelHeader>
 
             {status && !status.enabled && (
                 <Banner variant="info" title={t('report.notConfiguredTitle')}>
@@ -113,30 +113,27 @@ export const ReportPanel = ({path, language, reportLanguage, siteKey, siteName})
 
             {status && status.enabled && (
                 <>
-                    <Typography variant="caption" className={styles.panelIntro}>
-                        {t('report.provider', {provider: status.provider, model: status.model})}
-                        {' · '}
-                        {t('report.privacy')}
-                    </Typography>
-
-                    <div className={styles.actions}>
-                        <Button
-                            size="big"
-                            color="accent"
-                            isDisabled={generating}
-                            label={generateLabel}
-                            onClick={generate}
-                        />
-                        {report && !generating && (
-                            <>
-                                <Button size="big" label={t('report.export.markdown')} onClick={() => exportAs('md')}/>
-                                <Button size="big" label={t('report.export.json')} onClick={() => exportAs('json')}/>
-                            </>
-                        )}
-                        {generating && (
-                            <Typography variant="caption">{t('report.generatingHint')}</Typography>
-                        )}
-                    </div>
+                    <Card>
+                        <Note>{t('report.privacy')}</Note>
+                        <Actions>
+                            <Button
+                                size="big"
+                                color="accent"
+                                isDisabled={generating}
+                                label={generateLabel}
+                                onClick={generate}
+                            />
+                            {report && !generating && (
+                                <>
+                                    <Button size="big" label={t('report.export.markdown')} onClick={() => exportAs('md')}/>
+                                    <Button size="big" label={t('report.export.json')} onClick={() => exportAs('json')}/>
+                                </>
+                            )}
+                            {generating && (
+                                <Typography variant="caption">{t('report.generatingHint')}</Typography>
+                            )}
+                        </Actions>
+                    </Card>
 
                     {phase === 'error' && (
                         <Banner variant="danger" title={t('report.errorTitle')}>
@@ -153,7 +150,7 @@ export const ReportPanel = ({path, language, reportLanguage, siteKey, siteName})
                     {report && <Report report={report} language={language} reportLanguage={reportLanguage} t={t}/>}
                 </>
             )}
-        </div>
+        </Panel>
     );
 };
 
@@ -177,8 +174,6 @@ const Report = ({report, language, reportLanguage, t}) => {
 
     return (
         <>
-            <Separator spacing="big" size="full"/>
-
             <div className={styles.reportMeta}>
                 <Chip
                     label={t(`report.verdict.${report.verdict || 'partial'}`)}
@@ -201,99 +196,88 @@ const Report = ({report, language, reportLanguage, t}) => {
             )}
 
             {report.summary && (
-                <p className={styles.reportSummary}>{report.summary}</p>
+                <Card>
+                    <p className={styles.reportSummary}>{report.summary}</p>
+                </Card>
             )}
 
-            <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                {t('report.compliance')}
-            </Typography>
-            <ul className={styles.checkList}>
-                {AREAS.map(area => {
-                    const row = compliance.find(c => c.area === area);
-                    if (!row) {
-                        return null;
-                    }
+            <Card title={t('report.compliance')}>
+                <ul className={styles.checkList}>
+                    {AREAS.map(area => {
+                        const row = compliance.find(c => c.area === area);
+                        if (!row) {
+                            return null;
+                        }
 
-                    return (
-                        <li key={area} className={styles.checkItem}>
-                            <span className={styles.checkText}>
-                                <Typography variant="body" className={styles.checkLabel}>
-                                    {t(`report.area.${area}`)}
-                                </Typography>
-                                <Typography variant="caption" className={styles.checkFix}>
-                                    {row.note}
-                                </Typography>
-                            </span>
-                            <span className={styles.checkMeta}>
-                                <Chip label={t(`report.status.${row.status}`)} color={STATUS_COLOR[row.status] || 'warning'}/>
-                            </span>
+                        return (
+                            <li key={area} className={styles.checkItem}>
+                                <span className={styles.checkText}>
+                                    <Typography variant="body" className={styles.checkLabel}>
+                                        {t(`report.area.${area}`)}
+                                    </Typography>
+                                    <Typography variant="caption" className={styles.checkFix}>
+                                        {row.note}
+                                    </Typography>
+                                </span>
+                                <span className={styles.checkMeta}>
+                                    <Chip label={t(`report.status.${row.status}`)} color={STATUS_COLOR[row.status] || 'warning'}/>
+                                </span>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </Card>
+
+            <Card title={t('report.priorities')}>
+                {priorities.length === 0 && <Note>{t('report.none')}</Note>}
+                <ol className={styles.priorityList}>
+                    {priorities.map((p, i) => (
+                        <li key={`${i}:${p.title}`} className={styles.priority}>
+                            <div className={styles.priorityHead}>
+                                <Chip label={t(`score.severity.${p.severity}`)} color={SEVERITY_COLOR[p.severity] || 'default'}/>
+                                <Typography variant="body" className={styles.priorityTitle}>{p.title}</Typography>
+                            </div>
+                            <Typography variant="caption" className={styles.checkFix}>
+                                {t(`report.area.${p.area}`)} · {t(`report.owner.${p.owner}`)} · {t(`report.effort.${p.effort}`)}
+                            </Typography>
+                            {p.why && (
+                                <p className={styles.priorityText}>
+                                    <strong>{t('report.why')}</strong> {p.why}
+                                </p>
+                            )}
+                            {p.how && (
+                                <p className={styles.priorityText}>
+                                    <strong>{t('report.how')}</strong> {p.how}
+                                </p>
+                            )}
+                            {(p.pages || []).length > 0 && (
+                                <ul className={styles.priorityPages}>
+                                    {p.pages.map(pg => (
+                                        <li key={pg}>
+                                            {jcontentUrl(pg, language) ? (
+                                                <a className={styles.pageLink} href={jcontentUrl(pg, language)}>{pg}</a>
+                                            ) : (
+                                                <span>{pg}</span>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </li>
-                    );
-                })}
-            </ul>
-
-            <Separator spacing="big" size="full"/>
-            <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                {t('report.priorities')}
-            </Typography>
-            {priorities.length === 0 && (
-                <Typography variant="caption" className={styles.panelIntro}>{t('report.none')}</Typography>
-            )}
-            <ol className={styles.priorityList}>
-                {priorities.map((p, i) => (
-                    <li key={`${i}:${p.title}`} className={styles.priority}>
-                        <div className={styles.priorityHead}>
-                            <Chip label={t(`score.severity.${p.severity}`)} color={SEVERITY_COLOR[p.severity] || 'default'}/>
-                            <Typography variant="body" className={styles.priorityTitle}>{p.title}</Typography>
-                        </div>
-                        <Typography variant="caption" className={styles.checkFix}>
-                            {t(`report.area.${p.area}`)} · {t(`report.owner.${p.owner}`)} · {t(`report.effort.${p.effort}`)}
-                        </Typography>
-                        {p.why && (
-                            <p className={styles.priorityText}>
-                                <strong>{t('report.why')}</strong> {p.why}
-                            </p>
-                        )}
-                        {p.how && (
-                            <p className={styles.priorityText}>
-                                <strong>{t('report.how')}</strong> {p.how}
-                            </p>
-                        )}
-                        {(p.pages || []).length > 0 && (
-                            <ul className={styles.priorityPages}>
-                                {p.pages.map(pg => (
-                                    <li key={pg}>
-                                        {jcontentUrl(pg, language) ? (
-                                            <a className={styles.pageLink} href={jcontentUrl(pg, language)}>{pg}</a>
-                                        ) : (
-                                            <span>{pg}</span>
-                                        )}
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </li>
-                ))}
-            </ol>
+                    ))}
+                </ol>
+            </Card>
 
             {wins.length > 0 && (
-                <>
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                        {t('report.quickWins')}
-                    </Typography>
+                <Card title={t('report.quickWins')}>
                     <ul className={styles.facts}>
                         {wins.map(w => <li key={w}>{w}</li>)}
                     </ul>
-                </>
+                </Card>
             )}
 
             {['now', 'next', 'later'].some(k => (roadmap[k] || []).length > 0) && (
-                <>
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                        {t('report.roadmap')}
-                    </Typography>
+                <Card title={t('report.roadmap')}>
                     <div className={styles.roadmap}>
                         {['now', 'next', 'later'].map(k => (
                             <div key={k} className={styles.roadmapCol}>
@@ -304,15 +288,15 @@ const Report = ({report, language, reportLanguage, t}) => {
                             </div>
                         ))}
                     </div>
-                </>
+                </Card>
             )}
 
-            <p className={styles.explain}>
+            <Note>
                 {report.usage && report.usage.inputTokens >= 0 ?
                     `${t('report.usage', {input: report.usage.inputTokens, output: report.usage.outputTokens})} · ` :
                     ''}
                 {t('report.disclaimer')}
-            </p>
+            </Note>
         </>
     );
 };

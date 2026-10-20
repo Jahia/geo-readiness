@@ -56,6 +56,14 @@ JavaScript-only page is still caught, by the word-count check.
 | `SitemapCheck` | Resolves every `sitemap.xml` entry back to a node and compares it with what is actually published, as guest, across every site language. |
 | `ScanStore` | Reads and writes the scan on the site node. |
 
+### `dashboard/`
+
+| File | Role |
+|---|---|
+| `GeoDashboard.jsx` | The Additional > SEO screen: five groups of tabs (overview, reach, usable, files, AI citations), one panel per tab. |
+| `Layout.jsx` | The one layout every dashboard panel uses: `Panel`, `PanelHeader` (title and intro, `Meta` pills for dates), `Card` per section, `Figures`/`Figure` for key numbers with a tone, `Ring` and `Hero` for the figure a panel leads with, `Actions`, `Note`, `Source`. A panel places no Separator and no heading Typography of its own. |
+| `Layout.module.css` | The type scale (page title 20/28, intro 14/1.6, hero 18/26, card title 16/22, card intro 13/1.55, body 14/1.55, notes 12.5/1.55, figures 32), card and figure styles, tones good/warn/bad/accent on the module's AAA colours. Moonstone body and caption paragraphs inside a panel follow the same scale. |
+
 ### `charts/`
 
 | File | Role |

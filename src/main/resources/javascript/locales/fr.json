@@ -471,6 +471,8 @@
       "checkNow": "VÉRIFIER",
       "checking": "VÉRIFICATION…",
       "lastCheck": "Dernière vérification : {{date}}",
+      "figureEntries": "Dans le sitemap",
+      "figurePublished": "Publiés",
       "neverTitle": "Pas encore vérifié",
       "never": "Lancez une vérification, ou attendez le prochain scan planifié du site, qui la rafraîchit aussi.",
       "limits": "Les entrées sont rapprochées du contenu, non téléchargées : une redirection n'est donc pas détectée, une entrée qui redirige ailleurs est comptée comme résolue. Toutes les langues du site sont comparées et chaque constat indique l'URL concernée.",
@@ -511,7 +513,11 @@
       "orphanTitle": "Rien ne pointe vers cette page",
       "orphanPage": "Aucune autre page publiée n'y fait de lien et le sitemap ne la liste pas : un robot n'a aucun moyen de la découvrir.",
       "navOnlyTitle": "Seul le menu pointe vers cette page",
-      "navOnlyPage": "Elle figure dans la navigation de {{count}} pages, mais aucune page n'y fait de lien depuis son contenu. Les robots qui pondèrent les liens considèrent une entrée de menu comme un signal plus faible qu'un lien voulu par un rédacteur."
+      "navOnlyPage": "Elle figure dans la navigation de {{count}} pages, mais aucune page n'y fait de lien depuis son contenu. Les robots qui pondèrent les liens considèrent une entrée de menu comme un signal plus faible qu'un lien voulu par un rédacteur.",
+      "figure": {
+        "orphans": "Pages orphelines",
+        "weak": "Liens faibles"
+      }
     },
     "vanity": {
       "title": "Une page, plusieurs adresses",
@@ -553,6 +559,11 @@
         "elsewhere": "La canonique désigne {{detail}}, qui n'est ni l'adresse propre de cette page ni l'une de ses URL personnalisées. Tout ce que cette page gagne est crédité ailleurs.",
         "canonicalTitle": "La balise canonique de cette page est à vérifier",
         "canonical": "La balise canonique ne désigne ni l'adresse propre de cette page ni l'un de ses alias."
+      },
+      "figure": {
+        "unresolvable": "Langue non servie",
+        "duplicates": "Adresses en double",
+        "canonical": "Sans canonique"
       }
     },
     "freshness": {
@@ -599,7 +610,11 @@
       "allTitle": "Toutes les pages, de la plus ancienne à la plus récente",
       "allHelp": "La liste complète : les regroupements ci-dessus indiquent où chercher, celle-ci indique quelle page. Chaque ligne s'ouvre dans jContent.",
       "noDate": "sans date",
-      "truncated": "Les listes longues sont coupées à {{count}} lignes ; les regroupements ci-dessus comptent toujours la totalité."
+      "truncated": "Les listes longues sont coupées à {{count}} lignes ; les regroupements ci-dessus comptent toujours la totalité.",
+      "figure": {
+        "dated": "Contenus datés",
+        "undated": "Sans date de modification"
+      }
     },
     "languages": {
       "title": "La préparation, langue par langue",
@@ -623,6 +638,13 @@
       "series": {
         "coverage": "Couverture traduite",
         "score": "Score de préparation"
+      },
+      "figure": {
+        "published": "Contenus publiés",
+        "declared": "Langues",
+        "unmeasured": "Non mesurées",
+        "spread": "Écart entre langues",
+        "points": "{{points}} pts"
       }
     },
     "schema": {
@@ -943,6 +965,7 @@
       "hostsNote": "Calculé ici à partir des pages citées de chaque hôte, puisque BotRank ne filtre par hôte que sa liste de pages. La part est estimée à partir des chiffres du domaine.",
       "byEngine": "Visibilité de la marque par moteur",
       "byMarket": "Visibilité de la marque par marché",
+      "oneMarket": "Un seul marché suivi : {{market}}, avec le score du projet, {{score}}.",
       "engines": "Moteurs suivis par le projet",
       "enginesIntro": "Le rythme auquel BotRank interroge à nouveau chaque moteur. Les nouveaux chiffres arrivent après le prochain passage et la prochaine synchronisation quotidienne.",
       "intervalNone": "Pas de rafraîchissement automatique",

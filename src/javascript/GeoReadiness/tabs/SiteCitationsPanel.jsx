@@ -1,10 +1,11 @@
 import React, {useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Chip, Loader, Typography} from '@jahia/moonstone';
+import {Banner, Chip, Loader} from '@jahia/moonstone';
 import {BarList, Histogram} from '../charts/Charts';
 import {fetchSiteCitations} from '../api/citations';
 import {jcontentUrl} from '../util/jcontentUrl';
+import {Card, Columns, Figure, Figures, Meta, Note, Panel, PanelHeader, Ring, Source} from '../dashboard/Layout';
 import styles from './Tabs.module.css';
 import own from './SiteCitationsPanel.module.css';
 
@@ -126,43 +127,6 @@ const Sparkline = ({values}) => {
 Sparkline.propTypes = {values: PropTypes.arrayOf(PropTypes.number)};
 Sparkline.defaultProps = {values: []};
 
-/** A ring gauge for a 0..1 score; the drawing is decorative, the score is the text inside it. */
-const Ring = ({value, text}) => {
-    const r = 46;
-    const c = 2 * Math.PI * r;
-    const v = Math.max(0, Math.min(1, value || 0));
-    return (
-        <div className={own.ring}>
-            <svg viewBox="0 0 120 120" width="132" height="132" aria-hidden="true" focusable="false">
-                <circle cx="60" cy="60" r={r} className={own.ringTrack}/>
-                <circle
-                    cx="60"
-                    cy="60"
-                    r={r}
-                    className={own.ringValue}
-                    strokeDasharray={`${(c * v).toFixed(1)} ${c.toFixed(1)}`}
-                    transform="rotate(-90 60 60)"
-                />
-            </svg>
-            <span className={own.ringText}>{text}</span>
-        </div>
-    );
-};
-
-Ring.propTypes = {value: PropTypes.number, text: PropTypes.string.isRequired};
-Ring.defaultProps = {value: 0};
-
-const Card = ({title, intro, children, className}) => (
-    <section className={`${own.card} ${className || ''}`}>
-        {title && <Typography variant="heading" component="h3" className={own.cardTitle}>{title}</Typography>}
-        {intro && <p className={own.cardIntro}>{intro}</p>}
-        {children}
-    </section>
-);
-
-Card.propTypes = {title: PropTypes.string, intro: PropTypes.string, children: PropTypes.node, className: PropTypes.string};
-Card.defaultProps = {title: undefined, intro: undefined, children: null, className: undefined};
-
 /** What to read first, computed from the summary: one sentence each, only when it says something. */
 function takeaways(domain, site, unresolved, f, t) {
     const out = [];
@@ -170,7 +134,8 @@ function takeaways(domain, site, unresolved, f, t) {
     const i = ranking.findIndex(r => r.requested);
     if (i > 0) {
         const above = ranking[i - 1];
-        out.push({tone: 'info', text: t('siteCitations.tk.gap', {gap: t('siteCitations.points', {value: f.points(above.share - ranking[i].share)}), domain: above.domain, rank: rankLabel(above.rank, t)})});
+        const gap = t('siteCitations.points', {value: f.points(above.share - ranking[i].share)});
+        out.push({tone: 'info', text: t('siteCitations.tk.gap', {gap, domain: above.domain, rank: rankLabel(above.rank, t)})});
     } else if (i === 0 && ranking[i].rank === 1) {
         out.push({tone: 'good', text: t('siteCitations.tk.first')});
     }
@@ -214,41 +179,33 @@ const Overview = ({data, f, t}) => {
                 const self = (d.ranking || []).find(r => r.requested);
                 const tips = takeaways(d, site, data.unresolved, f, t);
                 return (
-                    <div key={d.domain} className={own.block}>
+                    <React.Fragment key={d.domain}>
                         <p className={own.domainLine}>
                             <span className={own.domainName}>{d.domain}</span>
                             <span className={own.domainNote}>{t('siteCitations.domainScope')}</span>
                         </p>
                         <div className={own.hero}>
                             <div className={own.rankCard}>
-                                <span className={own.kpiLabel}>{t('siteCitations.rankLabel')}</span>
+                                <span className={own.rankLabel}>{t('siteCitations.rankLabel')}</span>
                                 <span className={own.rankBadge}>{self ? rankLabel(self.rank, t) : '-'}</span>
                                 <span className={own.rankOf}>{t('siteCitations.rankOf')}</span>
                                 {self && <Change value={self.rankVariation} inverse f={f} t={t}/>}
                             </div>
-                            <div className={own.kpis}>
-                                <div className={`${own.kpi} ${own.kpiAccent}`}>
-                                    <span className={own.kpiLabel}>{t('siteCitations.share')}</span>
-                                    <span className={own.kpiValue}>{f.pct(d.share)}</span>
+                            <Figures>
+                                <Figure label={t('siteCitations.share')} value={f.pct(d.share)} tone="accent">
                                     <Sparkline values={(d.shareHistory || []).map(x => x.share)}/>
                                     <Change value={d.shareVariation} points f={f} t={t}/>
-                                </div>
-                                <div className={own.kpi}>
-                                    <span className={own.kpiLabel}>{t('siteCitations.citations')}</span>
-                                    <span className={own.kpiValue}>{f.int(d.citations)}</span>
-                                    <span className={own.kpiSub}>{t('siteCitations.last30')}</span>
+                                </Figure>
+                                <Figure label={t('siteCitations.citations')} value={f.int(d.citations)} sub={t('siteCitations.last30')}>
                                     <Change value={d.variation} f={f} t={t}/>
-                                </div>
-                                <div className={own.kpi}>
-                                    <span className={own.kpiLabel}>{t('siteCitations.citedPages')}</span>
-                                    <span className={own.kpiValue}>{f.int(d.citedPages)}</span>
-                                    <span className={own.kpiSub}>{t('siteCitations.citedPagesSub')}</span>
+                                </Figure>
+                                <Figure label={t('siteCitations.citedPages')} value={f.int(d.citedPages)} sub={t('siteCitations.citedPagesSub')}>
                                     <Change value={d.citedPagesVariation} f={f} t={t}/>
-                                </div>
-                            </div>
+                                </Figure>
+                            </Figures>
                         </div>
 
-                        <div className={own.twoCols}>
+                        <Columns>
                             {tips.length > 0 && (
                                 <Card title={t('siteCitations.takeaways')}>
                                     <ul className={own.tips}>
@@ -263,25 +220,21 @@ const Overview = ({data, f, t}) => {
                                         <div className={own.visibilityText}>
                                             <p>{t('siteCitations.visibilityScore', {count: visibility.answers, answers: f.int(visibility.answers)})}</p>
                                             <Change value={visibility.variation} points f={f} t={t}/>
-                                            <p className={own.muted}>{t('siteCitations.visibilityNote')}</p>
                                         </div>
                                     </div>
+                                    <Note>{t('siteCitations.visibilityNote')}</Note>
                                 </Card>
                             )}
-                        </div>
-                    </div>
+                        </Columns>
+                    </React.Fragment>
                 );
             })}
 
-            {notCited.length > 0 && (
-                <div className={own.block}>
-                    {notCited.map(d => (
-                        <Banner key={d.domain} variant="info" title={t('siteCitations.notCitedTitle', {domain: d.domain})}>
-                            {t('siteCitations.notCited', {domain: d.domain})}
-                        </Banner>
-                    ))}
-                </div>
-            )}
+            {notCited.map(d => (
+                <Banner key={d.domain} variant="info" title={t('siteCitations.notCitedTitle', {domain: d.domain})}>
+                    {t('siteCitations.notCited', {domain: d.domain})}
+                </Banner>
+            ))}
         </>
     );
 };
@@ -300,7 +253,7 @@ const Ranking = ({data, f, t}) => {
         const days = (d.shareHistory || []).filter(x => x.share !== null);
         const avg = days.length ? days.reduce((a, x) => a + x.share, 0) / days.length : null;
         return (
-            <div key={d.domain} className={own.block}>
+            <React.Fragment key={d.domain}>
                 <Card title={t('siteCitations.leaderboard', {domain: d.domain})} intro={t('siteCitations.leaderboardIntro')}>
                     <ol className={own.board}>
                         {ranking.map(r => (
@@ -322,10 +275,10 @@ const Ranking = ({data, f, t}) => {
                 {days.length > 0 && (
                     <Card title={t('siteCitations.shareHistory')} intro={t('siteCitations.shareHistoryIntro')}>
                         <div className={own.stats}>
-                            <div><span className={own.kpiLabel}>{t('siteCitations.statLast')}</span><strong>{f.pct(days[days.length - 1].share)}</strong></div>
-                            <div><span className={own.kpiLabel}>{t('siteCitations.statAverage')}</span><strong>{f.pct(avg)}</strong></div>
-                            <div><span className={own.kpiLabel}>{t('siteCitations.statBest')}</span><strong>{f.pct(Math.max(...days.map(x => x.share)))}</strong></div>
-                            <div><span className={own.kpiLabel}>{t('siteCitations.statLow')}</span><strong>{f.pct(Math.min(...days.map(x => x.share)))}</strong></div>
+                            <Figure label={t('siteCitations.statLast')} value={f.pct(days[days.length - 1].share)} tone="accent"/>
+                            <Figure label={t('siteCitations.statAverage')} value={f.pct(avg)}/>
+                            <Figure label={t('siteCitations.statBest')} value={f.pct(Math.max(...days.map(x => x.share)))}/>
+                            <Figure label={t('siteCitations.statLow')} value={f.pct(Math.min(...days.map(x => x.share)))}/>
                         </div>
                         <Histogram
                             rows={d.shareHistory.map(x => ({key: x.date, label: '', value: x.share === null ? 0 : x.share * 100, day: x.date, share: x.share}))}
@@ -336,8 +289,8 @@ const Ranking = ({data, f, t}) => {
                         />
                     </Card>
                 )}
-                <p className={own.footnote}>{t('siteCitations.domainNote')}</p>
-            </div>
+                <Note>{t('siteCitations.domainNote')}</Note>
+            </React.Fragment>
         );
     });
 };
@@ -350,12 +303,14 @@ const Pages = ({data, language, f, t}) => {
     const hosts = site.hosts || [];
     const most = Math.max(1, ...top.map(p => p.citations));
     const base = globalThis.contextJsParameters?.contextPath || '';
+    // A change on every row says nothing when BotRank has no comparable period for any of them.
+    const anyChange = top.some(p => p.variation !== null && p.variation !== undefined);
 
     return (
-        <div className={own.block}>
+        <>
             <Card title={t('siteCitations.topPages')} intro={t('siteCitations.topPagesIntro', {count: top.length})}>
                 {top.length === 0 ? (
-                    <p className={own.muted}>{t('siteCitations.noTopPages')}</p>
+                    <Note>{t('siteCitations.noTopPages')}</Note>
                 ) : (
                     <ol className={own.pages}>
                         {top.map(p => {
@@ -376,14 +331,15 @@ const Pages = ({data, language, f, t}) => {
                                     </span>
                                     <span className={own.pageFigures}>
                                         <strong>{f.int(p.citations)}</strong>
-                                        <Change value={p.variation} f={f} t={t}/>
+                                        {anyChange && <Change value={p.variation} f={f} t={t}/>}
                                     </span>
                                 </li>
                             );
                         })}
                     </ol>
                 )}
-                {data.unresolved > 0 && <p className={own.footnote}>{t('siteCitations.unresolved', {count: data.unresolved})}</p>}
+                {!anyChange && top.length > 0 && <Note>{t('siteCitations.tk.noComparison')}</Note>}
+                {data.unresolved > 0 && <Note>{t('siteCitations.unresolved', {count: data.unresolved})}</Note>}
             </Card>
 
             {hosts.length > 0 && (
@@ -410,7 +366,7 @@ const Pages = ({data, language, f, t}) => {
                     </table>
                 </Card>
             )}
-        </div>
+        </>
     );
 };
 
@@ -424,28 +380,26 @@ Pages.propTypes = {
 const Engines = ({data, f, t}) => {
     const visibility = data.site.visibility;
     const engines = data.site.engines || [];
+    const markets = (visibility && visibility.byMarket) || [];
     const label = key => t(`citations.surface.${key}`, key);
+    const bars = rows => <BarList rows={rows} max={100} format={v => f.pct(v / 100)}/>;
 
     return (
-        <div className={own.block}>
+        <>
             {visibility && (
-                <div className={own.twoCols}>
+                <Columns>
                     <Card title={t('siteCitations.byEngine')} intro={t('siteCitations.visibilityNote')}>
-                        <BarList
-                            rows={(visibility.byEngine || []).map(e => ({key: e.key, label: label(e.key), value: (e.score || 0) * 100}))}
-                            max={100}
-                            format={v => f.pct(v / 100)}
-                        />
+                        {bars((visibility.byEngine || []).map(e => ({key: e.key, label: label(e.key), value: (e.score || 0) * 100})))}
                     </Card>
-                    <Card title={t('siteCitations.byMarket')}>
-                        <BarList
-                            rows={(visibility.byMarket || []).map(m => ({key: m.key, label: m.key.toUpperCase(), value: (m.score || 0) * 100}))}
-                            max={100}
-                            format={v => f.pct(v / 100)}
-                        />
-                    </Card>
-                </div>
+                    {/* One market is the project's score again: a card of its own would be one bar. */}
+                    {markets.length > 1 && (
+                        <Card title={t('siteCitations.byMarket')}>
+                            {bars(markets.map(m => ({key: m.key, label: m.key.toUpperCase(), value: (m.score || 0) * 100})))}
+                        </Card>
+                    )}
+                </Columns>
             )}
+            {markets.length === 1 && <Note>{t('siteCitations.oneMarket', {market: markets[0].key.toUpperCase(), score: f.pct(markets[0].score)})}</Note>}
             {engines.length > 0 && (
                 <Card title={t('siteCitations.engines')} intro={t('siteCitations.enginesIntro')}>
                     <ul className={own.engineList}>
@@ -458,7 +412,7 @@ const Engines = ({data, f, t}) => {
                     </ul>
                 </Card>
             )}
-        </div>
+        </>
     );
 };
 
@@ -466,7 +420,8 @@ Engines.propTypes = {data: PropTypes.object.isRequired, f: PropTypes.object.isRe
 
 /**
  * Screen B: how AI answers cite the whole site, from the last BotRank sync, in four views (overview,
- * ranking, pages, engines) that the dashboard shows as sub-tabs.
+ * ranking, pages, engines) that the dashboard shows as sub-tabs. Laid out with the dashboard's
+ * shared layout (dashboard/Layout.jsx).
  *
  * Totals, share and rank cover the registrable domain, as BotRank counts them; the hosts table splits
  * citations per host from the cited pages list. Everything shown comes from BotRank and is rendered
@@ -489,15 +444,10 @@ export const SiteCitationsPanel = ({path, language, view}) => {
         };
     }, [path, language]);
 
-    const header = (
-        <header className={own.header}>
-            <Typography variant="subheading" component="h2" className={styles.panelTitle}>{t(`siteCitations.view.${view}`)}</Typography>
-            <p className={own.headerIntro}>{t(`siteCitations.viewIntro.${view}`)}</p>
-        </header>
-    );
+    const header = <PanelHeader title={t(`siteCitations.view.${view}`)} intro={t(`siteCitations.viewIntro.${view}`)}/>;
 
     if (failed) {
-        return <div>{header}<Banner variant="danger" title={t('citations.loadErrorTitle')}>{t('citations.loadError')}</Banner></div>;
+        return <Panel>{header}<Banner variant="danger" title={t('citations.loadErrorTitle')}>{t('citations.loadError')}</Banner></Panel>;
     }
 
     if (!data) {
@@ -506,29 +456,30 @@ export const SiteCitationsPanel = ({path, language, view}) => {
 
     if (!data.configured) {
         return (
-            <div>
+            <Panel>
                 {header}
                 <Banner variant="info" title={t('siteCitations.notConfiguredTitle')}>
                     {t(data.canConfigure ? 'siteCitations.notConfiguredAdmin' : 'siteCitations.notConfigured')}
                 </Banner>
-            </div>
+            </Panel>
         );
     }
 
     if (!data.syncedAt || !data.site) {
-        return <div>{header}<Banner variant="info" title={t('citations.notSyncedTitle')}>{t('siteCitations.notSynced')}</Banner></div>;
+        return <Panel>{header}<Banner variant="info" title={t('citations.notSyncedTitle')}>{t('siteCitations.notSynced')}</Banner></Panel>;
     }
 
     const period = data.site.period;
     return (
-        <div className={own.panel}>
-            {header}
-            <ul className={own.meta}>
-                <li>{data.latestAnswerAt ? t('siteCitations.metaAsOf', {date: f.date(data.latestAnswerAt)}) : t('citations.asOfUnknown')}</li>
-                {period && <li>{t('siteCitations.metaPeriod', {start: f.day(period.start), end: f.day(period.end)})}</li>}
-                <li>{t('siteCitations.metaSynced', {date: f.date(data.syncedAt)})}</li>
-                {data.status === 'running' && <li className={own.metaRunning}>{t('citations.running')}</li>}
-            </ul>
+        <Panel>
+            <PanelHeader title={t(`siteCitations.view.${view}`)} intro={t(`siteCitations.viewIntro.${view}`)}>
+                <Meta items={[
+                    {key: 'asOf', text: data.latestAnswerAt ? t('siteCitations.metaAsOf', {date: f.date(data.latestAnswerAt)}) : t('citations.asOfUnknown')},
+                    period && {key: 'period', text: t('siteCitations.metaPeriod', {start: f.day(period.start), end: f.day(period.end)})},
+                    {key: 'synced', text: t('siteCitations.metaSynced', {date: f.date(data.syncedAt)})},
+                    data.status === 'running' && {key: 'running', text: t('citations.running'), tone: 'warn'}
+                ]}/>
+            </PanelHeader>
             {data.site.failures > 0 && (
                 <Banner variant="warning" title={t('siteCitations.partialTitle')}>{t('siteCitations.partial', {count: data.site.failures})}</Banner>
             )}
@@ -538,8 +489,8 @@ export const SiteCitationsPanel = ({path, language, view}) => {
             {view === 'pages' && <Pages data={data} language={language} f={f} t={t}/>}
             {view === 'engines' && <Engines data={data} f={f} t={t}/>}
 
-            <p className={own.source}>{t('siteCitations.source')}</p>
-        </div>
+            <Source>{t('siteCitations.source')}</Source>
+        </Panel>
     );
 };
 

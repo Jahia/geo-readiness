@@ -1,10 +1,11 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Chip, Loader, Separator, Typography} from '@jahia/moonstone';
+import {Banner, Chip, Loader, Typography} from '@jahia/moonstone';
 import {scanStatus} from '../api/siteScore';
 import {jcontentUrl} from '../util/jcontentUrl';
 import {Paged} from '../util/Paged';
+import {Card, Figure, Figures, Note, Panel, PanelHeader} from '../dashboard/Layout';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -40,15 +41,14 @@ export const VanityPanel = ({path, language}) => {
     }
 
     const vanity = state && state.vanity;
+    // Problem groups are listed only when the site uses vanity URLs and they do not all agree.
+    const groups = vanity && vanity.total !== 0 && !vanity.agrees ?
+        GROUPS.map(key => ({key, rows: vanity[key] || []})) :
+        [];
 
     return (
-        <div>
-            <Typography variant="subheading" component="h2" className={styles.panelTitle}>
-                {t('vanity.title')}
-            </Typography>
-            <Typography variant="caption" className={styles.panelIntro}>
-                {t('vanity.intro')}
-            </Typography>
+        <Panel>
+            <PanelHeader title={t('vanity.title')} intro={t('vanity.intro')}/>
 
             {!vanity && (
                 <Banner variant="info" title={t('vanity.neverTitle')}>
@@ -57,15 +57,7 @@ export const VanityPanel = ({path, language}) => {
             )}
 
             {vanity && (
-                <>
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="caption" className={styles.panelIntro}>
-                        {t('vanity.counts', {
-                            total: vanity.total,
-                            languages: (vanity.languages || []).join(', ')
-                        })}
-                    </Typography>
-
+                <Card>
                     {/*
                       * No vanity URLs at all is not the same as no problems, and
                       * a clean bill of health would be misleading for a site that
@@ -80,63 +72,78 @@ export const VanityPanel = ({path, language}) => {
                             {t('vanity.agrees', {total: vanity.total})}
                         </Banner>
                     ) : (
-                        GROUPS
-                            .map(key => ({key, rows: vanity[key] || []}))
-                            .filter(g => g.rows.length > 0)
-                            .map(g => (
-                                <div key={g.key} className={styles.sitemapGroup}>
-                                    <div className={styles.sitemapGroupHead}>
-                                        <Typography variant="body" className={styles.checkLabel}>
-                                            {t(`vanity.kind.${g.key}`)}
-                                        </Typography>
-                                        <Chip
-                                            label={String(g.rows.length)}
-                                            color={g.key === 'unresolvable' ? 'danger' : 'warning'}
-                                        />
-                                    </div>
-                                    <Typography variant="caption" className={styles.checkFix}>
-                                        {t(`vanity.why.${g.key}`)}
-                                    </Typography>
-                                    <Paged rows={g.rows}>
-                                        {slice => (
-                                    <ul className={styles.checkList}>
-                                        {slice.map(r => (
-                                            <li key={`${g.key}:${r.url}`} className={styles.checkItem}>
-                                                <span className={styles.checkText}>
-                                                    {jcontentUrl(r.jcrPath, language) ? (
-                                                        <a
-                                                            className={styles.pageLink}
-                                                            href={jcontentUrl(r.jcrPath, language)}
-                                                            title={t('score17.openPage')}
-                                                        >
-                                                            {r.title || r.url}
-                                                        </a>
-                                                    ) : (
-                                                        <Typography variant="body" className={styles.checkLabel}>
-                                                            {r.title || r.url}
-                                                        </Typography>
-                                                    )}
-                                                    <Typography variant="caption" className={styles.checkFix}>
-                                                        {r.detail || r.url}
-                                                    </Typography>
-                                                </span>
-                                                <span className={styles.checkMeta}>
-                                                    <Typography variant="caption" className={styles.checkValue}>
-                                                        {r.why ? t(`vanity.tag.${r.why}`) : r.language}
-                                                    </Typography>
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                        )}
-                                    </Paged>
-                                </div>
-                            ))
+                        <Figures>
+                            {groups.map(g => (
+                                <Figure
+                                    key={g.key}
+                                    label={t(`vanity.figure.${g.key}`)}
+                                    value={g.rows.length}
+                                    tone={g.rows.length === 0 ? 'good' : (g.key === 'unresolvable' ? 'bad' : 'warn')}
+                                />
+                            ))}
+                        </Figures>
                     )}
-                    <p className={styles.explain}>{t('vanity.limits')}</p>
-                </>
+                    <Note>
+                        {t('vanity.counts', {
+                            total: vanity.total,
+                            languages: (vanity.languages || []).join(', ')
+                        })}
+                    </Note>
+                </Card>
             )}
-        </div>
+
+            {groups
+                .filter(g => g.rows.length > 0)
+                .map(g => (
+                    <Card
+                        key={g.key}
+                        title={t(`vanity.kind.${g.key}`)}
+                        intro={t(`vanity.why.${g.key}`)}
+                        aside={(
+                            <Chip
+                                label={String(g.rows.length)}
+                                color={g.key === 'unresolvable' ? 'danger' : 'warning'}
+                            />
+                        )}
+                    >
+                        <Paged rows={g.rows}>
+                            {slice => (
+                                <ul className={styles.checkList}>
+                                    {slice.map(r => (
+                                        <li key={`${g.key}:${r.url}`} className={styles.checkItem}>
+                                            <span className={styles.checkText}>
+                                                {jcontentUrl(r.jcrPath, language) ? (
+                                                    <a
+                                                        className={styles.pageLink}
+                                                        href={jcontentUrl(r.jcrPath, language)}
+                                                        title={t('score17.openPage')}
+                                                    >
+                                                        {r.title || r.url}
+                                                    </a>
+                                                ) : (
+                                                    <Typography variant="body" className={styles.checkLabel}>
+                                                        {r.title || r.url}
+                                                    </Typography>
+                                                )}
+                                                <Typography variant="caption" className={styles.checkFix}>
+                                                    {r.detail || r.url}
+                                                </Typography>
+                                            </span>
+                                            <span className={styles.checkMeta}>
+                                                <Typography variant="caption" className={styles.checkValue}>
+                                                    {r.why ? t(`vanity.tag.${r.why}`) : r.language}
+                                                </Typography>
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </Paged>
+                    </Card>
+                ))}
+
+            {vanity && <Note>{t('vanity.limits')}</Note>}
+        </Panel>
     );
 };
 

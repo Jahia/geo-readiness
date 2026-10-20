@@ -1,10 +1,11 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Button, Chip, Loader, Separator, Switch, Typography} from '@jahia/moonstone';
+import {Banner, Button, Chip, Loader, Switch, Typography} from '@jahia/moonstone';
 import {previewRobots, applyRobots} from '../api/siteFiles';
 import {runCrawlerCheck} from '../api/crawlerCheck';
 import {DiffView} from './DiffView';
+import {Actions, Card, Note, Panel, PanelHeader} from '../dashboard/Layout';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -126,13 +127,8 @@ export const RobotsControlPanel = ({path, language}) => {
     }
 
     return (
-        <div className={styles.panel}>
-            <Typography variant="heading" component="h2" className={styles.panelTitle}>
-                {t('files.robots.control.title')}
-            </Typography>
-            <Typography variant="body" className={styles.panelIntro}>
-                {t('files.robots.control.intro')}
-            </Typography>
+        <Panel>
+            <PanelHeader title={t('files.robots.control.title')} intro={t('files.robots.control.intro')}/>
 
             {error && <Banner variant="danger" title={t('files.robots.control.errorTitle')}>{error}</Banner>}
             {!preview.mixinPresent && (
@@ -146,149 +142,149 @@ export const RobotsControlPanel = ({path, language}) => {
                 </Banner>
             )}
 
-            {/*
-              * A list, not a Table. A Moonstone Switch is a 38x20 box whose two
-              * children are absolutely positioned, so it collapses to nothing
-              * inside the Typography that TableCell wraps its children in: the
-              * stance column rendered empty. Interactive controls do not belong
-              * in those cells.
-              */}
-            <div className={styles.actions}>
-                <Button
-                    size="default"
-                    variant="outlined"
-                    isDisabled={accessPhase === 'running' || !preview.homePath}
-                    label={accessPhase === 'running' ?
-                        t('files.robots.control.checkingAccess') :
-                        (access ? t('files.robots.control.recheckAccess') : t('files.robots.control.checkAccess'))}
-                    onClick={checkAccess}
-                />
-                <Typography variant="caption">
-                    {access ?
-                        t('files.robots.control.accessTested', {url: access.url}) :
-                        t('files.robots.control.accessExplain')}
-                </Typography>
-            </div>
+            <Card>
+                <Actions>
+                    <Button
+                        size="default"
+                        variant="outlined"
+                        isDisabled={accessPhase === 'running' || !preview.homePath}
+                        label={accessPhase === 'running' ?
+                            t('files.robots.control.checkingAccess') :
+                            (access ? t('files.robots.control.recheckAccess') : t('files.robots.control.checkAccess'))}
+                        onClick={checkAccess}
+                    />
+                    <Typography variant="caption">
+                        {access ?
+                            t('files.robots.control.accessTested', {url: access.url}) :
+                            t('files.robots.control.accessExplain')}
+                    </Typography>
+                </Actions>
 
-            {(() => {
-                // Refused by the server or disallowed by the file: either way the
-                // assistant does not see you. Training crawlers are left out,
-                // because refusing those is a normal and costless decision.
-                const blocked = (preview.agents || []).filter(a => {
-                    if (a.purpose !== 'search') {
-                        return false;
+                {(() => {
+                    // Refused by the server or disallowed by the file: either way the
+                    // assistant does not see you. Training crawlers are left out,
+                    // because refusing those is a normal and costless decision.
+                    const blocked = (preview.agents || []).filter(a => {
+                        if (a.purpose !== 'search') {
+                            return false;
+                        }
+
+                        const stance = decisions[a.token] || a.current;
+                        const live = access && access.byName[a.name];
+                        return stance === 'block' || (live && live.status !== 200);
+                    });
+                    if (blocked.length === 0) {
+                        return null;
                     }
 
-                    const stance = decisions[a.token] || a.current;
-                    const live = access && access.byName[a.name];
-                    return stance === 'block' || (live && live.status !== 200);
-                });
-                if (blocked.length === 0) {
-                    return null;
-                }
-
-                return (
-                    <Banner
-                        variant="warning"
-                        title={t('files.robots.control.searchBlockedTitle', {count: blocked.length})}
-                    >
-                        {t('files.robots.control.searchBlocked', {names: blocked.map(a => a.name).join(', ')})}
-                    </Banner>
-                );
-            })()}
-
-            {access && (() => {
-                const bots = (preview.agents || []).map(a => access.byName[a.name]).filter(Boolean);
-                const refused = bots.filter(b => b.status !== 200).length;
-                const mismatched = bots.filter(b => b.mismatch).length;
-                const tone = refused > 0 ? 'danger' : (mismatched > 0 ? 'warning' : 'info');
-                const title = refused > 0 ?
-                    t('files.robots.control.verdictRefused', {count: refused}) :
-                    t('files.robots.control.verdictServed', {count: bots.length});
-                return (
-                    <Banner variant={tone} title={title}>
-                        {mismatched > 0 ?
-                            t('files.robots.control.verdictMismatch', {count: mismatched}) :
-                            t('files.robots.control.verdictAgree')}
-                    </Banner>
-                );
-            })()}
-
-            <ul className={styles.checkList}>
-                {(preview.agents || []).map(a => {
-                    const value = decisions[a.token] || a.current;
-                    const moved = value !== baseline[a.token];
-                    const live = access && access.byName[a.name];
                     return (
-                        <li key={a.token} className={styles.checkItem}>
-                            <span className={styles.checkText}>
-                                <Typography variant="body" className={styles.checkLabel}>{a.name}</Typography>
-                                <Typography variant="caption" className={styles.checkFix}>
-                                    {t(`files.robots.control.bot.${a.name}`, '')}
-                                </Typography>
-                                <span className={styles.agentChips}>
-                                    <Chip
-                                        label={t(`files.robots.control.purpose.${a.purpose || 'other'}`)}
-                                        color={a.purpose === 'search' ? 'accent' : 'default'}
-                                        variant="bright"
-                                    />
-                                    <Chip
-                                        label={a.named ?
-                                            t('files.robots.byName') :
-                                            t('files.robots.byWildcard')}
-                                        color={a.named ? 'accent' : 'default'}
-                                    />
-                                    {live && (
-                                        <Chip
-                                            label={live.status === 200 ?
-                                                t('files.robots.control.served', {ms: live.ms}) :
-                                                t('files.robots.control.refused', {status: live.status === null ? '—' : live.status})}
-                                            color={live.status === 200 ? 'success' : 'danger'}
-                                        />
-                                    )}
-                                    {live && live.mismatch && (
-                                        <Chip label={t(`crawler.mismatch.${live.mismatch}`)} color="warning"/>
-                                    )}
-                                </span>
-                            </span>
-                            <span className={styles.checkMeta}>
-                                <Typography variant="caption">
-                                    {value === 'allow' ?
-                                        t('files.robots.control.allow') :
-                                        t('files.robots.control.block')}
-                                </Typography>
-                                {/*
-                                  * Same Field/label gap as the scheduled-scan
-                                  * switch: nothing links the "allow"/"block"
-                                  * caption to this control, so it has no
-                                  * accessible name without one directly.
-                                  */}
-                                <span className={moved ? styles.switchMoved : undefined}>
-                                    <Switch
-                                        checked={value === 'allow'}
-                                        isDisabled={phase === 'applying'}
-                                        aria-label={`${a.name} ${value === 'allow' ? t('files.robots.control.allow') : t('files.robots.control.block')}`}
-                                        onChange={(e, v, checked) => choose(a.token, checked ? 'allow' : 'block')}
-                                    />
-                                </span>
-                            </span>
-                        </li>
+                        <Banner
+                            variant="warning"
+                            title={t('files.robots.control.searchBlockedTitle', {count: blocked.length})}
+                        >
+                            {t('files.robots.control.searchBlocked', {names: blocked.map(a => a.name).join(', ')})}
+                        </Banner>
                     );
-                })}
-            </ul>
+                })()}
+
+                {access && (() => {
+                    const bots = (preview.agents || []).map(a => access.byName[a.name]).filter(Boolean);
+                    const refused = bots.filter(b => b.status !== 200).length;
+                    const mismatched = bots.filter(b => b.mismatch).length;
+                    const tone = refused > 0 ? 'danger' : (mismatched > 0 ? 'warning' : 'info');
+                    const title = refused > 0 ?
+                        t('files.robots.control.verdictRefused', {count: refused}) :
+                        t('files.robots.control.verdictServed', {count: bots.length});
+                    return (
+                        <Banner variant={tone} title={title}>
+                            {mismatched > 0 ?
+                                t('files.robots.control.verdictMismatch', {count: mismatched}) :
+                                t('files.robots.control.verdictAgree')}
+                        </Banner>
+                    );
+                })()}
+
+                {/*
+                  * A list, not a Table. A Moonstone Switch is a 38x20 box whose two
+                  * children are absolutely positioned, so it collapses to nothing
+                  * inside the Typography that TableCell wraps its children in: the
+                  * stance column rendered empty. Interactive controls do not belong
+                  * in those cells.
+                  */}
+                <ul className={styles.checkList}>
+                    {(preview.agents || []).map(a => {
+                        const value = decisions[a.token] || a.current;
+                        const moved = value !== baseline[a.token];
+                        const live = access && access.byName[a.name];
+                        return (
+                            <li key={a.token} className={styles.checkItem}>
+                                <span className={styles.checkText}>
+                                    <Typography variant="body" className={styles.checkLabel}>{a.name}</Typography>
+                                    <Typography variant="caption" className={styles.checkFix}>
+                                        {t(`files.robots.control.bot.${a.name}`, '')}
+                                    </Typography>
+                                    <span className={styles.agentChips}>
+                                        <Chip
+                                            label={t(`files.robots.control.purpose.${a.purpose || 'other'}`)}
+                                            color={a.purpose === 'search' ? 'accent' : 'default'}
+                                            variant="bright"
+                                        />
+                                        <Chip
+                                            label={a.named ?
+                                                t('files.robots.byName') :
+                                                t('files.robots.byWildcard')}
+                                            color={a.named ? 'accent' : 'default'}
+                                        />
+                                        {live && (
+                                            <Chip
+                                                label={live.status === 200 ?
+                                                    t('files.robots.control.served', {ms: live.ms}) :
+                                                    t('files.robots.control.refused', {status: live.status === null ? '-' : live.status})}
+                                                color={live.status === 200 ? 'success' : 'danger'}
+                                            />
+                                        )}
+                                        {live && live.mismatch && (
+                                            <Chip label={t(`crawler.mismatch.${live.mismatch}`)} color="warning"/>
+                                        )}
+                                    </span>
+                                </span>
+                                <span className={styles.checkMeta}>
+                                    <Typography variant="caption">
+                                        {value === 'allow' ?
+                                            t('files.robots.control.allow') :
+                                            t('files.robots.control.block')}
+                                    </Typography>
+                                    {/*
+                                      * Same Field/label gap as the scheduled-scan
+                                      * switch: nothing links the "allow"/"block"
+                                      * caption to this control, so it has no
+                                      * accessible name without one directly.
+                                      */}
+                                    <span className={moved ? styles.switchMoved : undefined}>
+                                        <Switch
+                                            checked={value === 'allow'}
+                                            isDisabled={phase === 'applying'}
+                                            aria-label={`${a.name} ${value === 'allow' ? t('files.robots.control.allow') : t('files.robots.control.block')}`}
+                                            onChange={(e, v, checked) => choose(a.token, checked ? 'allow' : 'block')}
+                                        />
+                                    </span>
+                                </span>
+                            </li>
+                        );
+                    })}
+                </ul>
+
+                <Note>{t('files.robots.control.rule')}</Note>
+            </Card>
 
             {phase === 'applied' ? (
                 <Banner variant="info" title={t('files.robots.control.appliedTitle')}>
                     {t('files.robots.control.applied')}
                 </Banner>
             ) : (
-                <>
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                        {t('files.robots.control.changes')}
-                    </Typography>
+                <Card title={t('files.robots.control.changes')}>
                     <DiffView before={preview.current} after={preview.proposed}/>
-                    <div className={styles.actions}>
+                    <Actions>
                         <Button
                             size="big"
                             color={confirming ? 'danger' : 'accent'}
@@ -301,14 +297,10 @@ export const RobotsControlPanel = ({path, language}) => {
                         {!preview.canWrite && (
                             <Typography variant="caption">{t('files.robots.control.cannotWrite')}</Typography>
                         )}
-                    </div>
-                </>
+                    </Actions>
+                </Card>
             )}
-
-            <Typography variant="caption" className={styles.panelRule}>
-                {t('files.robots.control.rule')}
-            </Typography>
-        </div>
+        </Panel>
     );
 };
 
