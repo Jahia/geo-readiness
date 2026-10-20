@@ -74,9 +74,12 @@ Figures.defaultProps = {columns: undefined, children: null};
 
 const TONES = ['accent', 'good', 'warn', 'bad'];
 
+/** The classes of an element and its tone, when it has one. */
+const withTone = (base, tone) => (tone ? [base, css['tone_' + tone]].join(' ') : base);
+
 /** One key figure: a label, the number in large type, an optional line under it and a change chip. */
 export const Figure = ({label, value, sub, tone, children}) => (
-    <div className={`${css.figure} ${tone ? css[`tone_${tone}`] : ''}`}>
+    <div className={withTone(css.figure, tone)}>
         <span className={css.figureLabel}>{label}</span>
         <span className={css.figureValue}>{value}</span>
         {sub && <span className={css.figureSub}>{sub}</span>}
@@ -99,7 +102,7 @@ export const Ring = ({value, text, tone}) => {
     const c = 2 * Math.PI * r;
     const v = Math.max(0, Math.min(1, value || 0));
     return (
-        <div className={`${css.ring} ${tone ? css[`tone_${tone}`] : ''}`}>
+        <div className={withTone(css.ring, tone)}>
             <svg viewBox="0 0 120 120" width="132" height="132" aria-hidden="true" focusable="false">
                 <circle cx="60" cy="60" r={r} className={css.ringTrack}/>
                 <circle

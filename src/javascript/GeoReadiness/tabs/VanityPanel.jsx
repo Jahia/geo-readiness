@@ -19,6 +19,42 @@ const GROUPS = ['unresolvable', 'duplicates', 'canonical'];
  * is a repository query - Jahia owns the vanity URL service - so the only part
  * that needs a scan is the canonical tag, which is a fact about rendered output.
  */
+/** A group's figure: green when empty, red for addresses in an unserved language, amber otherwise. */
+const groupTone = g => {
+    if (g.rows.length === 0) {
+        return 'good';
+    }
+
+    return g.key === 'unresolvable' ? 'bad' : 'warn';
+};
+
+/** No vanity URL, vanity URLs that all agree, or one figure per group of findings. */
+const outcome = (vanity, groups, t) => {
+    if (vanity.total === 0) {
+        return (
+            <Banner variant="info" title={t('vanity.noneTitle')}>
+                {t('vanity.none')}
+            </Banner>
+        );
+    }
+
+    if (vanity.agrees) {
+        return (
+            <Banner variant="info" title={t('vanity.agreesTitle')}>
+                {t('vanity.agrees', {total: vanity.total})}
+            </Banner>
+        );
+    }
+
+    return (
+        <Figures>
+            {groups.map(g => (
+                <Figure key={g.key} label={t(`vanity.figure.${g.key}`)} value={g.rows.length} tone={groupTone(g)}/>
+            ))}
+        </Figures>
+    );
+};
+
 export const VanityPanel = ({path, language}) => {
     const {t} = useTranslation(NS);
     const [state, setState] = useState(null);
@@ -63,26 +99,7 @@ export const VanityPanel = ({path, language}) => {
                       * a clean bill of health would be misleading for a site that
                       * simply does not use them.
                       */}
-                    {vanity.total === 0 ? (
-                        <Banner variant="info" title={t('vanity.noneTitle')}>
-                            {t('vanity.none')}
-                        </Banner>
-                    ) : vanity.agrees ? (
-                        <Banner variant="info" title={t('vanity.agreesTitle')}>
-                            {t('vanity.agrees', {total: vanity.total})}
-                        </Banner>
-                    ) : (
-                        <Figures>
-                            {groups.map(g => (
-                                <Figure
-                                    key={g.key}
-                                    label={t(`vanity.figure.${g.key}`)}
-                                    value={g.rows.length}
-                                    tone={g.rows.length === 0 ? 'good' : (g.key === 'unresolvable' ? 'bad' : 'warn')}
-                                />
-                            ))}
-                        </Figures>
-                    )}
+                    {outcome(vanity, groups, t)}
                     <Note>
                         {t('vanity.counts', {
                             total: vanity.total,
