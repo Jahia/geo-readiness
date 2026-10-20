@@ -79,6 +79,10 @@
 .cardIntro { margin: 0; max-width: 72ch; font-size: 13px; line-height: 1.55; color: var(--dl-ink3); }
 .cardAside { flex: none; }
 .card > :last-child { margin-bottom: 0; }
+.card > .actions:first-child { margin-top: 0; }
+/* Banners inside a card stand apart from each other and from what follows them. */
+.card :global(.moonstone-banner) { margin: 0 0 12px; }
+.card :global(.moonstone-banner) + :global(.moonstone-banner) { margin-top: 0; }
 
 .columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
 

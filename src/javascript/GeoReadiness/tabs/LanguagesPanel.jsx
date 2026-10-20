@@ -85,7 +85,7 @@ export const LanguagesPanel = ({path, language}) => {
                         </Banner>
                     )}
 
-                    <Card intro={t('languages.counts', {total: data.total, count: rows.length})}>
+                    <Card>
                         <Figures>
                             <Figure label={t('languages.figure.published')} value={data.total} tone="accent"/>
                             <Figure label={t('languages.figure.declared')} value={rows.length}/>

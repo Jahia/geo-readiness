@@ -684,6 +684,11 @@
           "complete": "Peut émettre un JSON-LD complet",
           "incomplete": "Associé, mais une propriété requise n'a pas de source",
           "unmapped": "Non associé"
+        },
+        "figure": {
+          "complete": "JSON-LD complet",
+          "incomplete": "Source manquante",
+          "unmapped": "Non associé"
         }
       },
       "mapping": {

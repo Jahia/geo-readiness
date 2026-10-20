@@ -80,30 +80,24 @@ export const SchemaPanel = ({path, language}) => {
             )}
 
             {data && (
-                <Card
-                    intro={t('schema.panel.counts', {
-                        mapped: data.mappedItems,
-                        complete: data.completeItems,
-                        total: data.total
-                    })}
-                >
+                <Card>
                     {/*
                       * The three parts of the bar below as figures: what can emit, what is
                       * mapped but thin, what is not mapped.
                       */}
                     <Figures>
                         <Figure
-                            label={t('schema.panel.legend.complete')}
+                            label={t('schema.panel.figure.complete')}
                             value={data.completeItems}
                             tone="accent"
                         />
                         <Figure
-                            label={t('schema.panel.legend.incomplete')}
+                            label={t('schema.panel.figure.incomplete')}
                             value={data.mappedItems - data.completeItems}
                             tone={data.mappedItems - data.completeItems > 0 ? 'warn' : 'good'}
                         />
                         <Figure
-                            label={t('schema.panel.legend.unmapped')}
+                            label={t('schema.panel.figure.unmapped')}
                             value={data.total - data.mappedItems}
                         />
                     </Figures>

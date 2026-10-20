@@ -684,6 +684,11 @@
           "complete": "Can emit complete JSON-LD",
           "incomplete": "Mapped, but a required property has no source",
           "unmapped": "Not mapped"
+        },
+        "figure": {
+          "complete": "Complete JSON-LD",
+          "incomplete": "Missing a source",
+          "unmapped": "Not mapped"
         }
       },
       "mapping": {

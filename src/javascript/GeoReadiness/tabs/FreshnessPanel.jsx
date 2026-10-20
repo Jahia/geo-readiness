@@ -125,9 +125,7 @@ export const FreshnessPanel = ({path, language}) => {
             {f && (
                 <>
                     <Card
-                        title={t('freshness.whenTitle')}
-                        intro={t('freshness.counts', {total: f.total, undated: f.undated})}
-                    >
+                        title={t('freshness.whenTitle')}>
                         <Figures>
                             <Figure label={t('freshness.figure.dated')} value={f.total} tone="accent"/>
                             <Figure label={t('freshness.figure.undated')} value={f.undated} tone={f.undated > 0 ? 'warn' : 'good'}/>

@@ -174,16 +174,6 @@ const Report = ({report, language, reportLanguage, t}) => {
 
     return (
         <>
-            <div className={styles.reportMeta}>
-                <Chip
-                    label={t(`report.verdict.${report.verdict || 'partial'}`)}
-                    color={VERDICT_COLOR[report.verdict] || 'warning'}
-                />
-                <Typography variant="caption" className={styles.checkFix}>
-                    {t('report.generatedAt', {date: when})} · {report.provider} · {report.model}
-                </Typography>
-            </div>
-
             {report.reportLanguage && report.reportLanguage !== reportLanguage && (
                 <Banner variant="info" title={t('report.otherLanguageTitle')}>
                     {t('report.otherLanguage', {have: report.reportLanguage, want: reportLanguage})}
@@ -195,11 +185,18 @@ const Report = ({report, language, reportLanguage, t}) => {
                 </Banner>
             )}
 
-            {report.summary && (
-                <Card>
-                    <p className={styles.reportSummary}>{report.summary}</p>
-                </Card>
-            )}
+            <Card>
+                <div className={styles.reportMeta}>
+                    <Chip
+                        label={t(`report.verdict.${report.verdict || 'partial'}`)}
+                        color={VERDICT_COLOR[report.verdict] || 'warning'}
+                    />
+                    <Typography variant="caption" className={styles.checkFix}>
+                        {t('report.generatedAt', {date: when})} · {report.provider} · {report.model}
+                    </Typography>
+                </div>
+                {report.summary && <p className={styles.reportSummary}>{report.summary}</p>}
+            </Card>
 
             <Card title={t('report.compliance')}>
                 <ul className={styles.checkList}>

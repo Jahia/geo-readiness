@@ -62,11 +62,15 @@ export const Columns = ({children}) => <div className={css.columns}>{children}</
 Columns.propTypes = {children: PropTypes.node};
 Columns.defaultProps = {children: null};
 
-/** A row of key figures. */
-export const Figures = ({children}) => <div className={css.figures}>{children}</div>;
+/** A row of key figures; `columns` keeps them on one row where the space is known to fit them. */
+export const Figures = ({columns, children}) => (
+    <div className={css.figures} style={columns ? {gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`} : undefined}>
+        {children}
+    </div>
+);
 
-Figures.propTypes = {children: PropTypes.node};
-Figures.defaultProps = {children: null};
+Figures.propTypes = {columns: PropTypes.number, children: PropTypes.node};
+Figures.defaultProps = {columns: undefined, children: null};
 
 const TONES = ['accent', 'good', 'warn', 'bad'];
 

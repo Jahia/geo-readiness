@@ -191,7 +191,7 @@ const Overview = ({data, f, t}) => {
                                 <span className={own.rankOf}>{t('siteCitations.rankOf')}</span>
                                 {self && <Change value={self.rankVariation} inverse f={f} t={t}/>}
                             </div>
-                            <Figures>
+                            <Figures columns={3}>
                                 <Figure label={t('siteCitations.share')} value={f.pct(d.share)} tone="accent">
                                     <Sparkline values={(d.shareHistory || []).map(x => x.share)}/>
                                     <Change value={d.shareVariation} points f={f} t={t}/>
