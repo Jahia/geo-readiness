@@ -268,11 +268,17 @@ describe('geo-readiness - BotRank citations', () => {
             cy.login(fixture.publisher.username, fixture.publisher.password);
             openGeoDashboard(fixture.siteKey);
             selectTab('AI citations');
-            cy.contains('Domain stub-site.example', {timeout: 30000}).scrollIntoView().should('be.visible');
-            cy.contains('Rank 2 among the sites the answers cite').scrollIntoView().should('be.visible');
+            // Overview, the first sub-tab: the rank as a badge and the domain BotRank counted.
+            cy.contains('AI citations at a glance', {timeout: 30000}).should('be.visible');
+            cy.contains('#2').scrollIntoView().should('be.visible');
+            cy.contains('stub-site.example').scrollIntoView().should('be.visible');
+            selectTab('Ranking');
             cy.contains('li', 'competitor.example').scrollIntoView().should('be.visible');
+            cy.contains('This site').scrollIntoView().should('be.visible');
+            selectTab('Pages');
             cy.contains(OFFER).scrollIntoView().should('be.visible');
-            cy.contains('Perplexity: refreshed every 7 days').scrollIntoView().should('be.visible');
+            selectTab('Engines');
+            cy.contains('li', 'Perplexity').scrollIntoView().should('contain.text', 'Every 7 days');
         });
 
         it('shows the citations tab before any crawler check, and prompt text as text', () => {

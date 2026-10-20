@@ -171,24 +171,29 @@ what is on screen, so hand edits made before applying survive.
 What AI answers actually do with the site, from the last daily sync with BotRank. It is not a
 readiness check: nothing here is computed from your pages, and nothing on it moves the site score.
 It needs the same **publish** permission as the rest of the dashboard. Until a site administrator
-connects the site (Site Settings, **AI citations (BotRank)**), the panel says so.
+connects the site (Site Settings, **AI citations (BotRank)**), the panel says so. A line of dates
+at the top says when BotRank counted its latest answer, the period, and when the site last synced.
 
-- **Per domain**: citations over the last 30 days, the share of all citations in the project's AI
-  answers, and the number of cited pages, each with its change against the 30 days before. *No
-  comparison* means BotRank had no comparable previous period, not that nothing changed.
-- **Rank among cited sites**: where the site stands, with the three sites above and below.
-- **Share of citations per day**: one bar per day the project received answers. A day where no
-  answer cited any source shows empty.
-- **Per host**: only when the site has several hosts or a host on a subdomain. BotRank counts
-  citations, share and rank for the whole registrable domain (`blog.example.com` counts under
-  `example.com`, with any other site on that domain); the per-host lines are computed from the cited
-  pages of each host, and their share is an estimate.
-- **Most cited pages**: the top 20 addresses, each linked to its page in jContent when it matches one
+BotRank counts citations, share and rank for the whole registrable domain (`blog.example.com` counts
+under `example.com`, with any other site on that domain); the panel names the domain it shows.
+*No comparison* on a figure means BotRank had no comparable previous 30 days, not that nothing
+changed.
+
+- **Overview**: the rank among cited sites as a badge, then the share of all citations in the
+  project's AI answers (with its daily trend), the citations and the cited pages, each with its
+  change. *What to read first* turns the figures into sentences: the gap to the site just above,
+  how much the three most cited pages carry, cited addresses with no page, the best day. The brand
+  visibility gauge sits beside it as context: an answer can mention the brand without citing any
+  page of the site.
+- **Ranking**: the sites just above and below, as bars of their share, the site highlighted; then
+  the share per day, one bar per day the project received answers (empty when no answer cited any
+  source), with the latest, average, best and lowest day.
+- **Pages**: the 20 most cited addresses, each linked to its page in jContent when it matches one
   you can read. *No page matched* means the address resolves to no page; a site administrator can
-  match it in Site Settings.
-- **Brand visibility**: the share of the project's analysed answers that mention the brand, per
-  engine. Context only: an answer can mention the brand without citing any page of the site.
-- **Engines tracked by the project**, with how often BotRank refreshes each one.
+  match it in Site Settings. Below, citations and cited pages per host, computed from the cited
+  pages of each host; their share is an estimate.
+- **Engines**: brand visibility per engine and per market, and the engines the project tracks with
+  how often BotRank asks each one again.
 
 ## A sensible order
 
