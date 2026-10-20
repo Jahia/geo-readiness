@@ -7,6 +7,7 @@ import org.jahia.se.modules.georeadiness.botrank.CitationScheduler;
 import org.jahia.se.modules.georeadiness.botrank.CitationStore;
 import org.jahia.se.modules.georeadiness.botrank.CitationsAccess;
 import org.jahia.se.modules.georeadiness.botrank.CitedUrls;
+import org.jahia.se.modules.georeadiness.util.SiteScope;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.usermanager.JahiaUser;
@@ -41,6 +42,9 @@ import java.util.regex.Pattern;
  *   <tr><th>Route</th><th>Who</th><th>Does</th></tr>
  *   <tr><td>{@code GET ?path&language}</td><td>a user who can read the page</td>
  *       <td>the stored figures of that page and the freshness of the data; never calls BotRank</td></tr>
+ *   <tr><td>{@code GET ?scope=site&path&language}</td><td>{@code publish} on the site, as the GEO dashboard</td>
+ *       <td>the site's stored figures (screen B); a top page the caller cannot read loses its path and
+ *       title; never calls BotRank</td></tr>
  *   <tr><td>{@code POST {action, path, language, ...}}</td>
  *       <td>{@value CitationsAccess#SETTINGS_PERMISSION} on the site</td>
  *       <td>{@code status}, {@code projects}, {@code save}, {@code syncNow}, {@code map}, {@code unmap}</td></tr>
@@ -84,7 +88,11 @@ public class CitationsServlet extends GeoServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
         try {
-            read(req, resp);
+            if ("site".equals(req.getParameter("scope"))) {
+                readSite(req, resp);
+            } else {
+                read(req, resp);
+            }
         } catch (IOException | RuntimeException e) {
             // Nothing may leave a servlet method: the container would answer with a stack trace.
             logger.debug("could not write the citations read", e);
@@ -141,6 +149,67 @@ public class CitationsServlet extends GeoServlet {
         } catch (RepositoryException | RuntimeException e) {
             logger.warn("citations read failed: {}", e.toString());
             deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "operation failed");
+        }
+    }
+
+    /** Screen B: the site's figures from the last sync, for a caller who may open the GEO dashboard. */
+    private void readSite(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        try {
+            String sitePath = requireDashboard(req, resp);
+            if (sitePath == null) {
+                return;
+            }
+            String language = req.getParameter("language");
+            CitationsAccess.Site site = site(sitePath, language, resp);
+            if (site == null) {
+                return;
+            }
+            CitationStore.Settings settings = CitationStore.settings(site.path);
+            JSONObject out = new JSONObject();
+            out.put("canConfigure", site.mayChangeSettings);
+            if (!settings.isComplete() || !settings.enabled) {
+                out.put("configured", false);
+                writeJson(resp, HttpServletResponse.SC_OK, out);
+                return;
+            }
+            JSONObject status = CitationStore.status(site.path);
+            out.put("configured", true);
+            out.put(STATUS, status.get(STATUS));
+            out.put("syncedAt", status.get("syncedAt"));
+            out.put("latestAnswerAt", status.get("latestAnswerAt"));
+            out.put("citedPages", status.get("citedPages"));
+            out.put("unresolved", status.getJSONArray("unresolved").length());
+            out.put("hosts", new JSONArray(settings.hosts));
+            JSONObject summary = CitationStore.site(site.path);
+            if (summary != null) {
+                readableTopPages(summary.optJSONArray("topPages"), language);
+            }
+            out.put("site", summary == null ? JSONObject.NULL : summary);
+            writeJson(resp, HttpServletResponse.SC_OK, out);
+        } catch (RepositoryException | RuntimeException e) {
+            logger.warn("citations site read failed: {}", e.toString());
+            deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "operation failed");
+        }
+    }
+
+    /**
+     * Adds the title of each top page the caller can read, and removes the path of the others: the sync
+     * resolved them with a system session, the dashboard shows them to one user.
+     */
+    private static void readableTopPages(JSONArray pages, String language) {
+        for (int i = 0; pages != null && i < pages.length(); i++) {
+            JSONObject p = pages.optJSONObject(i);
+            if (p == null || !p.has("jcrPath")) {
+                continue;
+            }
+            String pageLanguage = p.optString("language", language);
+            JCRNodeWrapper node = SiteScope.isLanguage(pageLanguage) ? resolvePage(p.optString("jcrPath"), pageLanguage) : null;
+            if (node == null) {
+                p.remove("jcrPath");
+                p.remove("language");
+            } else {
+                p.put("title", node.getDisplayableName());
+            }
         }
     }
 

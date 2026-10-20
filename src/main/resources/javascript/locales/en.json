@@ -318,13 +318,15 @@
         "freshness": "Freshness",
         "languages": "Languages",
         "schema": "Structured data",
-        "report": "Report"
+        "report": "Report",
+        "citations": "AI citations"
       },
       "group": {
         "overview": "Overview",
         "reach": "Can a crawler reach it",
         "usable": "Is what arrives usable",
-        "files": "Site-level files"
+        "files": "Site-level files",
+        "citations": "AI citations"
       }
     },
     "visibility": {
@@ -859,6 +861,53 @@
       "mappings": "Addresses matched by hand",
       "unmap": "Remove",
       "mappingsNote": "A mapping counts from the next sync."
+    },
+    "siteCitations": {
+      "title": "AI citations",
+      "intro": "How the answers of AI engines cite this site, from the last daily sync with BotRank: how often, how that moved over the previous 30 days, where the site stands among the sites the same answers cite, and which pages carry it.",
+      "notConfiguredTitle": "Not connected to BotRank",
+      "notConfigured": "This site is not connected to BotRank. A site administrator connects it in Site Settings, under AI citations (BotRank).",
+      "notConfiguredAdmin": "This site is not connected to BotRank. Connect it in Site Settings, under AI citations (BotRank): pick the connection, the project and the site's hosts.",
+      "notSynced": "The site is connected to BotRank, but no sync has read its site figures yet. They appear after the next daily sync, or after a site administrator starts one.",
+      "period": "Figures over {{start}} to {{end}}, compared with the 30 days before.",
+      "partialTitle": "Some figures are missing",
+      "partial": "{{count}} read of the site figures failed in the last sync. What BotRank answered is shown; the next sync tries again.",
+      "partial_plural": "{{count}} reads of the site figures failed in the last sync. What BotRank answered is shown; the next sync tries again.",
+      "domainTitle": "Domain {{domain}}",
+      "domainNote": "Citations, share and rank are BotRank's figures for the whole registrable domain, so they include any other site served on a subdomain of it.",
+      "notCitedTitle": "{{domain}} has never been cited",
+      "notCited": "No AI answer of this BotRank project has ever cited {{domain}}.",
+      "citations": "Citations",
+      "share": "Share of citations",
+      "citedPages": "Cited pages",
+      "count": "{{value}}",
+      "points": "{{value}} pts",
+      "rank": "Rank {{rank}} among the sites the answers cite",
+      "shareHistory": "Share of citations per day",
+      "noSource": "no answer cited a source",
+      "hosts": "Per host",
+      "host": "Host",
+      "approxShare": "Share, approximate",
+      "hostsNote": "Computed here from the cited pages of each host: BotRank only filters its list of pages by host. The share is the host's citations over all the citations of the project's answers, estimated from the domain's own figures.",
+      "topPages": "Most cited pages",
+      "noTopPages": "No page of the site's hosts was cited over the period.",
+      "unmatched": "No page matched",
+      "unresolved": "{{count}} cited address matches no page of the site. A site administrator can match it to a page in Site Settings, under AI citations (BotRank).",
+      "unresolved_plural": "{{count}} cited addresses match no page of the site. A site administrator can match them to pages in Site Settings, under AI citations (BotRank).",
+      "visibility": "Brand visibility",
+      "visibilityScore": "Answers that mention the brand ({{count}} answer analysed)",
+      "visibilityScore_plural": "Answers that mention the brand ({{count}} answers analysed)",
+      "visibilityNote": "Context, not the site's result: an answer can mention the brand without citing any page of the site. Per engine below.",
+      "engines": "Engines tracked by the project",
+      "engine": "{{engine}}: {{interval}}",
+      "intervalNone": "not refreshed automatically",
+      "intervalDays": "refreshed every day",
+      "intervalDays_plural": "refreshed every {{count}} days",
+      "intervalWeeks": "refreshed every week",
+      "intervalWeeks_plural": "refreshed every {{count}} weeks",
+      "intervalHours": "refreshed every hour",
+      "intervalHours_plural": "refreshed every {{count}} hours",
+      "source": "Source: BotRank. Domains and addresses come from AI answers and are shown as written."
     }
   }
 }

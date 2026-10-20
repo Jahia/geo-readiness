@@ -318,13 +318,15 @@
         "freshness": "Fraîcheur",
         "languages": "Langues",
         "schema": "Données structurées",
-        "report": "Rapport"
+        "report": "Rapport",
+        "citations": "Citations par les IA"
       },
       "group": {
         "overview": "Vue d'ensemble",
         "reach": "Un robot peut-il y accéder",
         "usable": "Ce qui arrive est-il exploitable",
-        "files": "Fichiers du site"
+        "files": "Fichiers du site",
+        "citations": "Citations par les IA"
       }
     },
     "visibility": {
@@ -859,6 +861,53 @@
       "mappings": "Adresses rattachées à la main",
       "unmap": "Retirer",
       "mappingsNote": "Un rattachement compte à partir de la prochaine synchronisation."
+    },
+    "siteCitations": {
+      "title": "Citations par les IA",
+      "intro": "Comment les réponses des moteurs d'IA citent ce site, d'après la dernière synchronisation quotidienne avec BotRank : combien de fois, l'évolution sur les 30 jours précédents, la place du site parmi les sites cités dans les mêmes réponses, et les pages qui le portent.",
+      "notConfiguredTitle": "Non connecté à BotRank",
+      "notConfigured": "Ce site n'est pas connecté à BotRank. Un administrateur du site le connecte dans les réglages du site, sous Citations par les IA (BotRank).",
+      "notConfiguredAdmin": "Ce site n'est pas connecté à BotRank. Connectez-le dans les réglages du site, sous Citations par les IA (BotRank) : choisissez la connexion, le projet et les hôtes du site.",
+      "notSynced": "Le site est connecté à BotRank, mais aucune synchronisation n'a encore lu ses chiffres de site. Ils apparaissent après la prochaine synchronisation quotidienne, ou après qu'un administrateur du site en a lancé une.",
+      "period": "Chiffres du {{start}} au {{end}}, comparés aux 30 jours précédents.",
+      "partialTitle": "Des chiffres manquent",
+      "partial": "{{count}} lecture des chiffres du site a échoué lors de la dernière synchronisation. Ce que BotRank a répondu est affiché ; la prochaine synchronisation réessaie.",
+      "partial_plural": "{{count}} lectures des chiffres du site ont échoué lors de la dernière synchronisation. Ce que BotRank a répondu est affiché ; la prochaine synchronisation réessaie.",
+      "domainTitle": "Domaine {{domain}}",
+      "domainNote": "Citations, part et rang sont les chiffres de BotRank pour tout le domaine enregistrable : ils incluent tout autre site servi sur un de ses sous-domaines.",
+      "notCitedTitle": "{{domain}} n'a jamais été cité",
+      "notCited": "Aucune réponse d'IA de ce projet BotRank n'a jamais cité {{domain}}.",
+      "citations": "Citations",
+      "share": "Part des citations",
+      "citedPages": "Pages citées",
+      "count": "{{value}}",
+      "points": "{{value}} pts",
+      "rank": "Rang {{rank}} parmi les sites que citent les réponses",
+      "shareHistory": "Part des citations par jour",
+      "noSource": "aucune réponse n'a cité de source",
+      "hosts": "Par hôte",
+      "host": "Hôte",
+      "approxShare": "Part, approchée",
+      "hostsNote": "Calculé ici à partir des pages citées de chaque hôte : BotRank ne filtre par hôte que sa liste de pages. La part rapporte les citations de l'hôte à toutes les citations des réponses du projet, estimées à partir des chiffres du domaine.",
+      "topPages": "Pages les plus citées",
+      "noTopPages": "Aucune page des hôtes du site n'a été citée sur la période.",
+      "unmatched": "Aucune page rattachée",
+      "unresolved": "{{count}} adresse citée ne correspond à aucune page du site. Un administrateur du site peut la rattacher à une page dans les réglages du site, sous Citations par les IA (BotRank).",
+      "unresolved_plural": "{{count}} adresses citées ne correspondent à aucune page du site. Un administrateur du site peut les rattacher à des pages dans les réglages du site, sous Citations par les IA (BotRank).",
+      "visibility": "Visibilité de la marque",
+      "visibilityScore": "Réponses qui mentionnent la marque ({{count}} réponse analysée)",
+      "visibilityScore_plural": "Réponses qui mentionnent la marque ({{count}} réponses analysées)",
+      "visibilityNote": "Un contexte, pas le résultat du site : une réponse peut mentionner la marque sans citer aucune page du site. Par moteur ci-dessous.",
+      "engines": "Moteurs suivis par le projet",
+      "engine": "{{engine}} : {{interval}}",
+      "intervalNone": "pas de rafraîchissement automatique",
+      "intervalDays": "rafraîchi chaque jour",
+      "intervalDays_plural": "rafraîchi tous les {{count}} jours",
+      "intervalWeeks": "rafraîchi chaque semaine",
+      "intervalWeeks_plural": "rafraîchi toutes les {{count}} semaines",
+      "intervalHours": "rafraîchi toutes les heures",
+      "intervalHours_plural": "rafraîchi toutes les {{count}} heures",
+      "source": "Source : BotRank. Les domaines et adresses viennent de réponses d'IA et sont affichés tels quels."
     }
   }
 }

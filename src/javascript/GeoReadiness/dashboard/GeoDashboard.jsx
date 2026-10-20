@@ -14,6 +14,7 @@ import {FreshnessPanel} from '../tabs/FreshnessPanel';
 import {LanguagesPanel} from '../tabs/LanguagesPanel';
 import {SchemaPanel} from '../tabs/SchemaPanel';
 import {ReportPanel} from '../tabs/ReportPanel';
+import {SiteCitationsPanel} from '../tabs/SiteCitationsPanel';
 import {fetchReportStatus} from '../api/geoReport';
 import {languageLabel} from '../util/languageFlag';
 import styles from './GeoDashboard.module.css';
@@ -33,7 +34,9 @@ const GROUPS = [
     // 'report' joins overview when a provider is configured; see below.
     {id: 'reach', tabs: ['visibility', 'links', 'vanity']},
     {id: 'usable', tabs: ['schema', 'languages', 'freshness']},
-    {id: 'files', tabs: ['sitemap', 'robots', 'llms']}
+    {id: 'files', tabs: ['sitemap', 'robots', 'llms']},
+    // Not a readiness check: what AI answers actually do with the site, from BotRank (screen B).
+    {id: 'citations', tabs: ['citations']}
 ];
 
 /**
@@ -189,6 +192,7 @@ export const GeoDashboard = () => {
                     {tab === 'robots' && <RobotsControlPanel path={sitePath} language={language}/>}
                     {tab === 'llms' && <LlmsGeneratorPanel path={sitePath} language={language}/>}
                     {tab === 'visibility' && <VisibilityPanel path={sitePath} language={language}/>}
+                    {tab === 'citations' && <SiteCitationsPanel path={sitePath} language={language}/>}
                 </div>
             </div>
         </LayoutContent>

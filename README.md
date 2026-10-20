@@ -169,7 +169,7 @@ that page in the editing workspace, which is anyone who can select it in jConten
 The **AI citations (BotRank)** entry of Site Settings requires **site-admin** on the site, on the
 route and on every call behind it: binding a site to a BotRank connection spends the customer's
 organisation key, which the server adds to every call. The drawer's AI citations tab only needs a
-read of the page.
+read of the page; the dashboard's AI citations tab needs **publish**, like the rest of the dashboard.
 
 A scan's optional scope has to name a node inside the site it was started from, and it is resolved
 before it is compared, so a relative path cannot leave the site it came from.
@@ -286,7 +286,12 @@ baseUrl =
   domain per call (a site on `example.fr` and `example.com` gets both), ranks them across the site,
   matches each cited address to a page (manual
   mappings, published URLs, every vanity URL, `/sites/...` paths) and stores one entry per cited
-  page under the site's hidden `geo-readiness` node. Editors never cause a call to BotRank.
+  page under the site's hidden `geo-readiness` node. It then reads the site's own figures for the
+  dashboard: totals, share and rank per registrable domain, the brand visibility score and the
+  project's engines. Editors never cause a call to BotRank.
+- BotRank's site figures cover the whole registrable domain: a site on `blog.example.com` shares them
+  with every other site of `example.com`. The dashboard names the domain and splits citations per
+  host from the cited pages list.
 
 ## Known gaps
 

@@ -55,6 +55,7 @@ public final class CitationStore {
     private static final String P_PROJECT = "brProject";
     private static final String P_STARTED_AT = "brStartedAt";
     private static final String P_STATUS = "brStatus";
+    private static final String P_SITE = "brSite";
     private static final String P_SYNCED_AT = "brSyncedAt";
     private static final String P_TIME = "brTime";
     private static final String P_UNRESOLVED = "brUnresolved";
@@ -205,6 +206,19 @@ public final class CitationStore {
     }
 
     /**
+     * The site's own figures from the last sync, or null before the first sync that read them.
+     *
+     * @return the summary, as {@link SiteCitations} built it
+     * @throws RepositoryException on a repository failure
+     */
+    public static JSONObject site(String sitePath) throws RepositoryException {
+        return in(sitePath, (node, session) -> {
+            Object v = json(node, P_SITE);
+            return v instanceof JSONObject ? (JSONObject) v : null;
+        });
+    }
+
+    /**
      * The stored figures of one page, or null when the last sync found no citation of it.
      *
      * @param jcrPath  the node path
@@ -286,10 +300,11 @@ public final class CitationStore {
      * @param unresolved     the cited URLs no page matched, most cited first
      * @param latestAnswerAt BotRank's time of the latest counted answer, or null
      * @param message        a note for administrators (retries, skipped pages), or empty
+     * @param site           the site's own figures for the dashboard, as {@link SiteCitations} built them
      * @throws RepositoryException on a repository failure
      */
     public static void finish(String sitePath, List<JSONObject> pages, JSONArray unresolved, String latestAnswerAt,
-            String message) throws RepositoryException {
+            String message, JSONObject site) throws RepositoryException {
         in(sitePath, (node, session) -> {
             if (node.hasNode(PAGES)) {
                 node.getNode(PAGES).remove();
@@ -307,6 +322,7 @@ public final class CitationStore {
             node.setProperty(P_LATEST_ANSWER_AT, latestAnswerAt);
             node.setProperty(P_CITED_PAGES, pages.size());
             node.setProperty(P_UNRESOLVED, unresolved.toString());
+            node.setProperty(P_SITE, site.toString());
             node.setProperty(P_MESSAGE, message);
             session.save();
             return null;

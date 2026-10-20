@@ -202,8 +202,7 @@ public class BotRankClient {
             if (cursor != null) {
                 param(q, "cursor", cursor);
             }
-            JSONObject o = call("/ai-visibility/sites/" + URLEncoder.encode(domain, StandardCharsets.UTF_8) + "/pages",
-                    q, projectId);
+            JSONObject o = call("/ai-visibility/sites/" + segment(domain) + "/pages", q, projectId);
             addCitedPages(o.optJSONArray("pages"), out);
             cursor = o.isNull("nextCursor") ? null : o.optString("nextCursor", null);
             if (cursor == null || cursor.isEmpty()) {
@@ -245,6 +244,65 @@ public class BotRankClient {
             param(q, "limit", Integer.toString(limit));
         }
         return call("/ai-visibility/pages/" + route, q, projectId);
+    }
+
+    /**
+     * {@code GET /projects/{projectId}}: the project and its enabled AI engines, each with its
+     * {@code refreshInterval} (an ISO 8601 duration, or null when not refreshed automatically).
+     *
+     * @param projectId the BotRank project
+     * @return the answer as BotRank sent it
+     * @throws BotRankException on any refusal or failure
+     */
+    public JSONObject project(String projectId) throws BotRankException {
+        return call("/projects/" + segment(projectId), new StringBuilder(), projectId);
+    }
+
+    /**
+     * One site read under {@code /ai-visibility/sites/{domain}/}: {@code citation-total},
+     * {@code citation-share-history} or {@code ranking}. BotRank reads the domain as its registrable
+     * domain and names the domain it used in the answer.
+     *
+     * @param projectId  the BotRank project
+     * @param domain     a host of the site
+     * @param route      the last path segment
+     * @param period     the period
+     * @param neighbours for {@code ranking}, the sites listed above and below (1 to 10), or 0 to omit it
+     * @return the answer as BotRank sent it
+     * @throws BotRankException on any refusal or failure; a domain the project never cited is a 404
+     *                          of type {@value #SITE_NOT_CITED}
+     */
+    public JSONObject siteRead(String projectId, String domain, String route, Period period, int neighbours)
+            throws BotRankException {
+        StringBuilder q = new StringBuilder();
+        period.appendTo(q);
+        if (neighbours > 0) {
+            param(q, "neighbourCount", Integer.toString(neighbours));
+        }
+        return call("/ai-visibility/sites/" + segment(domain) + "/" + route, q, projectId);
+    }
+
+    /**
+     * {@code GET /ai-visibility/visibility-score}, or its {@code /history} when {@code history} is true:
+     * the share of the project's analysed answers that mention its brand.
+     *
+     * @param projectId the BotRank project
+     * @param history   true for the daily series
+     * @param period    the period
+     * @return the answer as BotRank sent it
+     * @throws BotRankException on any refusal or failure
+     */
+    public JSONObject visibilityScore(String projectId, boolean history, Period period) throws BotRankException {
+        StringBuilder q = new StringBuilder();
+        period.appendTo(q);
+        return call("/ai-visibility/visibility-score" + (history ? "/history" : ""), q, projectId);
+    }
+
+    /** The problem type of a domain no AI answer of the project ever cited. */
+    public static final String SITE_NOT_CITED = "site-not-cited";
+
+    private static String segment(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     private JSONObject call(String path, StringBuilder query, String projectId) throws BotRankException {

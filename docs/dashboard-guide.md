@@ -4,7 +4,7 @@ The page drawer answers for one page. This answers for the whole site: where it 
 crawlers, which template is to blame, and what the two files that speak for the site currently say.
 
 Open it under **Additional > SEO > GEO readiness**. Ten panels in four groups, measuring one
-language at a time.
+language at a time, plus **AI citations** when the site is connected to BotRank.
 
 A companion guide covers the per-page panel: [`drawer-guide.md`](drawer-guide.md).
 
@@ -165,6 +165,30 @@ contains.
 
 Same safety as robots.txt: you see the exact difference first, and what gets written is exactly
 what is on screen, so hand edits made before applying survive.
+
+## AI citations
+
+What AI answers actually do with the site, from the last daily sync with BotRank. It is not a
+readiness check: nothing here is computed from your pages, and nothing on it moves the site score.
+It needs the same **publish** permission as the rest of the dashboard. Until a site administrator
+connects the site (Site Settings, **AI citations (BotRank)**), the panel says so.
+
+- **Per domain**: citations over the last 30 days, the share of all citations in the project's AI
+  answers, and the number of cited pages, each with its change against the 30 days before. *No
+  comparison* means BotRank had no comparable previous period, not that nothing changed.
+- **Rank among cited sites**: where the site stands, with the three sites above and below.
+- **Share of citations per day**: one bar per day the project received answers. A day where no
+  answer cited any source shows empty.
+- **Per host**: only when the site has several hosts or a host on a subdomain. BotRank counts
+  citations, share and rank for the whole registrable domain (`blog.example.com` counts under
+  `example.com`, with any other site on that domain); the per-host lines are computed from the cited
+  pages of each host, and their share is an estimate.
+- **Most cited pages**: the top 20 addresses, each linked to its page in jContent when it matches one
+  you can read. *No page matched* means the address resolves to no page; a site administrator can
+  match it in Site Settings.
+- **Brand visibility**: the share of the project's analysed answers that mention the brand, per
+  engine. Context only: an answer can mention the brand without citing any page of the site.
+- **Engines tracked by the project**, with how often BotRank refreshes each one.
 
 ## A sensible order
 
