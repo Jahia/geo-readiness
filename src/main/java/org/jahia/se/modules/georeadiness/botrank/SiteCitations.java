@@ -57,6 +57,11 @@ final class SiteCitations {
     private static final String SCORE_VARIATION = "visibilityScoreVariation";
     private static final String ANSWERS = "analysedAnswerCount";
     private static final String VARIATION = "variation";
+    private static final String REFRESH_INTERVAL = "refreshInterval";
+    private static final String SHARE_OF = "share";
+    private static final String SCORE_OF = "score";
+    private static final String NOT_CITED = "notCited";
+    private static final String RANKING = "ranking";
 
     private SiteCitations() {
     }
@@ -110,7 +115,7 @@ final class SiteCitations {
         } catch (BotRankException e) {
             if (BotRankClient.SITE_NOT_CITED.equals(e.type())) {
                 domainOf.put(host, host);
-                domains.putIfAbsent(host, new JSONObject().put(DOMAIN, host).put("notCited", true));
+                domains.putIfAbsent(host, new JSONObject().put(DOMAIN, host).put(NOT_CITED, true));
             } else {
                 failed(reads, "citation-total", e);
             }
@@ -123,14 +128,14 @@ final class SiteCitations {
         }
         JSONObject entry = new JSONObject()
                 .put(DOMAIN, domain)
-                .put("notCited", false)
+                .put(NOT_CITED, false)
                 .put(CITATIONS, total.optInt(CITATION_COUNT))
                 .put(VARIATION, integer(total, "citationCountVariation"))
-                .put("share", number(total, SHARE))
+                .put(SHARE_OF, number(total, SHARE))
                 .put("shareVariation", number(total, SHARE_VARIATION))
                 .put("citedPages", total.optInt("citedPageCount"))
                 .put("citedPagesVariation", integer(total, "citedPageCountVariation"));
-        entry.put("ranking", ranking(reads, domain));
+        entry.put(RANKING, ranking(reads, domain));
         entry.put("shareHistory", shareHistory(reads, domain));
         domains.put(domain, entry);
     }
@@ -138,8 +143,8 @@ final class SiteCitations {
     private static JSONArray ranking(Reads reads, String domain) {
         JSONArray out = new JSONArray();
         try {
-            JSONArray in = reads.client.siteRead(reads.project, domain, "ranking", reads.period, NEIGHBOURS)
-                    .optJSONArray("ranking");
+            JSONArray in = reads.client.siteRead(reads.project, domain, RANKING, reads.period, NEIGHBOURS)
+                    .optJSONArray(RANKING);
             for (int i = 0; in != null && i < in.length() && i < MAX_ITEMS; i++) {
                 JSONObject r = in.optJSONObject(i);
                 if (r != null) {
@@ -148,12 +153,12 @@ final class SiteCitations {
                             .put("requested", r.optBoolean("isRequestedSite"))
                             .put("rank", r.optInt("rank"))
                             .put("rankVariation", integer(r, "rankVariation"))
-                            .put("share", number(r, SHARE))
+                            .put(SHARE_OF, number(r, SHARE))
                             .put("shareVariation", number(r, SHARE_VARIATION)));
                 }
             }
         } catch (BotRankException e) {
-            failed(reads, "ranking", e);
+            failed(reads, RANKING, e);
         }
         return out;
     }
@@ -166,7 +171,7 @@ final class SiteCitations {
             for (int i = 0; in != null && i < in.length() && i < MAX_ITEMS; i++) {
                 JSONObject d = in.optJSONObject(i);
                 if (d != null && DAY.matcher(d.optString("date")).matches()) {
-                    out.put(new JSONObject().put("date", d.optString("date")).put("share", number(d, SHARE)));
+                    out.put(new JSONObject().put("date", d.optString("date")).put(SHARE_OF, number(d, SHARE)));
                 }
             }
         } catch (BotRankException e) {
@@ -194,12 +199,12 @@ final class SiteCitations {
             String domain = domainOf.getOrDefault(host, host);
             JSONObject d = domains.get(domain);
             Object share = JSONObject.NULL;
-            if (d != null && !d.optBoolean("notCited") && !d.isNull("share") && d.optDouble("share") > 0
+            if (d != null && !d.optBoolean(NOT_CITED) && !d.isNull(SHARE_OF) && d.optDouble(SHARE_OF) > 0
                     && d.optInt(CITATIONS) > 0) {
-                share = citations * d.optDouble("share") / d.optInt(CITATIONS);
+                share = citations * d.optDouble(SHARE_OF) / d.optInt(CITATIONS);
             }
             out.put(new JSONObject().put("host", host).put(DOMAIN, domain).put(CITATIONS, citations)
-                    .put("citedPages", pages).put("share", share));
+                    .put("citedPages", pages).put(SHARE_OF, share));
         }
         return out;
     }
@@ -228,7 +233,7 @@ final class SiteCitations {
         try {
             JSONObject score = reads.client.visibilityScore(reads.project, false, reads.period);
             JSONObject out = new JSONObject()
-                    .put("score", number(score, SCORE))
+                    .put(SCORE_OF, number(score, SCORE))
                     .put(VARIATION, number(score, SCORE_VARIATION))
                     .put("answers", score.optInt(ANSWERS))
                     .put("byEngine", scores(score.optJSONArray(AI_SURFACES), AI_SURFACE))
@@ -238,7 +243,7 @@ final class SiteCitations {
             for (int i = 0; days != null && i < days.length() && i < MAX_ITEMS; i++) {
                 JSONObject d = days.optJSONObject(i);
                 if (d != null && DAY.matcher(d.optString("date")).matches()) {
-                    history.put(new JSONObject().put("date", d.optString("date")).put("score", number(d, SCORE)));
+                    history.put(new JSONObject().put("date", d.optString("date")).put(SCORE_OF, number(d, SCORE)));
                 }
             }
             return out.put("history", history);
@@ -255,7 +260,7 @@ final class SiteCitations {
             if (o != null) {
                 out.put(new JSONObject()
                         .put("key", CitationSync.text(o.optString(key)))
-                        .put("score", number(o, SCORE))
+                        .put(SCORE_OF, number(o, SCORE))
                         .put(VARIATION, number(o, SCORE_VARIATION))
                         .put("answers", o.optInt(ANSWERS)));
             }
@@ -273,10 +278,10 @@ final class SiteCitations {
                 if (o == null) {
                     continue;
                 }
-                String interval = o.isNull("refreshInterval") ? "" : o.optString("refreshInterval", "");
+                String interval = o.isNull(REFRESH_INTERVAL) ? "" : o.optString(REFRESH_INTERVAL, "");
                 out.put(new JSONObject()
                         .put(AI_SURFACE, CitationSync.text(o.optString(AI_SURFACE)))
-                        .put("refreshInterval", DURATION.matcher(interval).matches() && interval.length() > 1
+                        .put(REFRESH_INTERVAL, DURATION.matcher(interval).matches() && interval.length() > 1
                                 ? interval : JSONObject.NULL));
             }
         } catch (BotRankException e) {
