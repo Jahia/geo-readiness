@@ -8,12 +8,58 @@ deviations from the original scope and one thing that turned out to be impossibl
 called out in each story. **GEO-4 is built** on BotRank's public API v1, in review in
 [Jahia/geo-readiness#34](https://github.com/Jahia/geo-readiness/pull/34) and
 [#35](https://github.com/Jahia/geo-readiness/pull/35), and demonstrated on a Jahia Cloud instance
-(16 October 2026). The rest of Wave 2 onward is unbuilt.
+(16 October 2026). The reads of a site dashboard are in BotRank's API since 20 October 2026; the
+dashboard itself, and the rest of Wave 2 onward, is unbuilt.
 
 Read `geo-backlog.md` for GEO-17 to GEO-25, which are the Jahia-native stories that need no
 vendor at all.
 
 ## Status of the partnership
+
+**Updated 20 October 2026: the site reads are in production, and the pages list moved.** Their CTO
+announced them that morning; every route below was called the same day with our test key and
+answers as the reference says (now organised by section: Projects, Data freshness, Visibility
+score, Sites, Pages).
+
+| Route (`GET`) | Returns | Seen on 20 October |
+|---|---|---|
+| `/projects/{projectId}` | The project and its enabled AI engines, each with `refreshInterval` (ISO 8601 duration such as `P1D`, `P7D`, `PT12H`, or `null` when not refreshed automatically). `/projects` is unchanged | Test project: five engines, all `P1D` |
+| `/ai-visibility/sites/{domain}/citation-total` | `citationCount`, `shareOfCitations` (a fraction of the citations in the project's AI answers), `citedPageCount`, each with its variation | 271 citations, share 0.016, 37 pages over 30 days; 30-day variations `null` (no answer from 1 to 12 October), 7-day variations present |
+| `/ai-visibility/sites/{domain}/citation-share-history` | One share per day the project has at least one AI answer; `null` when no answer cited any source that day | Seven days, today included while the day is still running |
+| `/ai-visibility/sites/{domain}/ranking` | The site's rank among cited sites with `neighbourCount` neighbours above and below (1 to 10, default 3): `domain`, `rank`, `rankVariation`, `shareOfCitations` and its variation, `isRequestedSite` | Rank 12, two neighbours each side |
+| `/ai-visibility/sites/{domain}/pages` | The cited pages list, same parameters (`host`, `limit`, `cursor`, period) and same answer as before | Same pages as the deprecated route |
+| `/ai-visibility/visibility-score`, `.../history` | Share of the project's analysed answers that mention its brand, with variation and `analysedAnswerCount`, for the project, per engine and per market. Each history day uses the last answer of each prompt that day, so days do not average into the period's score | 0.44 over 1,473 answers |
+
+- **Site means registrable domain.** A subdomain in the path is read on its domain, and the answer
+  names the domain used (`www.selectra.info` came back as `selectra.info`). Only the pages list
+  takes `host`; totals, share history and ranking cover the whole domain. Their CTO asked whether
+  that blocks our site screen: it does not, provided the screen names the domain it shows. Many
+  Jahia sites are one subdomain each, several sharing a domain, so the dashboard recomputes
+  citations and cited pages per host from the pages list, derives an approximate share from them,
+  and labels ranking and share history as the domain's. A `host` on `citation-total` and
+  `citation-share-history` is a later improvement, not a blocker.
+- **A domain never cited** answers `404` with the problem type `site-not-cited`. A domain cited
+  before but not during the period answers zeros and an empty ranking. The dashboard shows both as
+  states, not as errors.
+- **Deprecation.** `/ai-visibility/pages?domain=` still works but is deprecated in favour of
+  `/sites/{domain}/pages`; they remove it once we confirm we migrated. **Migrated on 20 October** in
+  [#34](https://github.com/Jahia/geo-readiness/pull/34) (client, unit tests and the e2e stub), and
+  checked against the live route. The deprecated route sends no `Deprecation` or `Sunset` header:
+  the notice comes by email.
+- **What it gives the module.** The site dashboard (GEO-10 and the site view behind GEO-5 and
+  GEO-6) can now be built on the public API. `refreshInterval`, with `data-freshness`, tells the
+  sync when new answers are due: a project refreshed every seven days does not need a daily read,
+  and the panel can say when the next figures are expected. The visibility score stays context
+  under the citations, as decided (see "Explicitly not building").
+
+**Updated 19 October 2026: the four questions of 16 October are answered.**
+
+| Question | Answer | For us |
+|---|---|---|
+| Dates of the project's configuration changes | Not provided | The panel cannot explain a rise caused by an engine or prompts added. The variation guard stays our only protection; a short notice under the figure that new tracked questions can raise it is a product choice still open |
+| UTC timestamps and an explicit day | Days stay Europe/Paris calendar days; instants are already ISO 8601 UTC | Already what the connector does: Paris days in requests and in the scheduler, `latestCountedAnswerAt` formatted in the browser |
+| `refreshing` between runs | `true` only while answers are expected, `false` between runs, also on a project whose prompts run hourly | Confirms the sync's retry (every 30 minutes until 10:30 Paris, then it runs anyway) |
+| Deprecation policy, changed-since parameter | When v1 is frozen. Until then the API is built with us and they announce each change | Kept as an expected item, no longer an open question. The 20 October deprecation followed that rule |
 
 **Updated 16 October 2026: the four findings of our test run are fixed.** Their CTO answered the
 same day and every point checks out against the live API (16 October, our test key):
@@ -41,7 +87,7 @@ the same day (below), and GEO-4 is built on them.
 |---|---|
 | `/projects` | The organisation's projects: `id`, `name` |
 | `/ai-visibility/data-freshness` | `latestCountedAnswerAt` (nullable), `refreshing` |
-| `/ai-visibility/pages` | A domain's cited pages, most cited first: `url`, `rank`, `citationCount`, `citationCountVariation`; `nextCursor`. Takes `domain` (required, read as the registrable domain), `host` (repeatable, up to 10, ranks computed within them), `limit` up to 100 |
+| `/ai-visibility/pages` (deprecated 20 October, now `/ai-visibility/sites/{domain}/pages`) | A domain's cited pages, most cited first: `url`, `rank`, `citationCount`, `citationCountVariation`; `nextCursor`. Takes `domain` (required, read as the registrable domain), `host` (repeatable, up to 10, ranks computed within them), `limit` up to 100 |
 | `/ai-visibility/pages/citation-total` | `citationCount` (0 allowed), `citationCountVariation`, `aiSurfaces[]` |
 | `/ai-visibility/pages/citation-history` | `days[]` of `date`, `citationCount`; days without any answer in the project are omitted |
 | `/ai-visibility/pages/prompts` | Top prompts citing the page (default 10, max 100): `id`, `text`, `market`, `citationCount`, variation, `aiSurfaces[]`, `lastCitationDay` |
@@ -56,8 +102,8 @@ the pages list paginates. Errors are RFC 9457 problem documents with a stable `t
 is its URL: `www.`, a trailing slash, the anchor and a published list of tracking parameters are
 ignored; scheme, subdomain, path case and any other parameter make a different page.
 
-Not in v1: a changed-since parameter, a written deprecation policy, and UTC timestamps with an
-explicit day, which their CTO announced for later. There is no rate limit today (16 October).
+Not in v1: a changed-since parameter and a written deprecation policy, both for when v1 is frozen
+(19 October). Days stay Europe/Paris calendar days, instants are ISO 8601 UTC. There is no rate limit today (16 October).
 
 **Tested on 15 October 2026.** All eight routes behave as their OpenAPI document says, over about 75
 read-only calls with our test key. The key sees one project. Our demo site is never cited in it, so
@@ -103,7 +149,7 @@ What the design session and their reply settle:
 | **Site and project** | The customer's administrator pastes the key into Jahia and picks the BotRank project of each tracked site. A project is BotRank's access boundary; not every site is tracked |
 | **Order** | The page screen (GEO-4) comes first. The site dashboard follows once it works |
 | **Shape** | A list route of a domain's cited pages, ordered by citations (rank, citations, variation, cursor), drives the sync; per-page detail routes are read only for cited pages: totals and engines, prompts, tags, history, co-cited pages. Lookup tolerates `www.` and a trailing slash |
-| **Domain** | BotRank's domain is the registrable domain (`blog.example.com` falls under `example.com`). A Jahia site is often a subdomain, so the list takes a `host` parameter (added 13 October) |
+| **Domain** | BotRank's domain is the registrable domain (`blog.example.com` falls under `example.com`). A Jahia site is often a subdomain, so the list takes a `host` parameter (added 13 October). Site figures (totals, share, ranking, 20 October) cover the whole domain: the dashboard computes per-host figures from the list and names the domain on the rest |
 | **URL identity** | `?page=2` stays a distinct page; tracking and session parameters are stripped (list published 15 October). There is no page id: the URL is the id, any variant works, and our cache keys on the page's published Jahia URL |
 | **History** | One point per day the project received at least one answer, 0 when the page was not cited; a missing day means no run (13 October) |
 | **Sync time** | Prompts run one by one at their own frequency, mostly at night. Our daily sync runs at 06:30 Paris time by default, checks `refreshing` first and retries later while it is true |
@@ -772,8 +818,8 @@ published changes, **so that** I can tell my stakeholders whether the editorial 
 - Correlation is labelled as correlation. No causal claim in the copy.
 - Honest about the lag. Engines refresh on their own schedule, not ours.
 
-**Data** `get-site-citation-share-history` plus JCR publication history. **Surface** site
-dashboard. **Effort** M.
+**Data** `GET /ai-visibility/sites/{domain}/citation-share-history` (public API, 20 October 2026;
+whole registrable domain) plus JCR publication history. **Surface** site dashboard. **Effort** M.
 
 ---
 
@@ -854,16 +900,18 @@ front.
 
 ## For BotRank
 
-**Open on 16 October 2026** (sent with our progress update the same day):
+**Open on 20 October 2026:**
 
-- **New:** the dates of the project's configuration changes (an AI engine enabled, prompts added),
-  per project or per engine, so the panel can tell a contributor that a rise comes from there and not
-  from the page.
-- UTC timestamps and an explicit day, announced by them for later.
-- Whether `refreshing` goes false between runs on a project whose prompts run every hour.
-- A written deprecation policy for `/public/v1` (not in the reference on 16 October).
-- A changed-since parameter: the 304 saves transfer but not calls, and the daily sync could then
-  read only the pages that moved.
+- Our answer to their question on the domain: not blocking (see the 20 October update). Later, a
+  `host` parameter on `citation-total` and `citation-share-history` would let the dashboard show a
+  subdomain's own share without approximation.
+- Tell them the move to `/sites/{domain}/pages` is done, so they can remove the deprecated route
+  once #34 is released.
+- Expected when v1 is frozen: a written deprecation policy and a changed-since parameter (the 304
+  saves transfer but not calls; the daily sync could then read only the pages that moved).
+
+Answered on 19 October: no dates of configuration changes, days in Europe/Paris with instants in
+UTC, `refreshing` false between runs, deprecation and changed-since at the v1 freeze.
 
 Answered on 16 October: `null` for a variation whose previous period is not comparable and the
 rules written down, the list of `aiSurface` values and markets, conditional requests (304), no rate
@@ -944,7 +992,7 @@ In rough order of how likely they are to bite.
 
 | Risk | Shape | What reduces it |
 |---|---|---|
-| ~~The API contract never materializes~~ **Narrowed 15 Oct 2026: a young v1 with no deprecation policy** | The API is documented (OpenAPI 3.1) and versioned in its path since 15 Oct 2026. What remains is that it is days old, has no written deprecation policy or rate limits, and is shaped by one partner's roadmap | Keep the thin internal abstraction so a second GEO vendor is a driver swap. Code against `openapi.json`, not against observed responses. Get deprecation terms in writing before a customer depends on it |
+| ~~The API contract never materializes~~ **Narrowed 15 Oct 2026: a young v1 with no deprecation policy** | The API is documented (OpenAPI 3.1) and versioned in its path since 15 Oct 2026. What remains is that it is days old, has no written deprecation policy or rate limits, and is shaped by one partner's roadmap. **20 Oct 2026:** the first deprecation (the pages list) came by email, with the old route kept until we migrate; the policy is promised for the v1 freeze | Keep the thin internal abstraction so a second GEO vendor is a driver swap. Code against `openapi.json`, not against observed responses. Get deprecation terms in writing before a customer depends on it |
 | Vendor lock-in of the UI | If BotRank's vocabulary leaks into our node types and GraphQL schema, the panel becomes theirs, not ours | Model the domain in Jahia's terms (cited page, tracked question, engine) and keep their field names inside the driver |
 | Machine-extracted entities reach the contributor unfiltered | Their discovered "market actors" include generic phrases, parent companies and adjacent-category brands. Passing that straight through names nonsense competitors to the person least able to judge it | Curate before display: filter by relationship classification, apply a visibility floor, let a site manager hide an actor. Never present the raw discovered list as "your competitors" |
 | Scraped data is probabilistic | Browser-simulated sessions against consumer chat interfaces. Numbers move for reasons unrelated to our content, and a contributor gets blamed. **Eased 5 Oct 2026:** prompts run daily, so a trend is built from real daily points rather than inferred from weekly ones | Show trends, not single-day values. Never present a day-over-day change as the result of an edit. Daily data makes this rule easier to keep, not less necessary |
