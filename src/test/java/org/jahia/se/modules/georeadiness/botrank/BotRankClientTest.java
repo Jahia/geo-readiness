@@ -45,10 +45,10 @@ class BotRankClientTest {
         assertThat(pages.get(1).variation).isNull();
         assertThat(sent).hasSize(2);
         assertThat(sent.get(0).toString())
-                .startsWith("https://api.example/public/v1/ai-visibility/pages?")
-                .contains("domain=example.com", "host=example.com", "host=fr.example.com", "limit=100",
+                .startsWith("https://api.example/public/v1/ai-visibility/sites/example.com/pages?")
+                .contains("host=example.com", "host=fr.example.com", "limit=100",
                         "startDate=2026-09-16", "endDate=2026-10-15")
-                .doesNotContain("cursor=");
+                .doesNotContain("cursor=", "domain=");
         assertThat(sent.get(1).toString()).contains("cursor=c+1");
         assertThat(projectsSent).containsOnly("2188");
     }

@@ -126,15 +126,15 @@ class CitationSyncTest {
         return new CitationSync.Window(client, "p", START, END, 3);
     }
 
-    /** Like BotRank: one registrable domain per call, here the last two labels of the domain parameter. */
+    /** Like BotRank: one registrable domain per call, read from the path; a subdomain reads its domain. */
     private static BotRankClient twoDomains() {
         return new BotRankClient("https://api.example/v1", "brk_x", (uri, key, project) -> {
-            String q = uri.getRawQuery();
+            String path = uri.getPath();
             String pages = "[]";
-            if (q.contains("domain=a.com") || q.contains("domain=fr.a.com")) {
+            if (path.endsWith("/sites/a.com/pages") || path.endsWith("/sites/fr.a.com/pages")) {
                 pages = "[{\"url\":\"https://a.com/x\",\"rank\":1,\"citationCount\":9,\"citationCountVariation\":null},"
                         + "{\"url\":\"https://fr.a.com/y\",\"rank\":2,\"citationCount\":3,\"citationCountVariation\":1}]";
-            } else if (q.contains("domain=b.org")) {
+            } else if (path.endsWith("/sites/b.org/pages")) {
                 pages = "[{\"url\":\"https://b.org/z\",\"rank\":1,\"citationCount\":5,\"citationCountVariation\":2}]";
             }
             return new BotRankClient.Response(200, "{\"pages\":" + pages + ",\"nextCursor\":null}");
