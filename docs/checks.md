@@ -342,6 +342,17 @@ mapped by the person who defined them.
 `price`, `address`, `phone`, `email` mean the same thing across almost every content model, so a
 candidate list per schema property finds them with nothing configured.
 
+**Some values take several properties.** A model that follows schema.org field by field holds an
+address as `streetAddress`, `postalCode`, `addressLocality`, `addressRegion` and `addressCountry`,
+and a position as `latitude` and `longitude`, with no property called `address`. Those parts are
+read together into a `PostalAddress` (a street or a town is enough) and `GeoCoordinates` (both
+numbers). Opening hours stored as JSON (`dayOfWeek`, `opens`, `closes`, the store locator's shape)
+become an `openingHoursSpecification`; plain text such as `Mo-Fr 09:00-18:00` stays `openingHours`.
+
+**A suggestion, never a mapping.** From the properties a type declares, the panel suggests
+`LocalBusiness` (an address with a telephone, opening hours or a price range) or `Place` (an address
+or coordinates alone), with a button that puts it in the draft. Nothing changes until it is saved.
+
 **Gaps are output, not failure.** A required property with no source is named. Filling it from
 somewhere plausible - the page title, a sibling property, a default - is exactly how structured data
 ends up disagreeing with the page it describes.

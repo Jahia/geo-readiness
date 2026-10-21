@@ -699,6 +699,8 @@
           "incomplete": "Mapped, but a required property has no source",
           "unmapped": "Not mapped"
         },
+        "suggested": "From the properties it holds, {{type}} describes this model better.",
+        "useSuggested": "Use {{type}}",
         "figure": {
           "complete": "Complete JSON-LD",
           "incomplete": "Missing a source",
