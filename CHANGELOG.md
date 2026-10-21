@@ -1,5 +1,25 @@
 # geo-readiness Changelog
 
+## 1.5.0
+
+### New Features
+
+* The AI citations tab shows the AI engines behind each question, the change of each question and theme, and where competing pages stand against yours in the same answers.
+
+* Added AI citations from BotRank: each page shows how often AI answers cite it and for which questions.
+
+* Added AI citations to the GEO dashboard: how AI answers cite the whole site, its share and rank among cited sites, its most cited pages and the brand's visibility, from BotRank.
+
+* The GEO dashboard has one layout: every tab opens on its title and intro, then cards, with its key figures in large type and the same text sizes everywhere.
+
+### Bug Fixes
+
+* A page the server could not reach is no longer reported as crawlers refused by the site: the check says the server could not connect, names the error, and the score marks the fetch as failed instead.
+
+* The page drawer closes when you click outside it, in the page under edit, the content tree or another panel, as jContent's own panels do.
+
+* A sitemap, robots.txt or llms.txt that could not be fetched now says why (connection refused, timeout, certificate, unknown host) instead of reading as a missing file, and the page drawer shows the date of the site scan its sitemap facts come from.
+
 ## 1.4.1
 
 * Fixed the page drawer so it opens against the right edge instead of in the top-left corner.
