@@ -471,6 +471,8 @@
       "checkNow": "CHECK NOW",
       "checking": "CHECKING…",
       "lastCheck": "Last check: {{date}}",
+      "figureEntries": "In the sitemap",
+      "figurePublished": "Published",
       "neverTitle": "Not checked yet",
       "never": "Run a check, or wait for the next scheduled site scan, which refreshes this too.",
       "limits": "Entries are matched to content, not fetched, so a redirect is not detected: an entry that redirects elsewhere counts as resolving. Every language of the site is compared, and each finding names the URL it belongs to.",
@@ -511,7 +513,11 @@
       "orphanTitle": "Nothing links to this page",
       "orphanPage": "No other published page links here and the sitemap does not list it, so a crawler has no way to discover it at all.",
       "navOnlyTitle": "Only the menu links to this page",
-      "navOnlyPage": "It appears in navigation on {{count}} pages, but no page links to it from its content. Crawlers that weight links treat a menu entry as a weaker signal than a link an author chose to make."
+      "navOnlyPage": "It appears in navigation on {{count}} pages, but no page links to it from its content. Crawlers that weight links treat a menu entry as a weaker signal than a link an author chose to make.",
+      "figure": {
+        "orphans": "Orphan pages",
+        "weak": "Weakly linked"
+      }
     },
     "vanity": {
       "title": "One page, several addresses",
@@ -553,6 +559,11 @@
         "elsewhere": "The canonical names {{detail}}, which is neither this page's own address nor any of its vanity URLs. Everything this page earns is being credited elsewhere.",
         "canonicalTitle": "This page's canonical needs checking",
         "canonical": "The canonical tag does not name this page's own address or any of its aliases."
+      },
+      "figure": {
+        "unresolvable": "Unserved language",
+        "duplicates": "Duplicate addresses",
+        "canonical": "No canonical"
       }
     },
     "freshness": {
@@ -599,7 +610,11 @@
       "allTitle": "Every page, oldest first",
       "allHelp": "The whole list, so the groups above tell you where to look and this tells you which page. Each row opens in jContent.",
       "noDate": "no date",
-      "truncated": "Long lists are cut at {{count}} rows; the groups above still count everything."
+      "truncated": "Long lists are cut at {{count}} rows; the groups above still count everything.",
+      "figure": {
+        "dated": "Dated items",
+        "undated": "No modification date"
+      }
     },
     "languages": {
       "title": "Readiness one language at a time",
@@ -623,6 +638,13 @@
       "series": {
         "coverage": "Translated coverage",
         "score": "Readiness score"
+      },
+      "figure": {
+        "published": "Published items",
+        "declared": "Languages",
+        "unmeasured": "Not measured",
+        "spread": "Spread between languages",
+        "points": "{{points}} pts"
       }
     },
     "schema": {
@@ -661,6 +683,11 @@
         "legend": {
           "complete": "Can emit complete JSON-LD",
           "incomplete": "Mapped, but a required property has no source",
+          "unmapped": "Not mapped"
+        },
+        "figure": {
+          "complete": "Complete JSON-LD",
+          "incomplete": "Missing a source",
           "unmapped": "Not mapped"
         }
       },
@@ -960,6 +987,7 @@
       "hostsNote": "Computed here from the cited pages of each host, since BotRank only filters its list of pages by host. The share is estimated from the domain's own figures.",
       "byEngine": "Brand visibility per engine",
       "byMarket": "Brand visibility per market",
+      "oneMarket": "One market tracked: {{market}}, with the project's score of {{score}}.",
       "engines": "Engines tracked by the project",
       "enginesIntro": "How often BotRank asks each engine again. New figures appear after the next refresh and the next daily sync.",
       "intervalNone": "Not refreshed automatically",

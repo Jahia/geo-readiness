@@ -1,9 +1,9 @@
 /*
- * Screen B. Moonstone colours where a token exists (the same set Charts.module.css validated);
- * text greys are the module's own AAA values (#44505a 8.26:1, #24343f, #131c21 on white). The
- * accent dark (#0072b1, 5.19:1) is used for large figures and marks only, never for small text.
+ * What only the AI citations panel draws: the rank badge beside the key figures, takeaways,
+ * the leaderboard, the pages list and the engines. Card, header, figures, ring, notes and the type
+ * scale come from dashboard/Layout.module.css; colours are the same values.
  */
-.panel {
+.hero, .board, .pages, .tips, .engineList, .table, .stats, .visibility, .domainLine {
     --sc-accent: var(--moon-color-accent_dark, #0072b1);
     --sc-accent-ink: #004d70;
     --sc-accent-bg: #e8f3fa;
@@ -17,53 +17,6 @@
     --sc-warn: #654700;
     --sc-warn-bg: #fbefd9;
     --sc-bar: #6b7884;
-
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
-    padding-bottom: 1rem;
-}
-
-/* ---- header and the line of dates ------------------------------------------------------ */
-.header { display: flex; flex-direction: column; gap: 6px; }
-.headerIntro { margin: 0; max-width: 72ch; font-size: 13.5px; line-height: 1.6; color: var(--sc-ink3); }
-
-.meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: -12px 0 0;
-    padding: 0;
-    list-style: none;
-}
-.meta li {
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--sc-soft);
-    border: 1px solid var(--sc-line);
-    font-size: 12px;
-    color: var(--sc-ink3);
-}
-.meta .metaRunning { background: var(--sc-warn-bg); color: var(--sc-warn); border-color: transparent; }
-
-.block { display: flex; flex-direction: column; gap: 20px; }
-
-/* ---- cards ----------------------------------------------------------------------------- */
-.card {
-    padding: 20px 22px;
-    border: 1px solid var(--sc-line);
-    border-radius: 10px;
-    background: #fff;
-    box-shadow: 0 1px 2px rgba(19, 28, 33, 0.04);
-    min-width: 0;
-}
-.cardTitle { display: block; margin: 0 0 4px; }
-.cardIntro { margin: 0 0 16px; font-size: 12.5px; line-height: 1.55; color: var(--sc-ink3); max-width: 70ch; }
-
-.twoCols {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
 }
 
 /* ---- overview: the domain line, the hero ------------------------------------------------ */
@@ -73,7 +26,7 @@
 
 .hero {
     display: grid;
-    grid-template-columns: minmax(180px, 220px) 1fr;
+    grid-template-columns: minmax(160px, 200px) minmax(0, 1fr);
     gap: 20px;
 }
 @media (max-width: 760px) {
@@ -110,40 +63,9 @@
 }
 .rankOf { font-size: 12.5px; line-height: 1.4; color: var(--sc-ink2); max-width: 20ch; }
 
-.kpis {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-}
-.kpi {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    padding: 18px 18px 16px;
-    border: 1px solid var(--sc-line);
-    border-radius: 10px;
-    background: #fff;
-    overflow: hidden;
-}
-.kpi::before {
-    content: "";
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: 4px;
-    background: var(--sc-line);
-}
-.kpiAccent::before { background: var(--sc-accent); }
-.kpiLabel { font-size: 11.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--sc-ink3); }
-.kpiValue { font-size: 32px; font-weight: 700; line-height: 1.1; color: var(--sc-ink); font-variant-numeric: tabular-nums; }
-.kpiAccent .kpiValue { color: var(--sc-accent-ink); }
-.kpiSub { font-size: 12px; color: var(--sc-ink3); }
-
-.spark { display: block; overflow: visible; }
+.spark { display: block; width: 100%; height: 36px; overflow: visible; }
 .sparkArea { fill: var(--sc-accent-bg); stroke: none; }
 .sparkLine { fill: none; stroke: var(--sc-accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.sparkDot { fill: var(--sc-accent); stroke: #fff; stroke-width: 1.5; }
 
 /* ---- takeaways -------------------------------------------------------------------------- */
 .tips { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
@@ -174,27 +96,6 @@
 .tip_muted { color: var(--sc-ink3) !important; }
 
 /* ---- visibility ring --------------------------------------------------------------------- */
-.visibility { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-.visibilityText { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; flex: 1 1 180px; }
-.visibilityText p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--sc-ink2); }
-.ring { position: relative; width: 132px; height: 132px; flex: none; }
-.ringTrack { fill: none; stroke: #e6eaee; stroke-width: 12; }
-.ringValue { fill: none; stroke: var(--sc-accent); stroke-width: 12; stroke-linecap: round; }
-.ringText {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--sc-accent-ink);
-    font-variant-numeric: tabular-nums;
-}
-
-.muted { color: var(--sc-ink3) !important; font-size: 12.5px !important; }
-.footnote { margin: 0; font-size: 12px; line-height: 1.55; color: var(--sc-ink3); max-width: 80ch; }
-.source { margin: 4px 0 0; padding-top: 14px; border-top: 1px solid var(--sc-line); font-size: 12px; color: var(--sc-ink3); }
 
 /* ---- ranking leaderboard ---------------------------------------------------------------- */
 .board { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
@@ -245,19 +146,10 @@
 
 .stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
-.stats > div {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    background: var(--sc-soft);
-}
-.stats strong { font-size: 18px; color: var(--sc-ink); font-variant-numeric: tabular-nums; }
 
 /* ---- pages ------------------------------------------------------------------------------ */
 .pages { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
@@ -335,3 +227,8 @@
 }
 .engineEvery { background: var(--sc-good-bg); color: var(--sc-good); }
 .engineManual { background: var(--sc-warn-bg); color: var(--sc-warn); }
+
+.rankLabel { font-size: 11.5px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--sc-ink3); }
+.visibility { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.visibilityText { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; flex: 1 1 180px; }
+.visibilityText p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--sc-ink2); }
