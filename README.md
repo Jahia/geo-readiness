@@ -295,6 +295,14 @@ baseUrl =
 
 ## Known gaps
 
+- **A Jahia Cloud node cannot fetch its own public URL.** Seen on 15 October 2026: the public URL
+  answers from outside, while the node gets `ConnectException: Connection refused` on it, so the
+  sitemap, `robots.txt`, `llms.txt` and the crawler fetches all fail there. The checks now say which
+  error stopped the fetch instead of reporting a missing file. `PUBLIC_BASE_URL=http://localhost:8080`
+  reaches Tomcat directly, but only the instance's default site answers there, and the checks then
+  skip the proxy a real crawler goes through; the fix belongs to the platform.
+- **The drawer's sitemap facts come from the last site scan**, never from a fetch of its own; each
+  of them carries the date of that scan.
 - **The site scan is capped at 2000 pages per run** and is synchronous when triggered by the
   button. A larger site needs the schedule.
 - **One language per scheduled run.** A multilingual site needs one schedule per language.

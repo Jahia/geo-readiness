@@ -37,9 +37,13 @@ none of these, or several.
 | This page is set to noindex | The page itself asks search engines and crawlers to ignore it. |
 | This page is not in the sitemap | Nothing tells crawlers the page exists. They can only find it by following a link. |
 | In the sitemap **and** marked noindex | Your own two files contradict each other: one advertises the page, the other says to ignore it. Pick one. |
+| The last site scan could not reach the sitemap | The scan could not fetch the sitemap, so whether this page is in it is unknown. It names the error; it is a connection problem, not a finding about the page. |
 | Does not exist in every language | The page is missing in one or more of the site's languages. |
 | A translation is not published | The translation was written but never published, so nobody can read it. |
 | Address or sitemap date warnings | The page answers on several addresses, or the sitemap's "last changed" date disagrees with the real one. |
+
+The sitemap banners are read from the last site scan, never fetched by the drawer, and each says
+the date of that scan: run a new scan from the dashboard when the sitemap changed since.
 
 A tab showing an amber number has that many problems inside it. A tab with no number has nothing
 that needs you.
@@ -123,6 +127,10 @@ crawlers it *names* and how many it turns away, then a table with one row per cr
 | Declared | *by name* - the file mentions this crawler specifically. *by wildcard* - it is only covered by the catch-all rule. |
 | Effective | *allowed* or *disallowed*: what the file actually permits for this crawler. |
 | Rule | The exact line that decided it, so you can see why. |
+
+When the server could not fetch a file at all, the tab says so and names the error (connection
+refused, timeout, certificate, unknown host) rather than reporting the file as missing: a missing
+`robots.txt` would mean every crawler is allowed, which nobody checked.
 
 **llms.txt.** A newer, simpler file: a plain summary of the site for AI tools. If it exists you see
 its heading, whether it has a summary, and how many sections and links it contains. If the server
