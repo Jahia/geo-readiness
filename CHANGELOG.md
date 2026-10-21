@@ -22,8 +22,6 @@
 
 * Structured data now reads an address split into its schema.org fields, coordinates and opening hours, and suggests LocalBusiness or Place from the properties a content type holds.
 
-* Fixed the dashboard's links to pages in jContent on a Jahia served under a context path: they now open the page instead of an address outside Jahia.
-
 ## 1.4.1
 
 * Fixed the page drawer so it opens against the right edge instead of in the top-left corner.
