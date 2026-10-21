@@ -20,6 +20,8 @@
 
 * A sitemap, robots.txt or llms.txt that could not be fetched now says why (connection refused, timeout, certificate, unknown host) instead of reading as a missing file, and the page drawer shows the date of the site scan its sitemap facts come from.
 
+* Structured data now reads an address split into its schema.org fields, coordinates and opening hours, and suggests LocalBusiness or Place from the properties a content type holds.
+
 ## 1.4.1
 
 * Fixed the page drawer so it opens against the right edge instead of in the top-left corner.
