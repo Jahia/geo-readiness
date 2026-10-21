@@ -32,7 +32,8 @@ import java.util.regex.Pattern;
  *       list tells "never cited" from "not recently" without any call from the drawer);</li>
  *   <li>each cited URL resolved to a page ({@link PageResolver}); several URLs of one page add up;</li>
  *   <li>for each page cited in the last 30 days: total and engines, the 60-day history (the current
- *       window plus the previous one), prompts, tags and co-cited pages.</li>
+ *       window plus the previous one), prompts, tags and co-cited pages;</li>
+ *   <li>the site's own figures for the dashboard ({@link SiteCitations}), which never fail the run.</li>
  * </ol>
  *
  * <p><b>Variation guard.</b> BotRank computes a variation against the previous period even when no
@@ -171,8 +172,11 @@ public final class CitationSync {
                 pages.add(entry);
             }
         }
-        String note = note(window.failures, skipped);
-        CitationStore.finish(sitePath, pages, unresolved, fresh.latestCountedAnswerAt, note);
+        CitationStore.heartbeat(sitePath);
+        JSONObject site = SiteCitations.read(new SiteCitations.Reads(client, settings.project, start, today), hosts,
+                recent, resolver::resolve);
+        String note = note(window.failures, skipped, site.optInt("failures"));
+        CitationStore.finish(sitePath, pages, unresolved, fresh.latestCountedAnswerAt, note, site);
         logger.info("BotRank sync of {}: {} cited page(s), {} unmatched URL(s)", sitePath, pages.size(), unresolved.length());
         return new Result(Outcome.DONE, note);
     }
@@ -249,8 +253,11 @@ public final class CitationSync {
         return skipped;
     }
 
-    private static String note(int failures, int skipped) {
+    private static String note(int failures, int skipped, int siteFailures) {
         List<String> notes = new ArrayList<>();
+        if (siteFailures > 0) {
+            notes.add(siteFailures + " site-level read(s) failed: the dashboard shows what BotRank answered");
+        }
         if (failures > 0) {
             notes.add(failures + " page(s) kept their totals only: BotRank did not answer for their details");
         }

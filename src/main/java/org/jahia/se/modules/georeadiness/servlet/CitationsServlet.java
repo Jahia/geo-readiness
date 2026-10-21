@@ -7,6 +7,7 @@ import org.jahia.se.modules.georeadiness.botrank.CitationScheduler;
 import org.jahia.se.modules.georeadiness.botrank.CitationStore;
 import org.jahia.se.modules.georeadiness.botrank.CitationsAccess;
 import org.jahia.se.modules.georeadiness.botrank.CitedUrls;
+import org.jahia.se.modules.georeadiness.util.SiteScope;
 import org.jahia.services.content.JCRNodeWrapper;
 import org.jahia.services.content.JCRSessionFactory;
 import org.jahia.services.usermanager.JahiaUser;
@@ -41,6 +42,9 @@ import java.util.regex.Pattern;
  *   <tr><th>Route</th><th>Who</th><th>Does</th></tr>
  *   <tr><td>{@code GET ?path&language}</td><td>a user who can read the page</td>
  *       <td>the stored figures of that page and the freshness of the data; never calls BotRank</td></tr>
+ *   <tr><td>{@code GET ?scope=site&path&language}</td><td>{@code publish} on the site, as the GEO dashboard</td>
+ *       <td>the site's stored figures (screen B); a top page the caller cannot read loses its path and
+ *       title; never calls BotRank</td></tr>
  *   <tr><td>{@code POST {action, path, language, ...}}</td>
  *       <td>{@value CitationsAccess#SETTINGS_PERMISSION} on the site</td>
  *       <td>{@code status}, {@code projects}, {@code save}, {@code syncNow}, {@code map}, {@code unmap}</td></tr>
@@ -72,6 +76,14 @@ public class CitationsServlet extends GeoServlet {
     /** One DNS label; a host is checked label by label, so no pattern repeats a group. */
     private static final Pattern HOST_LABEL = Pattern.compile("[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?");
     private static final String STATUS = "status";
+    private static final String CITED_PAGES = "citedPages";
+    private static final String LANGUAGE = "language";
+    private static final String JCR_PATH = "jcrPath";
+    private static final String OPERATION_FAILED = "operation failed";
+    private static final String SYNCED_AT = "syncedAt";
+    private static final String LATEST_ANSWER_AT = "latestAnswerAt";
+    private static final String CONFIGURED = "configured";
+    private static final String HOSTS = "hosts";
     private static final Pattern TIME = Pattern.compile("([01]\\d|2[0-3]):[0-5]\\d");
 
     private final transient BotRankConnections connections;
@@ -84,7 +96,11 @@ public class CitationsServlet extends GeoServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
         try {
-            read(req, resp);
+            if ("site".equals(req.getParameter("scope"))) {
+                readSite(req, resp);
+            } else {
+                read(req, resp);
+            }
         } catch (IOException | RuntimeException e) {
             // Nothing may leave a servlet method: the container would answer with a stack trace.
             logger.debug("could not write the citations read", e);
@@ -106,7 +122,7 @@ public class CitationsServlet extends GeoServlet {
                 return;
             }
             String path = req.getParameter("path");
-            String language = req.getParameter("language");
+            String language = req.getParameter(LANGUAGE);
             if (!isWellFormed(path, language, resp)) {
                 return;
             }
@@ -124,23 +140,84 @@ public class CitationsServlet extends GeoServlet {
             JSONObject out = new JSONObject();
             out.put("canConfigure", site.mayChangeSettings);
             if (!settings.isComplete() || !settings.enabled) {
-                out.put("configured", false);
+                out.put(CONFIGURED, false);
                 writeJson(resp, HttpServletResponse.SC_OK, out);
                 return;
             }
             JSONObject status = CitationStore.status(site.path);
-            out.put("configured", true);
+            out.put(CONFIGURED, true);
             out.put(STATUS, status.get(STATUS));
-            out.put("syncedAt", status.get("syncedAt"));
-            out.put("latestAnswerAt", status.get("latestAnswerAt"));
-            out.put("citedPages", status.get("citedPages"));
+            out.put(SYNCED_AT, status.get(SYNCED_AT));
+            out.put(LATEST_ANSWER_AT, status.get(LATEST_ANSWER_AT));
+            out.put(CITED_PAGES, status.get(CITED_PAGES));
             out.put("published", isPublished(path, language));
             JSONObject page = CitationStore.page(site.path, path, language);
             out.put("page", page == null ? JSONObject.NULL : page);
             writeJson(resp, HttpServletResponse.SC_OK, out);
         } catch (RepositoryException | RuntimeException e) {
             logger.warn("citations read failed: {}", e.toString());
-            deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "operation failed");
+            deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, OPERATION_FAILED);
+        }
+    }
+
+    /** Screen B: the site's figures from the last sync, for a caller who may open the GEO dashboard. */
+    private void readSite(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        try {
+            String sitePath = requireDashboard(req, resp);
+            if (sitePath == null) {
+                return;
+            }
+            String language = req.getParameter(LANGUAGE);
+            CitationsAccess.Site site = site(sitePath, language, resp);
+            if (site == null) {
+                return;
+            }
+            CitationStore.Settings settings = CitationStore.settings(site.path);
+            JSONObject out = new JSONObject();
+            out.put("canConfigure", site.mayChangeSettings);
+            if (!settings.isComplete() || !settings.enabled) {
+                out.put(CONFIGURED, false);
+                writeJson(resp, HttpServletResponse.SC_OK, out);
+                return;
+            }
+            JSONObject status = CitationStore.status(site.path);
+            out.put(CONFIGURED, true);
+            out.put(STATUS, status.get(STATUS));
+            out.put(SYNCED_AT, status.get(SYNCED_AT));
+            out.put(LATEST_ANSWER_AT, status.get(LATEST_ANSWER_AT));
+            out.put(CITED_PAGES, status.get(CITED_PAGES));
+            out.put("unresolved", status.getJSONArray("unresolved").length());
+            out.put(HOSTS, new JSONArray(settings.hosts));
+            JSONObject summary = CitationStore.site(site.path);
+            if (summary != null) {
+                readableTopPages(summary.optJSONArray("topPages"), language);
+            }
+            out.put("site", summary == null ? JSONObject.NULL : summary);
+            writeJson(resp, HttpServletResponse.SC_OK, out);
+        } catch (RepositoryException | RuntimeException e) {
+            logger.warn("citations site read failed: {}", e.toString());
+            deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, OPERATION_FAILED);
+        }
+    }
+
+    /**
+     * Adds the title of each top page the caller can read, and removes the path of the others: the sync
+     * resolved them with a system session, the dashboard shows them to one user.
+     */
+    private static void readableTopPages(JSONArray pages, String language) {
+        for (int i = 0; pages != null && i < pages.length(); i++) {
+            JSONObject p = pages.optJSONObject(i);
+            if (p == null || !p.has(JCR_PATH)) {
+                continue;
+            }
+            String pageLanguage = p.optString(LANGUAGE, language);
+            JCRNodeWrapper node = SiteScope.isLanguage(pageLanguage) ? resolvePage(p.optString(JCR_PATH), pageLanguage) : null;
+            if (node == null) {
+                p.remove(JCR_PATH);
+                p.remove(LANGUAGE);
+            } else {
+                p.put("title", node.getDisplayableName());
+            }
         }
     }
 
@@ -155,7 +232,7 @@ public class CitationsServlet extends GeoServlet {
                 return;
             }
             String path = body.optString("path", "");
-            String language = body.optString("language", "en");
+            String language = body.optString(LANGUAGE, "en");
             if (!isWellFormed(path, language, resp)) {
                 return;
             }
@@ -192,7 +269,7 @@ public class CitationsServlet extends GeoServlet {
             }
         } catch (RepositoryException | RuntimeException e) {
             logger.warn("citations settings failed: {}", e.toString());
-            deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "operation failed");
+            deny(resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, OPERATION_FAILED);
         }
     }
 
@@ -224,7 +301,7 @@ public class CitationsServlet extends GeoServlet {
         out.put("serverNames", new JSONArray(site.serverNames));
         Date next = CitationScheduler.nextRun(site.path);
         out.put("nextRun", next == null ? JSONObject.NULL : next.toInstant().toString());
-        out.put("limits", new JSONObject().put("hosts", CitationStore.MAX_HOSTS).put("mappings", CitationStore.MAX_MAPPINGS));
+        out.put("limits", new JSONObject().put(HOSTS, CitationStore.MAX_HOSTS).put("mappings", CitationStore.MAX_MAPPINGS));
         return out;
     }
 
@@ -262,7 +339,7 @@ public class CitationsServlet extends GeoServlet {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "invalid project");
             return;
         }
-        List<String> hosts = hosts(body.optJSONArray("hosts"));
+        List<String> hosts = hosts(body.optJSONArray(HOSTS));
         if (hosts == null) {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "invalid host");
             return;

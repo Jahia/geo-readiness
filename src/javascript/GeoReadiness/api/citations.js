@@ -38,3 +38,18 @@ export async function citationSettings(action, payload) {
 
     return body;
 }
+
+/** Screen B: what the last sync stored for the whole site. Never calls BotRank. */
+export async function fetchSiteCitations({path, language}) {
+    const q = new URLSearchParams({scope: 'site', path, language});
+    const res = await fetch(`${endpoint()}?${q}`, {
+        credentials: 'same-origin',
+        headers: {'X-Requested-With': 'XMLHttpRequest'}
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+        throw fail(res, body);
+    }
+
+    return body;
+}

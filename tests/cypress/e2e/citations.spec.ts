@@ -1,6 +1,6 @@
 /**
- * BotRank citations (GEO-4): the settings routes, the daily sync against a stand-in BotRank, and
- * the drawer tab.
+ * BotRank citations (GEO-4 and screen B): the settings routes, the daily sync against a stand-in
+ * BotRank, the drawer tab and the site figures of the GEO dashboard.
  *
  * The stand-in is test-fixtures/botrank-stub.js, a service of the test stack reachable from Jahia at
  * BOTRANK_STUB_URL (default http://botrank-stub:9091/public/v1). Locally, run it on the host with
@@ -10,13 +10,13 @@
  * Security model asserted in both directions: the settings routes spend the customer's organisation
  * key, so `site-admin` on the site is their only gate (the publisher fixture holds it through
  * site-administrator, the contributor through editor does not); the drawer read needs only to read
- * the page. Every absence asserted below is preceded by a liveness check on the same answer.
+ * the page; the site figures need `publish`, as the dashboard that shows them. Every absence asserted below is preceded by a liveness check on the same answer.
  */
 
 import {asGuest, asRoot, asUser} from '../support/auth';
 import {ENDPOINTS, expectJsonOk, expectRefusal, geoGet, geoPost} from '../support/geo';
 import {configureModuleForTests, geoFixture, setupGeoFixture, teardownGeoFixture} from '../support/fixtures';
-import {GEO_ACTION_SELECTOR, openJContentPages, selectTab} from '../support/ui';
+import {GEO_ACTION_SELECTOR, openGeoDashboard, openJContentPages, selectTab} from '../support/ui';
 
 const STUB = Cypress.env('BOTRANK_STUB_URL') || 'http://botrank-stub:9091/public/v1';
 const OFFER = 'https://stub-site.example/legacy/offer';
@@ -108,6 +108,17 @@ describe('geo-readiness - BotRank citations', () => {
                 expectRefusal(r, 403, 'site administration required', 'binding the key is for site administrators'));
             geoPost(ENDPOINTS.citations, {action: 'projects', path: fixture.sitePath, language: 'en', connection: 'cypress'}).then(r =>
                 expectRefusal(r, 403, 'site administration required', 'listing projects spends the key'));
+        });
+
+        it('refuses the site figures to a guest and to a contributor, who cannot open the dashboard', () => {
+            asGuest();
+            geoGet(ENDPOINTS.citations, {scope: 'site', path: fixture.sitePath, language: 'en'}).then(r =>
+                expectRefusal(r, 401, 'authentication required', 'a guest reads no site figures'));
+            asUser(fixture.contributor);
+            geoGet(ENDPOINTS.citations, {path: fixture.homePath, language: 'en'}).then(r =>
+                expectJsonOk(r, 'liveness: the same contributor reads the drawer'));
+            geoGet(ENDPOINTS.citations, {scope: 'site', path: fixture.sitePath, language: 'en'}).then(r =>
+                expectRefusal(r, 403, 'cannot read node', 'the site figures need publish, as the dashboard'));
         });
 
         it('lets a site administrator see the connection, never its key', () => {
@@ -229,6 +240,45 @@ describe('geo-readiness - BotRank citations', () => {
                 expect(r.body.syncedAt, 'liveness: a sync happened').to.be.a('string');
                 expect(r.body.page, 'never cited').to.eq(null);
             });
+        });
+
+        it('stores the site figures of the sync for the dashboard', () => {
+            asUser(fixture.publisher);
+            geoGet(ENDPOINTS.citations, {scope: 'site', path: fixture.sitePath, language: 'en'}).then(r => {
+                expectJsonOk(r, 'a publisher reads the site figures');
+                expect(r.body.configured, 'liveness: the site is connected').to.eq(true);
+                const site = r.body.site;
+                expect(site.failures, 'every site read answered').to.eq(0);
+                const domain = site.domains[0];
+                expect(domain.domain, 'the domain BotRank named').to.eq('stub-site.example');
+                expect(domain.citations).to.eq(12);
+                expect(domain.share).to.eq(0.04);
+                expect(domain.ranking.find((x: {requested: boolean}) => x.requested).rank).to.eq(2);
+                expect(domain.shareHistory[2].share, 'a day with no cited source stays null').to.eq(null);
+                expect(site.hosts[0].citations, 'per host, from the cited pages').to.eq(12);
+                expect(site.topPages[0].url).to.eq(OFFER);
+                expect(site.topPages[0].jcrPath, 'the mapped page, readable by the caller').to.eq(fixture.homePath);
+                expect(site.topPages[0].title, 'its title for the caller').to.be.a('string');
+                expect(site.engines.map((e: {refreshInterval: string}) => e.refreshInterval)).to.deep.eq(['P1D', 'P7D']);
+                expect(site.visibility.score).to.eq(0.5);
+            });
+        });
+
+        it('shows the site figures on the GEO dashboard', () => {
+            cy.login(fixture.publisher.username, fixture.publisher.password);
+            openGeoDashboard(fixture.siteKey);
+            selectTab('AI citations');
+            // Overview, the first sub-tab: the rank as a badge and the domain BotRank counted.
+            cy.contains('AI citations at a glance', {timeout: 30000}).should('be.visible');
+            cy.contains('#2').scrollIntoView().should('be.visible');
+            cy.contains('stub-site.example').scrollIntoView().should('be.visible');
+            selectTab('Ranking');
+            cy.contains('li', 'competitor.example').scrollIntoView().should('be.visible');
+            cy.contains('This site').scrollIntoView().should('be.visible');
+            selectTab('Pages');
+            cy.contains(OFFER).scrollIntoView().should('be.visible');
+            selectTab('Engines');
+            cy.contains('li', 'Perplexity').scrollIntoView().should('contain.text', 'Every 7 days');
         });
 
         it('shows the citations tab before any crawler check, and prompt text as text', () => {
