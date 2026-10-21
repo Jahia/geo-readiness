@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useCallback, useRef, useState} from 'react';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import {useSelector} from 'react-redux';
@@ -7,6 +7,21 @@ import {GeoReadinessDrawer} from './GeoReadinessDrawer';
 
 export const GeoReadinessAction = ({path, language, render: Render, ...rest}) => {
     const [isOpen, setIsOpen] = useState(false);
+    // A press on this button while the drawer is open is also a press outside it, which closes the
+    // drawer before the button's click arrives. Without this, the click would reopen it at once.
+    const closedOutsideAt = useRef(0);
+    const close = useCallback(reason => {
+        if (reason === 'outside') {
+            closedOutsideAt.current = Date.now();
+        }
+        setIsOpen(false);
+    }, []);
+    const toggle = useCallback(() => {
+        if (Date.now() - closedOutsideAt.current < 500) {
+            return;
+        }
+        setIsOpen(o => !o);
+    }, []);
     const reduxLanguage = useSelector(state => state.language);
     const jcontentPath = useSelector(state => (state.jcontent && state.jcontent.path) || null);
 
@@ -27,13 +42,13 @@ export const GeoReadinessAction = ({path, language, render: Render, ...rest}) =>
 
     return (
         <>
-            <Render {...rest} onClick={() => setIsOpen(o => !o)}/>
+            <Render {...rest} onClick={toggle}/>
             {ReactDOM.createPortal(
                 <GeoReadinessDrawer
                     isOpen={isOpen}
                     path={pagePath}
                     language={lang}
-                    onClose={() => setIsOpen(false)}
+                    onClose={close}
                 />,
                 document.body
             )}

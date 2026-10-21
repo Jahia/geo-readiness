@@ -1,9 +1,10 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Button, Chip, Dropdown, Loader, Separator, Typography} from '@jahia/moonstone';
+import {Banner, Button, Chip, Dropdown, Loader, Typography} from '@jahia/moonstone';
 import {checkSchema, saveSchemaMap} from '../api/siteScore';
 import {StackedBar} from '../charts/Charts';
+import {Actions, Card, Figure, Figures, Note, Panel, PanelHeader} from '../dashboard/Layout';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -69,13 +70,8 @@ export const SchemaPanel = ({path, language}) => {
     ];
 
     return (
-        <div>
-            <Typography variant="subheading" component="h2" className={styles.panelTitle}>
-                {t('schema.panel.title')}
-            </Typography>
-            <Typography variant="caption" className={styles.panelIntro}>
-                {t('schema.panel.intro')}
-            </Typography>
+        <Panel>
+            <PanelHeader title={t('schema.panel.title')} intro={t('schema.panel.intro')}/>
 
             {failed && (
                 <Banner variant="danger" title={t('schema.panel.errorTitle')}>
@@ -84,15 +80,27 @@ export const SchemaPanel = ({path, language}) => {
             )}
 
             {data && (
-                <>
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="caption" className={styles.panelIntro}>
-                        {t('schema.panel.counts', {
-                            mapped: data.mappedItems,
-                            complete: data.completeItems,
-                            total: data.total
-                        })}
-                    </Typography>
+                <Card>
+                    {/*
+                      * The three parts of the bar below as figures: what can emit, what is
+                      * mapped but thin, what is not mapped.
+                      */}
+                    <Figures>
+                        <Figure
+                            label={t('schema.panel.figure.complete')}
+                            value={data.completeItems}
+                            tone="accent"
+                        />
+                        <Figure
+                            label={t('schema.panel.figure.incomplete')}
+                            value={data.mappedItems - data.completeItems}
+                            tone={data.mappedItems - data.completeItems > 0 ? 'warn' : 'good'}
+                        />
+                        <Figure
+                            label={t('schema.panel.figure.unmapped')}
+                            value={data.total - data.mappedItems}
+                        />
+                    </Figures>
 
                     {/* Part-to-whole in one bar: what can emit, what is mapped but thin, what is not mapped. */}
                     <StackedBar
@@ -164,7 +172,7 @@ export const SchemaPanel = ({path, language}) => {
                         })}
                     </ul>
 
-                    <div className={styles.actions}>
+                    <Actions>
                         <Button
                             size="big"
                             color="accent"
@@ -175,12 +183,12 @@ export const SchemaPanel = ({path, language}) => {
                         {saved && !dirty && (
                             <Typography variant="caption">{t('schema.panel.saved')}</Typography>
                         )}
-                    </div>
+                    </Actions>
 
-                    <p className={styles.explain}>{t('schema.panel.limits')}</p>
-                </>
+                    <Note>{t('schema.panel.limits')}</Note>
+                </Card>
             )}
-        </div>
+        </Panel>
     );
 };
 

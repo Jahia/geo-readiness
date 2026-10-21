@@ -166,6 +166,11 @@ the same one rather than trusting the screen to hide itself. An editor without i
 and no robots.txt or llms.txt editor. The page drawer asks less: it opens for anyone who can read
 that page in the editing workspace, which is anyone who can select it in jContent.
 
+The **AI citations (BotRank)** entry of Site Settings requires **site-admin** on the site, on the
+route and on every call behind it: binding a site to a BotRank connection spends the customer's
+organisation key, which the server adds to every call. The drawer's AI citations tab only needs a
+read of the page; the dashboard's AI citations tab needs **publish**, like the rest of the dashboard.
+
 A scan's optional scope has to name a node inside the site it was started from, and it is resolved
 before it is compared, so a relative path cannot leave the site it came from.
 
@@ -194,6 +199,11 @@ written is exactly the text on screen, so hand edits made before applying surviv
 
 Requires Java 17 and Maven 3.6+. Node 22 and Yarn are downloaded by the build itself, so nothing
 else needs installing. `yarn.lock` is committed and must stay committed.
+
+**jContent 3.7 or later.** On jContent 3.5.0 (a Jahia Cloud instance, 15 October 2026) the site
+dashboard under Additional > SEO > GEO readiness rendered an empty panel, while the page drawer
+worked; after an upgrade to 3.7.1 the dashboard showed again. The cause was not isolated, so
+`jahia-depends` does not pin a jContent version yet: check it before deploying.
 
 The module declares `jcontent`, `robots` and `llms` as module dependencies: jcontent hosts the UI,
 and the other two own the node types the site-files editor writes. Jahia holds the module back
@@ -249,6 +259,40 @@ On a box serving several it is the *default* site, so the check reports another 
 robots.txt as if they were yours — quietly, because the fetch succeeds. `PUBLIC_BASE_URL` is how you
 say which, and on a multi-site box it is required rather than optional.
 
+### BotRank connections
+
+AI citations come from [BotRank](https://www.botrank.ai/)'s public API v1. Each BotRank organisation
+this Jahia may read is one file, `digital-factory-data/karaf/etc/org.jahia.se.modules.georeadiness.botrank-<id>.cfg`,
+created by a server administrator; `<id>` is what site administrators pick in Site Settings. No file
+ships with the module, because a file is a credential.
+
+```properties
+# BotRank organisation of the customer
+label = Acme (BotRank)
+apiKey = brk_...
+# Optional: the site keys allowed to use this connection. Blank allows every site.
+sites = acme-fr,acme-com
+# Optional: the API base, https://api.botrank.ai/public/v1 by default.
+baseUrl =
+```
+
+- The key is created by an owner of the BotRank organisation, under Organisation, Integrations, API
+  keys. It is never logged and never sent to the browser; a connection without one is listed with
+  its problem and never used.
+- A site restricted out of a connection does not see it and cannot use it, with no fallback.
+- The daily sync runs at the time saved for the site (06:30 Paris time by default), on the
+  processing server only, and waits while BotRank is still collecting answers, until 10:30 at the
+  latest. It reads the cited pages of the site's hosts, one list per host since BotRank lists one
+  domain per call (a site on `example.fr` and `example.com` gets both), ranks them across the site,
+  matches each cited address to a page (manual
+  mappings, published URLs, every vanity URL, `/sites/...` paths) and stores one entry per cited
+  page under the site's hidden `geo-readiness` node. It then reads the site's own figures for the
+  dashboard: totals, share and rank per registrable domain, the brand visibility score and the
+  project's engines. Editors never cause a call to BotRank.
+- BotRank's site figures cover the whole registrable domain: a site on `blog.example.com` shares them
+  with every other site of `example.com`. The dashboard names the domain and splits citations per
+  host from the cited pages list.
+
 ## Known gaps
 
 - **A Jahia Cloud node cannot fetch its own public URL.** Seen on 15 October 2026: the public URL
@@ -286,6 +330,22 @@ say which, and on a multi-site box it is required rather than optional.
   model; the per-page examples are what gets trimmed.
 - **A scheduled scan runs as the account that saved it** and re-checks that account's permission on
   every run, so revoking the permission stops the schedule rather than merely hiding the screen.
+- **A BotRank connection without `sites` is open to every site administrator of the instance**, and
+  each of them can bind a site to that organisation's key. List the sites of each connection on a
+  shared instance. A `sites` value that cannot be read closes the connection rather than opening it.
+- **A BotRank sync reads the details of the 200 most cited pages of a site.** The others keep their
+  total and rank. One run walks two lists per host (the last 30 days and all time, 50 pages of 100 at
+  most each), then makes up to thirteen calls per detailed page, one at a time: about 2,600 calls for
+  a site with one host; a run still going is never taken for dead and doubled.
+- **A cited address mapped by hand counts in the language the settings screen was showing**, and a
+  mapping takes effect at the next sync.
+- **The module's servlets are not under Jahia's CSRF guard.** Their control is an exact
+  `application/json` media type plus the refusal of any request the browser marks as coming from
+  another site (`Sec-Fetch-Site`, or an `Origin` other than the host). Clients without a browser
+  (curl, scripts with an API token) are not affected.
+- **A site that disables the module, or whose administrator who saved the BotRank settings loses
+  site-admin, stops syncing** at the next run; Site Settings says why, and a site administrator saves
+  the settings again to restart it.
 
 ## Documentation
 
