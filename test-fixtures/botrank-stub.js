@@ -4,8 +4,9 @@
  *
  *   node test-fixtures/botrank-stub.js [--port 9091]
  *
- * Serves the eight GET routes under /public/v1 with fixed data shaped like the real answers
- * (reference read on 2026-10-15). It checks what the real API checks: the bearer key (brk_test),
+ * Serves the GET routes the connector calls under /public/v1 with fixed data shaped like the real
+ * answers (reference read on 2026-10-15; cited pages under /ai-visibility/sites/{domain}/pages since
+ * 2026-10-20). It checks what the real API checks: the bearer key (brk_test),
  * then the Project-Id header (p1), and answers refusals as RFC 9457 problem documents.
  *
  * Data: one project; the site's host is stub-site.example. Two cited URLs:
@@ -49,7 +50,7 @@ const isOffer = url => typeof url === 'string' && url.replace(/^https?:\/\/(www\
 const routes = {
     '/public/v1/projects': () => ({projects: [{id: PROJECT, name: 'Stub project'}]}),
     '/public/v1/ai-visibility/data-freshness': () => ({latestCountedAnswerAt: `${day(0)}T04:00:00.000Z`, refreshing: false}),
-    '/public/v1/ai-visibility/pages': q => {
+    '/public/v1/ai-visibility/sites/{domain}/pages': q => {
         const pages = [{url: OFFER, rank: 1, citationCount: 12, citationCountVariation: 3}];
         if (q.get('period') === 'all_time') {
             pages.push({url: OLD, rank: 2, citationCount: 4, citationCountVariation: null});
@@ -99,7 +100,8 @@ http.createServer((req, res) => {
     if (req.headers.authorization !== `Bearer ${KEY}`) {
         return problem(res, 401, 'invalid-api-key', 'Invalid API key');
     }
-    const route = routes[url.pathname];
+    // The domain is a path segment: route on the template, as the real API does.
+    const route = routes[url.pathname.replace(/^(\/public\/v1\/ai-visibility\/sites\/)[^/]+(\/pages)$/, '$1{domain}$2')];
     if (!route) {
         return problem(res, 404, 'not-found', 'Not found');
     }

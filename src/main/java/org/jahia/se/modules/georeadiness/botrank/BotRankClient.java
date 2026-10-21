@@ -177,7 +177,9 @@ public class BotRankClient {
     }
 
     /**
-     * {@code GET /ai-visibility/pages}, every page of the cursor, bounded by {@link #MAX_LIST_PAGES}.
+     * {@code GET /ai-visibility/sites/{domain}/pages}, every page of the cursor, bounded by
+     * {@link #MAX_LIST_PAGES}. It replaces {@code /ai-visibility/pages?domain=}, deprecated on 20 October 2026,
+     * and answers the same list.
      *
      * @param projectId the BotRank project
      * @param domain    a host of the site; BotRank reads it as its registrable domain
@@ -192,7 +194,6 @@ public class BotRankClient {
         String cursor = null;
         for (int page = 0; page < MAX_LIST_PAGES; page++) {
             StringBuilder q = new StringBuilder();
-            param(q, "domain", domain);
             for (String h : hosts) {
                 param(q, "host", h);
             }
@@ -201,7 +202,8 @@ public class BotRankClient {
             if (cursor != null) {
                 param(q, "cursor", cursor);
             }
-            JSONObject o = call("/ai-visibility/pages", q, projectId);
+            JSONObject o = call("/ai-visibility/sites/" + URLEncoder.encode(domain, StandardCharsets.UTF_8) + "/pages",
+                    q, projectId);
             addCitedPages(o.optJSONArray("pages"), out);
             cursor = o.isNull("nextCursor") ? null : o.optString("nextCursor", null);
             if (cursor == null || cursor.isEmpty()) {
