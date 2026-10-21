@@ -22,7 +22,9 @@
         "thin": "Certains robots reçoivent beaucoup moins de texte qu'un navigateur. La page a sans doute besoin de JavaScript pour afficher son contenu.",
         "unpublishedTitle": "Cette page n'est pas publiée",
         "unpublished": "Cette page n'a jamais été publiée. Il n'y a donc pas encore d'URL publique à tester.",
-        "empty": "Même un navigateur ne reçoit presque aucun texte avant l'exécution du JavaScript ({{count}} mots). Les robots verront une page vide."
+        "empty": "Même un navigateur ne reçoit presque aucun texte avant l'exécution du JavaScript ({{count}} mots). Les robots verront une page vide.",
+        "unreachable": "Le serveur n'a pas pu joindre la page pour {{count}} robot.",
+        "unreachable_plural": "Le serveur n'a pas pu joindre la page pour {{count}} robots."
       },
       "agent": "Robot",
       "status": "Statut",
@@ -140,7 +142,10 @@
           },
           "searchBlockedTitle": "{{count}} robot qui répond aux questions est bloqué",
           "searchBlockedTitle_plural": "{{count}} robots qui répondent aux questions sont bloqués",
-          "searchBlocked": "Bloquer un robot qui construit les réponses vous retire des réponses de cet assistant. Bloquer un robot qui ne fait qu'entraîner les modèles, non. Vérifiez que c'est bien votre intention : {{names}}."
+          "searchBlocked": "Bloquer un robot qui construit les réponses vous retire des réponses de cet assistant. Bloquer un robot qui ne fait qu'entraîner les modèles, non. Vérifiez que c'est bien votre intention : {{names}}.",
+          "noAnswer": "pas de réponse",
+          "verdictUnreachable": "Le serveur n'a pas pu joindre la page pour {{count}} robot : on ne sait donc pas ce que le site en fait",
+          "verdictUnreachable_plural": "Le serveur n'a pas pu joindre la page pour {{count}} robots : on ne sait donc pas ce que le site en fait"
         },
         "unreachable": "Le robots.txt n'a pas pu être récupéré : on ne sait donc pas ce qu'il autorise. C'est un problème de connexion, pas un constat sur le fichier."
       },
@@ -292,6 +297,10 @@
         "guestReadable": {
           "label": "Un visiteur sans compte peut la lire",
           "fix": "Un visiteur anonyme ne peut pas lire cette page, donc aucun robot ne le pourra. Certains serveurs renvoient un formulaire de connexion avec un code 200, ce qui ressemble à un succès. Vérifiez les restrictions d'accès de la page."
+        },
+        "fetched": {
+          "label": "Le serveur a pu récupérer la page",
+          "fix": "Le serveur n'a pas pu se connecter à la page pour au moins un robot. C'est un problème de connexion côté serveur, pas un refus du site, et les vérifications de ce qui arrive ne sont pas fiables tant qu'il n'est pas réglé."
         }
       },
       "checkColumn": "Vérification",

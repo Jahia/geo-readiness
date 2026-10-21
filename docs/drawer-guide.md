@@ -95,7 +95,8 @@ of the two is wrong.
 
 | You see | It means |
 |---|---|
-| N crawlers are blocked | Someone did not get a normal answer. Not always a refusal: a missing page or a timeout counts too. |
+| The server could not reach the page for N crawlers | No answer came back at all (connection refused, timeout, certificate, unknown host), and the error is named. A connection problem on the Jahia server, not a refusal by the site: on Jahia Cloud, a node that cannot reach its own public address. The score marks "The server could fetch the page" as failed and does not judge whether crawlers are refused. |
+| N crawlers are blocked | The server answered, but not with the page: a refusal, a missing page or an error status. |
 | Even a browser receives almost no text | The page is an empty shell until JavaScript fills it in. Every crawler sees nothing. The most serious result on the tab. |
 | Some crawlers receive far less text | Crawlers got under half the words a browser got. Part of your content needs JavaScript. |
 | Every crawler can read this page | Nothing to do. |
