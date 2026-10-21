@@ -96,9 +96,10 @@ public abstract class GeoServlet extends HttpServlet {
      * The parsed request body, or null once the request has been refused and
      * answered.
      *
-     * The content type is the CSRF control, and it is the only one these
-     * endpoints have: a form post and a cross-site request cannot set
-     * application/json, so requiring it keeps them same-origin.
+     * The CSRF control of these endpoints is {@link #isJsonRequest}: an exact
+     * application/json media type, which a browser only sends cross-site after a
+     * CORS preflight these servlets never grant, plus a refusal of any request the
+     * browser marks as coming from another site.
      */
     protected static JSONObject jsonBody(HttpServletRequest req, HttpServletResponse resp, int maxBytes)
             throws IOException {
@@ -124,12 +125,80 @@ public abstract class GeoServlet extends HttpServlet {
      * known once the body is parsed.
      */
     protected static boolean isJsonRequest(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        String ctype = req.getContentType();
-        if (ctype == null || !ctype.toLowerCase(Locale.ROOT).contains("application/json")) {
+        if (isCrossSite(req)) {
+            deny(resp, HttpServletResponse.SC_FORBIDDEN, "cross-site request refused");
+            return false;
+        }
+        if (!isJsonMediaType(req.getContentType())) {
             deny(resp, HttpServletResponse.SC_BAD_REQUEST, "json required");
             return false;
         }
         return true;
+    }
+
+    /**
+     * True for exactly the media type application/json, parameters aside.
+     *
+     * A substring test is not enough: {@code text/plain; application/json} contains
+     * it, and a browser sends that value cross-site WITHOUT a preflight, because for
+     * CORS it is text/plain. Exact comparison is what makes the content type a CSRF
+     * control.
+     */
+    static boolean isJsonMediaType(String contentType) {
+        if (contentType == null) {
+            return false;
+        }
+        int semi = contentType.indexOf(';');
+        String type = (semi < 0 ? contentType : contentType.substring(0, semi)).trim();
+        return "application/json".equalsIgnoreCase(type);
+    }
+
+    /**
+     * True when the browser says the request comes from another site: a
+     * {@code Sec-Fetch-Site} other than same-origin or none, or an {@code Origin}
+     * whose host differs from the {@code Host} the browser addressed. A request with
+     * neither header is not a browser's cross-site request (curl, a script with an
+     * API token) and is let through to the other checks.
+     */
+    static boolean isCrossSite(HttpServletRequest req) {
+        String site = req.getHeader("Sec-Fetch-Site");
+        if (site != null && !"same-origin".equalsIgnoreCase(site) && !"none".equalsIgnoreCase(site)) {
+            return true;
+        }
+        String origin = req.getHeader("Origin");
+        if (origin == null || origin.isEmpty() || "null".equals(origin)) {
+            return "null".equals(origin);
+        }
+        try {
+            java.net.URI o = java.net.URI.create(origin.trim());
+            // Behind a proxy that rewrites Host, the public name arrives in X-Forwarded-Host.
+            // A browser cannot add that header cross-site without a preflight.
+            return !sameHost(o, req.getHeader("Host")) && !sameHost(o, firstOf(req.getHeader("X-Forwarded-Host")));
+        } catch (IllegalArgumentException e) {
+            return true;
+        }
+    }
+
+    private static boolean sameHost(java.net.URI origin, String host) {
+        if (host == null || host.trim().isEmpty() || origin.getHost() == null) {
+            return false;
+        }
+        String h = host.trim();
+        String withPort = origin.getHost() + ":" + (origin.getPort() > 0 ? origin.getPort() : defaultPort(origin.getScheme()));
+        return h.equalsIgnoreCase(withPort)
+                || (origin.getPort() <= 0 || origin.getPort() == defaultPort(origin.getScheme())) && h.equalsIgnoreCase(origin.getHost());
+    }
+
+    private static String firstOf(String commaSeparated) {
+        if (commaSeparated == null) {
+            return null;
+        }
+        int comma = commaSeparated.indexOf(',');
+        return comma < 0 ? commaSeparated : commaSeparated.substring(0, comma);
+    }
+
+    private static int defaultPort(String scheme) {
+        return "https".equalsIgnoreCase(scheme) ? 443 : 80;
     }
 
     /**
@@ -265,7 +334,10 @@ public abstract class GeoServlet extends HttpServlet {
     protected static void writeJson(HttpServletResponse resp, int status, JSONObject json) throws IOException {
         resp.setStatus(status);
         resp.setContentType("application/json;charset=UTF-8");
-        resp.setHeader("Cache-Control", "no-store");
+        // Per-user answers: Jahia Cloud's front cache gives an answer without these headers the
+        // page defaults (public, s-maxage=600) and serves one user's JSON to the next.
+        resp.setHeader("Cache-Control", "no-store, private, max-age=0");
+        resp.setHeader("Vary", "Cookie");
         resp.setHeader("X-Content-Type-Options", "nosniff");
         resp.getWriter().write(json.toString());
     }

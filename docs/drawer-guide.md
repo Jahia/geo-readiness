@@ -4,7 +4,9 @@ When ChatGPT, Claude or Perplexity fetch one of your pages, what do they actuall
 answers that for the page you have open, and tells you which parts are yours to fix.
 
 Open it by selecting a page in jContent and choosing **GEO readiness**. Nothing in the panel
-changes your page: it only reads and reports.
+changes your page: it only reads and reports. It closes with Escape, its Close button, the same
+button again, or a click anywhere outside it: the page under edit, the content tree, or another
+panel's button.
 
 A companion guide covers the site-wide screen: [`dashboard-guide.md`](dashboard-guide.md).
 
@@ -149,6 +151,37 @@ this date, written by this person". Crawlers rely on it heavily.
 **What to do.** The tab shows the finished snippet with a Copy button. Nothing is ever written into
 your page automatically: somebody places it, usually once in a template rather than page by page.
 If properties are missing, the usual fix is to fill in the matching fields on the content itself.
+
+## Tab 5 - AI citations
+
+Only on sites that a site administrator connected to BotRank. It opens without running the check:
+its figures come from the site's daily sync, not from the button.
+
+**What it answers.** "Do AI answers quote this page, for which questions, and against whom?"
+
+**What you see.**
+
+- When the data dates from, and when the site last synced.
+- How many times AI answers cited the page over the last 30 days, compared with the 30 days
+  before. When no tracked question ran in the previous 30 days, no comparison is shown: a "+14"
+  against a period nobody measured would be meaningless.
+- Its rank among the site's cited pages, and the AI engines that cite it.
+- Citations per day. Read the trend: the same question gets different answers from one run to the
+  next.
+- The tracked questions that cite it, with the AI engines behind each one, and the themes those
+  questions belong to. Each question and theme shows its own change on the previous 30 days, under
+  the same rule as the page.
+- The other pages the same answers cite, five at first and the rest one click away, each as a card:
+  in how many of the answers they share it is listed before this page (orange when that is half or
+  more), both average positions among the sources (1 is the first source) with which one ranks
+  higher, and how often it is cited overall.
+- "Not cited yet" when no tracked answer ever cited the page, or "Not cited recently" when it was
+  cited before the last 30 days.
+
+**What to do.** The themes say what AI engines think the page is about; if they surprise you, the
+page may explain something else than you meant. The pages cited alongside show what the engines
+prefer to quote on the same questions. The tracked questions themselves are set up in BotRank, not
+in Jahia.
 
 ## Which problems are actually yours
 

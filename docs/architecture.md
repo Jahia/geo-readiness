@@ -56,6 +56,14 @@ JavaScript-only page is still caught, by the word-count check.
 | `SitemapCheck` | Resolves every `sitemap.xml` entry back to a node and compares it with what is actually published, as guest, across every site language. |
 | `ScanStore` | Reads and writes the scan on the site node. |
 
+### `dashboard/`
+
+| File | Role |
+|---|---|
+| `GeoDashboard.jsx` | The Additional > SEO screen: five groups of tabs (overview, reach, usable, files, AI citations), one panel per tab. |
+| `Layout.jsx` | The one layout every dashboard panel uses: `Panel`, `PanelHeader` (title and intro, `Meta` pills for dates), `Card` per section, `Figures`/`Figure` for key numbers with a tone, `Ring` and `Hero` for the figure a panel leads with, `Actions`, `Note`, `Source`. A panel places no Separator and no heading Typography of its own. |
+| `Layout.module.css` | The type scale (page title 20/28, intro 14/1.6, hero 18/26, card title 16/22, card intro 13/1.55, body 14/1.55, notes 12.5/1.55, figures 32), card and figure styles, tones good/warn/bad/accent on the module's AAA colours. Moonstone body and caption paragraphs inside a panel follow the same scale. |
+
 ### `charts/`
 
 | File | Role |
@@ -78,9 +86,12 @@ JavaScript-only page is still caught, by the word-count check.
 | `/geo-readiness/site-scan` | One site | Only the scan record |
 | `/geo-readiness/site-files` | One site | **Yes**, robots.txt and llms.txt |
 | `/geo-readiness/report` | One site | Only the stored report |
+| `/geo-readiness/citations` | One page (GET), one site (GET `scope=site`, POST) | Settings, mappings and the sync record |
 
-All four: authenticated callers only, `application/json` required so a cross-site form post cannot
-reach them, per-user rate limiting on the expensive actions, and generic errors that leak no
+All five: authenticated callers only, an exact `application/json` media type required (a substring
+test would let `text/plain; application/json` through, which a browser sends cross-site without a
+preflight) and any request the browser marks as cross-site or same-site refused (`Sec-Fetch-Site`, or
+an `Origin` other than `Host` or `X-Forwarded-Host`), per-user rate limiting on the expensive actions, and generic errors that leak no
 upstream detail.
 
 `site-scan` and `site-files` additionally require the permission the dashboard route declares in the
@@ -115,6 +126,24 @@ never only in Quartz.
 A run is owned: the store records the account that saved the schedule, and each run asks again
 whether that account still holds the permission. A trigger nobody is entitled to removes itself.
 
+### `botrank/`
+
+The BotRank connector (GEO-4). BotRank's public API v1 is read server to server with the customer's
+organisation key; the browser never calls BotRank, and editors never cause a call.
+
+| Class | Does |
+|---|---|
+| `BotRankConnection` | One organisation, from one factory configuration file `org.jahia.se.modules.georeadiness.botrank-<id>.cfg` (`configurationPolicy = REQUIRE`). The id comes from the file name. A file without a key registers with a `problem` and is never used. |
+| `BotRankConnections` | Every connection, bound and unbound by DS; `forSite` honours a connection's `sites` list with no fallback. |
+| `BotRankClient` | The read routes it uses (projects and one project, data freshness, a site's cited pages, totals, share history and ranking under `/ai-visibility/sites/{domain}/`, the visibility score and its history, the five page routes) on `java.net.http`: bearer key, `Project-Id`, explicit Paris days, cursor walk bounded at 50 pages, no redirects. RFC 9457 problems become a `BotRankException` that carries the type and never the key. |
+| `CitedUrls` | BotRank's page identity: `www.`, trailing slash, anchor, its published tracking parameters and host case fold away; scheme, subdomain, path case and other parameters do not. |
+| `PageResolver` | A cited URL to `jcrPath@language`: manual mappings, then published URLs (`PublishedMap`), every vanity URL in live, then `/sites/...` paths. A cited URL with a surviving query resolves through a mapping only. |
+| `CitationSync` | One run: freshness, the 30-day and all-time lists (one per host, since BotRank lists one domain per call, merged and ranked across the site), resolution, the details of recently cited pages, and the variation guard (a variation is dropped when the previous window had no run day). Sequential calls. |
+| `SiteCitations` | Screen B, read at the end of each sync: per registrable domain (each host read once, the answer names its domain) totals, share history and ranking with three neighbours; per host, citations, cited pages and an approximate share computed from the 30-day list; the top 20 cited addresses with their page; the brand visibility score; the project's engines and refresh intervals. A domain never cited is a state; any other failed read is counted and never fails the run. |
+| `CitationStore` | Settings, run record, the site summary and one node per cited page, under `geo-readiness/botrank`. |
+| `CitationScheduler`, `CitationSyncJob`, `CitationLifecycle` | A daily cron trigger per site in `Europe/Paris`, one-shot triggers for sync now and retries, restored from the store when the bundle starts and removed when it stops, on the processing server only. Each run re-checks that the user who saved the settings still holds `site-admin`. |
+| `CitationsAccess` | Who may do what: a read of the page for the drawer, `publish` for the site figures (as the dashboard), `site-admin` for the settings, the module enabled on the site for all three. The site figures name a top page's path and title only when the caller can read it. |
+
 ### `util/`
 
 | File | Role |
@@ -139,6 +168,12 @@ page of a 50,000 page site across three languages would be about 12 MB against 2
 failures alone. The dashboard's four questions — overall score, score by section, worst pages,
 movement since the last run — are all answerable from the smaller shape. The previous aggregate is
 kept, which is the whole of "movement".
+
+**BotRank citations** live under `geo-readiness/botrank`: the settings (`brConnection`,
+`brProject`, `brHosts`, `brEnabled`, `brTime`, `brOwner`, `brMappings`), the record of the last sync,
+the site summary of screen B (`brSite`, JSON) and a `pages` child replaced as a whole by every sync, with one node per cited page named by the
+SHA-256 of `jcrPath@language`. A page absent from it has never been cited. Text that comes from BotRank
+is bounded in length and rendered as text.
 
 ## The write path
 

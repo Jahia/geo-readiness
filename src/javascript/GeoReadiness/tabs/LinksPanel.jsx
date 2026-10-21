@@ -1,10 +1,11 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Chip, Loader, Separator, Typography} from '@jahia/moonstone';
+import {Banner, Chip, Loader, Typography} from '@jahia/moonstone';
 import {scanStatus} from '../api/siteScore';
 import {jcontentUrl} from '../util/jcontentUrl';
 import {Paged} from '../util/Paged';
+import {Card, Figure, Figures, Note, Panel, PanelHeader} from '../dashboard/Layout';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -82,13 +83,8 @@ export const LinksPanel = ({path, language}) => {
     );
 
     return (
-        <div>
-            <Typography variant="subheading" component="h2" className={styles.panelTitle}>
-                {t('links.title')}
-            </Typography>
-            <Typography variant="caption" className={styles.panelIntro}>
-                {t('links.intro')}
-            </Typography>
+        <Panel>
+            <PanelHeader title={t('links.title')} intro={t('links.intro')}/>
 
             {/*
               * Built by the scan, so "no scan yet" is a different statement from
@@ -100,53 +96,52 @@ export const LinksPanel = ({path, language}) => {
                 </Banner>
             )}
 
-            {links && (
-                <>
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="caption" className={styles.panelIntro}>
-                        {t('links.counts', {pages: links.pages, read: links.pagesRead})}
-                    </Typography>
-
-                    {orphans.length === 0 && weak.length === 0 && (
-                        <Banner variant="info" title={t('links.allLinkedTitle')}>
-                            {t('links.allLinked')}
-                        </Banner>
-                    )}
-
-                    {orphans.length > 0 && (
-                        <div className={styles.sitemapGroup}>
-                            <div className={styles.sitemapGroupHead}>
-                                <Typography variant="body" className={styles.checkLabel}>
-                                    {t('links.kind.orphans')}
-                                </Typography>
-                                <Chip label={String(orphans.length)} color="danger"/>
-                            </div>
-                            <Typography variant="caption" className={styles.checkFix}>
-                                {t('links.why.orphans')}
-                            </Typography>
-                            {rows(orphans, 'orphan')}
-                        </div>
-                    )}
-
-                    {weak.length > 0 && (
-                        <div className={styles.sitemapGroup}>
-                            <div className={styles.sitemapGroupHead}>
-                                <Typography variant="body" className={styles.checkLabel}>
-                                    {t('links.kind.weak')}
-                                </Typography>
-                                <Chip label={String(weak.length)} color="warning"/>
-                            </div>
-                            <Typography variant="caption" className={styles.checkFix}>
-                                {t('links.why.weak')}
-                            </Typography>
-                            {rows(weak, 'weak')}
-                        </div>
-                    )}
-
-                    <p className={styles.explain}>{t('links.limits')}</p>
-                </>
+            {links && orphans.length === 0 && weak.length === 0 && (
+                <Banner variant="info" title={t('links.allLinkedTitle')}>
+                    {t('links.allLinked')}
+                </Banner>
             )}
-        </div>
+
+            {links && (
+                <Card>
+                    <Figures>
+                        <Figure
+                            label={t('links.figure.orphans')}
+                            value={orphans.length}
+                            tone={orphans.length === 0 ? 'good' : 'bad'}
+                        />
+                        <Figure
+                            label={t('links.figure.weak')}
+                            value={weak.length}
+                            tone={weak.length === 0 ? 'good' : 'warn'}
+                        />
+                    </Figures>
+                    <Note>{t('links.counts', {pages: links.pages, read: links.pagesRead})}</Note>
+                </Card>
+            )}
+
+            {links && orphans.length > 0 && (
+                <Card
+                    title={t('links.kind.orphans')}
+                    intro={t('links.why.orphans')}
+                    aside={<Chip label={String(orphans.length)} color="danger"/>}
+                >
+                    {rows(orphans, 'orphan')}
+                </Card>
+            )}
+
+            {links && weak.length > 0 && (
+                <Card
+                    title={t('links.kind.weak')}
+                    intro={t('links.why.weak')}
+                    aside={<Chip label={String(weak.length)} color="warning"/>}
+                >
+                    {rows(weak, 'weak')}
+                </Card>
+            )}
+
+            {links && <Note>{t('links.limits')}</Note>}
+        </Panel>
     );
 };
 

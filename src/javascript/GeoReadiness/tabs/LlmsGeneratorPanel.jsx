@@ -1,10 +1,11 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Button, Separator, Textarea, Typography} from '@jahia/moonstone';
+import {Banner, Button, Textarea, Typography} from '@jahia/moonstone';
 import {previewLlms, applyLlms} from '../api/siteFiles';
 import {scanStatus} from '../api/siteScore';
 import {DiffView} from './DiffView';
+import {Actions, Card, Figure, Figures, Note, Panel, PanelHeader} from '../dashboard/Layout';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -72,13 +73,8 @@ export const LlmsGeneratorPanel = ({path, language}) => {
     const dirty = preview && text !== (preview.current || '');
 
     return (
-        <div className={styles.panel}>
-            <Typography variant="heading" component="h2" className={styles.panelTitle}>
-                {t('files.llms.generate.title')}
-            </Typography>
-            <Typography variant="body" className={styles.panelIntro}>
-                {t('files.llms.generate.intro')}
-            </Typography>
+        <Panel>
+            <PanelHeader title={t('files.llms.generate.title')} intro={t('files.llms.generate.intro')}/>
 
             {/*
               * A stale llms.txt fails silently: nothing errors, an assistant is
@@ -120,20 +116,25 @@ export const LlmsGeneratorPanel = ({path, language}) => {
                 </Banner>
             )}
 
-            <div className={styles.actions}>
-                <Button
-                    size="big"
-                    variant="outlined"
-                    isDisabled={phase === 'running' || phase === 'applying'}
-                    label={phase === 'running' ?
-                        t('files.llms.generate.running') :
-                        t('files.llms.generate.button')}
-                    onClick={generate}
-                />
+            <Card>
                 {preview && stats && (
-                    <Typography variant="caption">{t('files.llms.generate.stats', stats)}</Typography>
+                    <Figures>
+                        <Figure label={t('files.llms.links')} value={stats.links}/>
+                        <Figure label={t('files.llms.sections')} value={stats.sections}/>
+                    </Figures>
                 )}
-            </div>
+                <Actions>
+                    <Button
+                        size="big"
+                        variant="outlined"
+                        isDisabled={phase === 'running' || phase === 'applying'}
+                        label={phase === 'running' ?
+                            t('files.llms.generate.running') :
+                            t('files.llms.generate.button')}
+                        onClick={generate}
+                    />
+                </Actions>
+            </Card>
 
             {error && <Banner variant="danger" title={t('files.llms.generate.errorTitle')}>{error}</Banner>}
 
@@ -157,59 +158,54 @@ export const LlmsGeneratorPanel = ({path, language}) => {
 
                     {phase !== 'applied' && (
                         <>
-                            <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                                {t('files.llms.generate.generated')}
-                            </Typography>
-                            {/*
-                              * This is the editor for text written to the live
-                              * site. Field's label is a plain sibling with no
-                              * htmlFor, so without aria-label the control that
-                              * matters most in this panel has no name at all.
-                              */}
-                            <Textarea
-                                isResizable
-                                id="geoReadinessLlmsText"
-                                aria-label={t('files.llms.generate.generated')}
-                                className={styles.genText}
-                                value={text}
-                                spellCheck="false"
-                                onChange={e => {
-                                    setText(e.target.value);
-                                    setConfirming(false);
-                                }}
-                            />
-
-                            <Separator spacing="big" size="full"/>
-                            <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                                {t('files.llms.generate.changes')}
-                            </Typography>
-                            <DiffView before={preview.current || ''} after={text}/>
-
-                            <div className={styles.actions}>
-                                <Button
-                                    size="big"
-                                    color={confirming ? 'danger' : 'accent'}
-                                    isDisabled={!preview.canWrite || !dirty || phase === 'applying'}
-                                    label={confirming ?
-                                        t('files.llms.generate.confirm') :
-                                        t('files.llms.generate.apply')}
-                                    onClick={apply}
+                            <Card title={t('files.llms.generate.generated')}>
+                                {/*
+                                  * This is the editor for text written to the live
+                                  * site. Field's label is a plain sibling with no
+                                  * htmlFor, so without aria-label the control that
+                                  * matters most in this panel has no name at all.
+                                  */}
+                                <Textarea
+                                    isResizable
+                                    id="geoReadinessLlmsText"
+                                    aria-label={t('files.llms.generate.generated')}
+                                    className={styles.genText}
+                                    value={text}
+                                    spellCheck="false"
+                                    onChange={e => {
+                                        setText(e.target.value);
+                                        setConfirming(false);
+                                    }}
                                 />
-                                {!preview.canWrite && (
-                                    <Typography variant="caption">
-                                        {t('files.llms.generate.cannotWrite')}
-                                    </Typography>
-                                )}
-                            </div>
+                            </Card>
+
+                            <Card title={t('files.llms.generate.changes')}>
+                                <DiffView before={preview.current || ''} after={text}/>
+
+                                <Actions>
+                                    <Button
+                                        size="big"
+                                        color={confirming ? 'danger' : 'accent'}
+                                        isDisabled={!preview.canWrite || !dirty || phase === 'applying'}
+                                        label={confirming ?
+                                            t('files.llms.generate.confirm') :
+                                            t('files.llms.generate.apply')}
+                                        onClick={apply}
+                                    />
+                                    {!preview.canWrite && (
+                                        <Typography variant="caption">
+                                            {t('files.llms.generate.cannotWrite')}
+                                        </Typography>
+                                    )}
+                                </Actions>
+                            </Card>
                         </>
                     )}
 
-                    <Typography variant="caption" className={styles.panelRule}>
-                        {t('files.llms.generate.rule')}
-                    </Typography>
+                    <Note>{t('files.llms.generate.rule')}</Note>
                 </>
             )}
-        </div>
+        </Panel>
     );
 };
 

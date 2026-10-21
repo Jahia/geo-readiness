@@ -1,9 +1,10 @@
 import React, {useCallback, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Button, Chip, Separator, Typography} from '@jahia/moonstone';
+import {Banner, Button, Chip, Typography} from '@jahia/moonstone';
 import {guestVisibility} from '../api/siteScan';
 import {Paged} from '../util/Paged';
+import {Actions, Card, Figure, Figures, Panel, PanelHeader} from '../dashboard/Layout';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -58,27 +59,12 @@ export const VisibilityPanel = ({path, language}) => {
         </Paged>
     );
 
-    return (
-        <div className={styles.panel}>
-            <Typography variant="heading" component="h2" className={styles.panelTitle}>{t('visibility.title')}</Typography>
-            <Typography variant="body" className={styles.panelIntro}>{t('visibility.intro')}</Typography>
+    const findings = (result && result.findings) || [];
+    const deliberate = (result && result.deliberate) || [];
 
-            <div className={styles.actions}>
-                <Button
-                    size="big"
-                    variant="outlined"
-                    isDisabled={phase === 'running'}
-                    label={phase === 'running' ?
-                        t('visibility.scanning') :
-                        (result ? t('visibility.rescan') : t('visibility.scan'))}
-                    onClick={scan}
-                />
-                {result && (
-                    <Typography variant="caption">
-                        {t('visibility.summary', {readable: result.guestReadable, scanned: result.scanned})}
-                    </Typography>
-                )}
-            </div>
+    return (
+        <Panel>
+            <PanelHeader title={t('visibility.title')} intro={t('visibility.intro')}/>
 
             {error && <Banner variant="danger" title={t('visibility.errorTitle')}>{error}</Banner>}
 
@@ -88,34 +74,53 @@ export const VisibilityPanel = ({path, language}) => {
                 </Banner>
             )}
 
-            {result && (result.findings || []).length === 0 && (
+            {result && findings.length === 0 && (
                 <Banner variant="info" title={t('visibility.findingsTitle')}>
                     {t('visibility.noFindings')}
                 </Banner>
             )}
 
-            {result && (result.findings || []).length > 0 && (
-                <>
-                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                        {t('visibility.findingsTitle')}
-                    </Typography>
-                    {rows(result.findings, true)}
-                </>
+            <Card>
+                {result && (
+                    <Figures>
+                        <Figure
+                            label={t('visibility.findingsTitle')}
+                            value={findings.length}
+                            tone={findings.length === 0 ? 'good' : 'warn'}
+                        />
+                        <Figure label={t('visibility.deliberateTitle')} value={deliberate.length}/>
+                    </Figures>
+                )}
+                <Actions>
+                    <Button
+                        size="big"
+                        variant="outlined"
+                        isDisabled={phase === 'running'}
+                        label={phase === 'running' ?
+                            t('visibility.scanning') :
+                            (result ? t('visibility.rescan') : t('visibility.scan'))}
+                        onClick={scan}
+                    />
+                    {result && (
+                        <Typography variant="caption">
+                            {t('visibility.summary', {readable: result.guestReadable, scanned: result.scanned})}
+                        </Typography>
+                    )}
+                </Actions>
+            </Card>
+
+            {findings.length > 0 && (
+                <Card title={t('visibility.findingsTitle')}>
+                    {rows(findings, true)}
+                </Card>
             )}
 
-            {result && (result.deliberate || []).length > 0 && (
-                <>
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                        {t('visibility.deliberateTitle')}
-                    </Typography>
-                    <Typography variant="caption" className={styles.panelIntro}>
-                        {t('visibility.deliberateIntro')}
-                    </Typography>
-                    {rows(result.deliberate, true)}
-                </>
+            {deliberate.length > 0 && (
+                <Card title={t('visibility.deliberateTitle')} intro={t('visibility.deliberateIntro')}>
+                    {rows(deliberate, true)}
+                </Card>
             )}
-        </div>
+        </Panel>
     );
 };
 
