@@ -143,6 +143,38 @@ describe('geo-readiness — happy path', () => {
                 .should('be.visible');
         });
 
+        it('links a page with findings to jContent under the context path, once', () => {
+            cy.login(fixture.publisher.username, fixture.publisher.password);
+            openGeoDashboard(fixture.siteKey);
+
+            // The site scan run through the endpoints above stored failures for
+            // the fixture's bare pages; the Site score tab lists them, each one
+            // linked to the page in jContent.
+            selectTab('Site score');
+            cy.contains('Pages with findings', {timeout: 180000}).should('be.visible');
+
+            // At the web root the context path is empty and a missing prefix
+            // looks right, so the expected start is read from the page itself,
+            // and a doubled prefix is refused when there is one.
+            cy.window().then(win => {
+                const contextPath = (win as Window & {contextJsParameters?: {contextPath?: string}})
+                    .contextJsParameters?.contextPath || '';
+                cy.get(`[role="tabpanel"] a[href*="/jahia/jcontent/${fixture.siteKey}/"]`, {timeout: 30000})
+                    .first()
+                    .invoke('attr', 'href')
+                    .then(href => {
+                        expect(href, 'the link starts with the context path').to.match(
+                            new RegExp(`^${contextPath}/jahia/jcontent/${fixture.siteKey}/en/`)
+                        );
+                        if (contextPath) {
+                            expect(href, 'the context path is added once').not.to.match(
+                                new RegExp(`^${contextPath}${contextPath}/`)
+                            );
+                        }
+                    });
+            });
+        });
+
         it('offers the drawer on a page, and the drawer reports the tested URL', () => {
             cy.login(fixture.publisher.username, fixture.publisher.password);
             openJContentPages(fixture.siteKey);

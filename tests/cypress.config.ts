@@ -19,6 +19,12 @@ export default defineConfig({
         openMode: 0
     },
 
+    // happy-path runs most of jContent in one renderer: with a seventh jContent
+    // test, Chrome's renderer crashed at the same test on two CI runs. Freeing
+    // memory between tests and keeping no test snapshots is Cypress's own remedy.
+    experimentalMemoryManagement: true,
+    numTestsKeptInMemory: 0,
+
     // Two reporters: mochawesome for the human report env.run.sh merges, and
     // JUnit XML because that is what the Jahia integration-tests action collects
     // (tests_report_path defaults to artifacts/results/xml_reports).
