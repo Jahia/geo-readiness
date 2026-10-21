@@ -7,6 +7,7 @@ import {jcontentUrl} from '../util/jcontentUrl';
 import {Paged} from '../util/Paged';
 import {Actions, Card, Figure, Figures, Meta, Note, Panel, PanelHeader} from '../dashboard/Layout';
 import styles from './Tabs.module.css';
+import {fetchErrorHint} from '../util/fetchError';
 
 const NS = 'geo-readiness';
 // Enough rows to act on, few enough that one bad group cannot bury the rest.
@@ -132,6 +133,7 @@ export const SitemapPanel = ({path, language}) => {
                         url: sitemap.url,
                         status: sitemap.status === null ? '-' : sitemap.status
                     })}
+                    {sitemap.reason === 'unreachable' && sitemap.error && ` ${fetchErrorHint(t, sitemap.error)}`}
                 </Banner>
             )}
 

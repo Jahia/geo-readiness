@@ -11,6 +11,7 @@ import {CitationsTab} from './tabs/CitationsTab';
 import {fetchPageCitations} from './api/citations';
 import tabStyles from './tabs/Tabs.module.css';
 import styles from './GeoReadinessDrawer.module.css';
+import {fetchErrorHint} from './util/fetchError';
 
 const NS = 'geo-readiness';
 const CACHE_SCHEMA = 8;
@@ -59,6 +60,12 @@ function filesIssueCount(report) {
     }
     return n;
 }
+
+/** A stored scan date for a sentence; an unparsable value is shown as stored. */
+const formatScanDate = iso => {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? String(iso || '') : d.toLocaleString();
+};
 
 /** The tabs of the drawer: the report's four when it has a published report, then citations. */
 function drawerTabs(report, citationsAvailable, t) {
@@ -336,9 +343,22 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                     </Banner>
                 )}
 
+                {/*
+                  * The drawer never fetches the sitemap: these facts come from the last site
+                  * scan, so they carry its date, and a scan that could not reach the file says
+                  * so rather than leaving the page silently "not missing".
+                  */}
+                {report && report.sitemap && report.sitemap.unreachable && (
+                    <Banner variant="warning" title={t('sitemap.unreachablePageTitle')}>
+                        {t('sitemap.unreachablePage', {url: report.sitemap.url, date: formatScanDate(report.sitemap.checkedAt)})}
+                        {report.sitemap.error && ` ${fetchErrorHint(t, report.sitemap.error)}`}
+                    </Banner>
+                )}
+
                 {report && report.sitemap && report.sitemap.missing && (
                     <Banner variant="warning" title={t('sitemap.notListedTitle')}>
                         {t('sitemap.notListed')}
+                        {report.sitemap.checkedAt && ` ${t('sitemap.fromScan', {date: formatScanDate(report.sitemap.checkedAt)})}`}
                     </Banner>
                 )}
 
@@ -349,6 +369,7 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                 {report && report.sitemap && report.sitemap.noindexListed && (
                     <Banner variant="warning" title={t('sitemap.noindexListedTitle')}>
                         {t('sitemap.noindexListedPage')}
+                        {report.sitemap.checkedAt && ` ${t('sitemap.fromScan', {date: formatScanDate(report.sitemap.checkedAt)})}`}
                     </Banner>
                 )}
 
@@ -410,6 +431,7 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                 {report && report.sitemap && report.sitemap.staleDetail && (
                     <Banner variant="info" title={t('sitemap.staleTitle')}>
                         {t('sitemap.stalePage', {detail: report.sitemap.staleDetail})}
+                        {report.sitemap.checkedAt && ` ${t('sitemap.fromScan', {date: formatScanDate(report.sitemap.checkedAt)})}`}
                     </Banner>
                 )}
 

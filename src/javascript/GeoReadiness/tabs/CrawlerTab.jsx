@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
 import {Chip, Typography} from '@jahia/moonstone';
 import styles from './Tabs.module.css';
+import {fetchErrorHint} from '../util/fetchError';
 
 const NS = 'geo-readiness';
 
@@ -19,6 +20,13 @@ const MIN_CONTROL_WORDS = 50;
 function verdictOf(report, t) {
     if (!report.published) {
         return {tone: 'warn', text: t('crawler.verdict.unpublished')};
+    }
+    // No answer at all is a connection problem on the server, not a refusal by the site.
+    if (report.unreachableCount > 0 && !report.blockedCount) {
+        return {
+            tone: 'bad',
+            text: `${t('crawler.verdict.unreachable', {count: report.unreachableCount})} ${fetchErrorHint(t, report.unreachableError)}`.trim()
+        };
     }
     if (report.blockedCount > 0) {
         return {tone: 'bad', text: t('crawler.verdict.blocked', {count: report.blockedCount})};

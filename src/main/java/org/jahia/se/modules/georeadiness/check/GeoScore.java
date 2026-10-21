@@ -73,6 +73,8 @@ public final class GeoScore {
         private final JSONObject llms;
         private final JSONObject visibility;
         private final int blocked;
+        private final int unreachable;
+        private final String unreachableError;
         private final int mismatches;
 
         private Facts(JSONObject report) {
@@ -84,6 +86,8 @@ public final class GeoScore {
             this.llms = siteFiles == null ? null : siteFiles.optJSONObject("llms");
             this.visibility = report.optJSONObject("visibility");
             this.blocked = report.optInt("blockedCount", 0);
+            this.unreachable = report.optInt("unreachableCount", 0);
+            this.unreachableError = report.isNull("unreachableError") ? null : report.optString("unreachableError", null);
             this.mismatches = report.optInt("blockedButAllowedCount", 0)
                     + report.optInt("reachableButDisallowedCount", 0);
         }
@@ -129,7 +133,14 @@ public final class GeoScore {
 
     /** Can a crawler get the bytes at all. */
     private static void access(JSONArray checks, Facts f) {
-        add(checks, "reachable", ACCESS, CRITICAL, f.blocked == 0, f.blocked);
+        // A fetch with no answer proves neither access nor refusal. Say that the server could not
+        // reach the page, and only judge "every crawler gets the page" on answers that came back.
+        if (f.unreachable > 0) {
+            add(checks, "fetched", ACCESS, CRITICAL, false, f.unreachableError);
+        }
+        if (f.unreachable == 0 || f.blocked > 0) {
+            add(checks, "reachable", ACCESS, CRITICAL, f.blocked == 0, f.blocked);
+        }
         add(checks, "policyMatchesReality", ACCESS, IMPORTANT, f.mismatches == 0, f.mismatches);
 
         boolean redirect = f.has("metaRefresh");
