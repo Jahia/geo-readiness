@@ -112,6 +112,7 @@ public class CrawlerCheckServlet extends GeoServlet {
 
     /** Set by the site-files check when the file was actually served. */
     private static final String PRESENT = "present";
+    private static final String ERROR = "error";
 
     /** robots.txt allows this agent, but something on the way refused it. */
     private static final String BLOCKED_BUT_ALLOWED = "blockedButAllowed";
@@ -403,7 +404,7 @@ public class CrawlerCheckServlet extends GeoServlet {
             r.put("status", JSONObject.NULL);
             r.put("ms", 0);
             r.put("bytes", 0);
-            r.put("error", "FetchFailed");
+            r.put(ERROR, "FetchFailed");
             return r;
         }
     }
@@ -420,6 +421,11 @@ public class CrawlerCheckServlet extends GeoServlet {
         JSONArray results = new JSONArray();
         int controlWords = -1;
         int blocked = 0;
+        // No HTTP answer at all (connection refused, timeout, certificate): nothing refused the
+        // crawler, the server could not reach the page. Counted apart, or a network problem on
+        // our side reads as a firewall rule of the site.
+        int unreachable = 0;
+        String unreachableError = null;
         int blockedButAllowed = 0;
         int reachableButDisallowed = 0;
 
@@ -428,7 +434,12 @@ public class CrawlerCheckServlet extends GeoServlet {
             if (controlWords < 0 && status == 200) {
                 controlWords = wordsOf(r);
             }
-            if (status != 200) {
+            if (status == 0) {
+                unreachable++;
+                if (unreachableError == null) {
+                    unreachableError = r.optString(ERROR, null);
+                }
+            } else if (status != 200) {
                 blocked++;
             }
             String mismatch = crossCheck(r, rules, tokens.get(r.optString("name", "")), pagePath, status);
@@ -442,6 +453,8 @@ public class CrawlerCheckServlet extends GeoServlet {
 
         out.put(AGENTS, results);
         out.put("blockedCount", blocked);
+        out.put("unreachableCount", unreachable);
+        out.put("unreachableError", unreachableError == null ? JSONObject.NULL : unreachableError);
         out.put("blockedButAllowedCount", blockedButAllowed);
         out.put("reachableButDisallowedCount", reachableButDisallowed);
         out.put("controlWords", Math.max(controlWords, 0));
@@ -637,12 +650,21 @@ public class CrawlerCheckServlet extends GeoServlet {
                 .getCurrentUserSession("live", java.util.Locale.forLanguageTag(language));
         String sitePath = live.getNode(path).getResolveSite().getPath();
 
-        JSONObject sitemap = ScanStore.read(sitePath, language).optJSONObject("sitemap");
+        JSONObject stored = ScanStore.read(sitePath, language);
+        JSONObject sitemap = stored.optJSONObject("sitemap");
         if (sitemap == null) {
             return out;
         }
 
+        // When these facts were found. The drawer never fetches a sitemap itself, so
+        // without the date its answer reads as current while the dashboard may say otherwise.
+        out.put("checkedAt", stored.opt("sitemapCheckedAt"));
         out.put(PRESENT, sitemap.optBoolean(PRESENT, false));
+        if ("unreachable".equals(sitemap.optString("reason"))) {
+            out.put("unreachable", true);
+            out.put("url", sitemap.optString("url"));
+            out.put(ERROR, sitemap.opt(ERROR));
+        }
         out.put("missing", SitemapCheck.isMissing(sitemap, path, language));
         out.put("noindexListed", SitemapCheck.isNoindexListed(sitemap, path, language));
         String stale = SitemapCheck.staleDetail(sitemap, path, language);

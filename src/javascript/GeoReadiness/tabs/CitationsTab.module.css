@@ -1,0 +1,187 @@
+/*
+ * The AI citations tab: questions and co-cited pages as cards, one fact per line, the figure that
+ * matters in large type on the right. Colours are Moonstone tokens with the same fallbacks as the
+ * charts; a mark always sits next to its number in text, never alone.
+ */
+.cards {
+    --cit-ink: var(--moon-color-gray_dark, #293136);
+    --cit-muted: #44505a; /* 8.26:1 on white, the tab's own secondary ink (Tabs.module.css .rule) */
+    --cit-line: var(--moon-color-gray_light, #e7e9ec);
+    --cit-track: var(--moon-color-gray_light40, rgba(218, 218, 218, 0.4));
+    --cit-mark: var(--moon-color-accent_dark, #0072b1);
+    --cit-ahead: var(--moon-color-warning, #ffbb00);
+    --cit-surface: var(--moon-color-light, #fdfdfd);
+    /* Status inks for text, dark enough for small type on white: 5.6:1 and 6.9:1. */
+    --cit-good-ink: var(--moon-color-success_dark, #267729);
+    --cit-bad-ink: #8a4f00;
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.card {
+    border: 1px solid var(--cit-line);
+    border-radius: 6px;
+    padding: 0.75rem 0.9rem;
+    background: var(--cit-surface);
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.cardHead {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.cardTitle {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--cit-ink);
+    overflow-wrap: anywhere;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.host {
+    font-weight: 600;
+}
+
+.path {
+    font-weight: 400;
+    font-size: 0.8rem;
+    color: var(--cit-muted);
+    overflow-wrap: anywhere;
+}
+
+.figure {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.1;
+}
+
+.figureValue {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--cit-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.figureUnit {
+    font-size: 0.72rem;
+    color: var(--cit-muted);
+}
+
+/* The question's share of the page's citations: a thin line, the number is in the meta row. */
+.share {
+    height: 0.4rem;
+    border-radius: 3px;
+    background: var(--cit-track);
+    overflow: hidden;
+}
+
+.shareFill {
+    height: 100%;
+    min-width: 2px;
+    border-radius: 0 3px 3px 0;
+    background: var(--cit-mark);
+}
+
+.meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.9rem;
+    font-size: 0.8rem;
+    color: var(--cit-muted);
+}
+
+.fact {
+    font-size: 0.82rem;
+    color: var(--cit-ink);
+}
+
+.badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 0.05rem 0.4rem;
+    border-radius: 3px;
+    border: 1px solid var(--cit-line);
+    color: var(--cit-ink);
+}
+
+.engines {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.engine {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: var(--cit-track);
+    color: var(--cit-ink);
+}
+
+.engineCount {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The share of shared answers in which the other page comes first: one bar, one meaning. */
+.aheadFill {
+    height: 100%;
+    min-width: 2px;
+    border-radius: 0 3px 3px 0;
+    background: var(--cit-ahead);
+}
+
+/* Room above each section, which the tab's headings do not get inside a fragment. */
+.section {
+    margin-top: 1.6rem;
+}
+
+.more {
+    margin-top: 0.4rem;
+}
+
+.figureOf {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--cit-muted);
+}
+
+.positions {
+    color: var(--cit-ink);
+}
+
+.rankValue {
+    font-weight: 700;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.toneGood {
+    color: var(--cit-good-ink);
+}
+
+.toneBad {
+    color: var(--cit-bad-ink);
+}

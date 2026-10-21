@@ -1,0 +1,298 @@
+/**
+ * BotRank citations (GEO-4 and screen B): the settings routes, the daily sync against a stand-in
+ * BotRank, the drawer tab and the site figures of the GEO dashboard.
+ *
+ * The stand-in is test-fixtures/botrank-stub.js, a service of the test stack reachable from Jahia at
+ * BOTRANK_STUB_URL (default http://botrank-stub:9091/public/v1). Locally, run it on the host with
+ * `node test-fixtures/botrank-stub.js` and set CYPRESS_BOTRANK_STUB_URL to
+ * http://host.docker.internal:9091/public/v1.
+ *
+ * Security model asserted in both directions: the settings routes spend the customer's organisation
+ * key, so `site-admin` on the site is their only gate (the publisher fixture holds it through
+ * site-administrator, the contributor through editor does not); the drawer read needs only to read
+ * the page; the site figures need `publish`, as the dashboard that shows them. Every absence asserted below is preceded by a liveness check on the same answer.
+ */
+
+import {asGuest, asRoot, asUser} from '../support/auth';
+import {ENDPOINTS, expectJsonOk, expectRefusal, geoGet, geoPost} from '../support/geo';
+import {configureModuleForTests, geoFixture, setupGeoFixture, teardownGeoFixture} from '../support/fixtures';
+import {GEO_ACTION_SELECTOR, openGeoDashboard, openJContentPages, selectTab} from '../support/ui';
+
+const STUB = Cypress.env('BOTRANK_STUB_URL') || 'http://botrank-stub:9091/public/v1';
+const OFFER = 'https://stub-site.example/legacy/offer';
+
+/**
+ * Starts a sync and polls until it has finished: a new syncedAt, or a failure. Comparing with the
+ * syncedAt read before the start is what keeps a second sync from passing on the first one's date.
+ */
+function syncAndWait(path: string): void {
+    geoPost(ENDPOINTS.citations, {action: 'status', path, language: 'en'}).then(before => {
+        const previous = before.body.syncedAt;
+        geoPost(ENDPOINTS.citations, {action: 'syncNow', path, language: 'en'}).its('status').should('eq', 202);
+        const poll = (tries: number): void => {
+            geoPost(ENDPOINTS.citations, {action: 'status', path, language: 'en'}).then(r => {
+                expectJsonOk(r, 'status answers while a sync runs');
+                if (r.body.status === 'failed') {
+                    throw new Error(`the sync failed: ${r.body.message}`);
+                }
+                if (r.body.syncedAt === previous || r.body.status === 'running') {
+                    if (tries <= 0) {
+                        throw new Error('the sync never finished');
+                    }
+                    // eslint-disable-next-line cypress/no-unnecessary-waiting
+                    cy.wait(2000);
+                    poll(tries - 1);
+                }
+            });
+        };
+        poll(30);
+    });
+}
+
+/**
+ * A cross-site write refused with 403, by the module or by the platform before it. jahia-ee-dev
+ * 8-SNAPSHOT (CI, 2026-10-15) refuses a cross-site POST with its HTML 403 page before any servlet
+ * runs; a platform that lets it through gets the module's own JSON refusal. The module's check is
+ * covered by GeoServletCsrfTest either way.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function expectCrossSiteRefusal(r: Cypress.Response<any>, what: string): void {
+    expect(r.status, `${what}: refused`).to.eq(403);
+    if (r.body !== null && typeof r.body === 'object') {
+        expect(r.body.error, `${what}: the module's refusal`).to.eq('cross-site request refused');
+    } else {
+        expect(String(r.body), `${what}: the platform's refusal`).to.contain('403 - Forbidden');
+    }
+}
+
+describe('geo-readiness - BotRank citations', () => {
+    const fixture = geoFixture('geocite');
+
+    before(() => {
+        setupGeoFixture(fixture);
+        configureModuleForTests();
+        // One connection, as a factory configuration, restricted to this site.
+        cy.runProvisioningScript({
+            script: {
+                fileContent: [
+                    '- editConfiguration: "org.jahia.se.modules.georeadiness.botrank"',
+                    '  configIdentifier: "cypress"',
+                    '  properties:',
+                    '      label: "Cypress stub"',
+                    '      apiKey: "brk_test"',
+                    `      baseUrl: "${STUB}"`,
+                    `      sites: "${fixture.siteKey}"`
+                ].join('\n'),
+                type: 'application/yaml'
+            }
+        });
+    });
+
+    after(() => {
+        asRoot();
+        teardownGeoFixture(fixture);
+    });
+
+    describe('who may call what', () => {
+        it('refuses a guest on the drawer read', () => {
+            asGuest();
+            geoGet(ENDPOINTS.citations, {path: fixture.homePath, language: 'en'}).then(r =>
+                expectRefusal(r, 401, 'authentication required', 'a guest reads no citations'));
+        });
+
+        it('refuses the settings to a contributor and lets them read the drawer', () => {
+            asUser(fixture.contributor);
+            geoGet(ENDPOINTS.citations, {path: fixture.homePath, language: 'en'}).then(r =>
+                expectJsonOk(r, 'a contributor who can read the page reads its citations'));
+            geoPost(ENDPOINTS.citations, {action: 'status', path: fixture.sitePath, language: 'en'}).then(r =>
+                expectRefusal(r, 403, 'site administration required', 'binding the key is for site administrators'));
+            geoPost(ENDPOINTS.citations, {action: 'projects', path: fixture.sitePath, language: 'en', connection: 'cypress'}).then(r =>
+                expectRefusal(r, 403, 'site administration required', 'listing projects spends the key'));
+        });
+
+        it('refuses the site figures to a guest and to a contributor, who cannot open the dashboard', () => {
+            asGuest();
+            geoGet(ENDPOINTS.citations, {scope: 'site', path: fixture.sitePath, language: 'en'}).then(r =>
+                expectRefusal(r, 401, 'authentication required', 'a guest reads no site figures'));
+            asUser(fixture.contributor);
+            geoGet(ENDPOINTS.citations, {path: fixture.homePath, language: 'en'}).then(r =>
+                expectJsonOk(r, 'liveness: the same contributor reads the drawer'));
+            geoGet(ENDPOINTS.citations, {scope: 'site', path: fixture.sitePath, language: 'en'}).then(r =>
+                expectRefusal(r, 403, 'cannot read node', 'the site figures need publish, as the dashboard'));
+        });
+
+        it('lets a site administrator see the connection, never its key', () => {
+            asUser(fixture.publisher);
+            geoPost(ENDPOINTS.citations, {action: 'status', path: fixture.sitePath, language: 'en'}).then(r => {
+                expectJsonOk(r, 'a site administrator reads the settings');
+                const ids = r.body.connections.map((c: {id: string}) => c.id);
+                expect(ids, 'the factory configuration is listed by its id').to.include('cypress');
+                expect(JSON.stringify(r.body), 'no answer carries the key').not.to.contain('brk_test');
+            });
+            geoPost(ENDPOINTS.citations, {action: 'projects', path: fixture.sitePath, language: 'en', connection: 'cypress'}).then(r => {
+                expectJsonOk(r, 'projects come from the stub');
+                expect(r.body.projects[0].id).to.eq('p1');
+            });
+        });
+
+        it('refuses a JSON-less settings call', () => {
+            asUser(fixture.publisher);
+            geoPost(ENDPOINTS.citations, {action: 'status', path: fixture.sitePath, language: 'en'}, {contentType: 'text/plain'}).then(r =>
+                expectRefusal(r, 400, 'json required', 'the content type is the CSRF control'));
+        });
+    });
+
+    describe('refusals that a working request would pass', () => {
+        // Each case changes one thing of a request the publisher may otherwise make.
+        const status = {action: 'status', path: fixture.sitePath, language: 'en'};
+
+        it('refuses a simple request that only mentions application/json', () => {
+            asUser(fixture.publisher);
+            geoPost(ENDPOINTS.citations, status).then(r => expectJsonOk(r, 'liveness: the same call passes as JSON'));
+            geoPost(ENDPOINTS.citations, status, {contentType: 'text/plain; application/json'}).then(r =>
+                expectRefusal(r, 400, 'json required', 'a browser sends this cross-site without a preflight'));
+        });
+
+        it('refuses what the browser marks as another site', () => {
+            asUser(fixture.publisher);
+            geoPost(ENDPOINTS.citations, status).then(r => expectJsonOk(r, 'liveness: the same call passes same-origin'));
+            ['cross-site', 'same-site'].forEach(verdict => {
+                cy.request({
+                    method: 'POST', url: ENDPOINTS.citations, failOnStatusCode: false, body: status,
+                    headers: {'Content-Type': 'application/json', 'Sec-Fetch-Site': verdict}
+                }).then(r => expectCrossSiteRefusal(r, `Sec-Fetch-Site: ${verdict}`));
+            });
+            cy.request({
+                method: 'POST', url: ENDPOINTS.citations, failOnStatusCode: false, body: status,
+                headers: {'Content-Type': 'application/json', Origin: 'https://evil.example'}
+            }).then(r => expectCrossSiteRefusal(r, 'a foreign Origin'));
+        });
+
+        it('refuses settings that are not valid', () => {
+            asUser(fixture.publisher);
+            const save = {action: 'save', path: fixture.sitePath, language: 'en', connection: 'cypress', project: 'p1',
+                hosts: ['stub-site.example'], enabled: false, time: '06:30'};
+            geoPost(ENDPOINTS.citations, save).then(r => expectJsonOk(r, 'liveness: the valid settings save'));
+            geoPost(ENDPOINTS.citations, {...save, hosts: ['not a host']}).then(r => expectRefusal(r, 400, 'invalid host', 'host'));
+            geoPost(ENDPOINTS.citations, {...save, time: '25:00'}).then(r => expectRefusal(r, 400, 'invalid time', 'time'));
+            geoPost(ENDPOINTS.citations, {...save, project: 'p1/../x'}).then(r => expectRefusal(r, 400, 'invalid project', 'project'));
+            geoPost(ENDPOINTS.citations, {...save, connection: 'nope'}).then(r => expectRefusal(r, 400, 'unknown connection', 'connection'));
+        });
+
+        it('refuses a mapping target that is not a page of the site', () => {
+            asUser(fixture.publisher);
+            const map = {action: 'map', path: fixture.sitePath, language: 'en', url: OFFER, target: fixture.homePath};
+            geoPost(ENDPOINTS.citations, {...map, action: 'unmap'}).then(r => expectJsonOk(r, 'liveness: unmap answers'));
+            geoPost(ENDPOINTS.citations, {...map, target: fixture.sitePath}).then(r =>
+                expectRefusal(r, 400, 'the target is not a page of this site', 'the site node is not a page'));
+            geoPost(ENDPOINTS.citations, {...map, target: '/sites/systemsite/home'}).then(r =>
+                expectRefusal(r, 400, 'the target is not a page of this site', 'another site'));
+        });
+
+        it('opens the drawer read on pages only', () => {
+            asUser(fixture.contributor);
+            geoGet(ENDPOINTS.citations, {path: fixture.homePath, language: 'en'}).then(r => expectJsonOk(r, 'liveness: a page reads'));
+            geoGet(ENDPOINTS.citations, {path: fixture.sitePath, language: 'en'}).then(r =>
+                expectRefusal(r, 403, 'cannot read node', 'the site node is not a page'));
+        });
+    });
+
+    describe('sync, mapping and the drawer', () => {
+        it('syncs, lists the unmatched cited URL, then counts it once mapped', () => {
+            asUser(fixture.publisher);
+            geoPost(ENDPOINTS.citations, {
+                action: 'save', path: fixture.sitePath, language: 'en',
+                connection: 'cypress', project: 'p1', hosts: ['www.stub-site.example'], enabled: true, time: '06:30'
+            }).then(r => {
+                expectJsonOk(r, 'settings saved');
+                expect(r.body.hosts, 'hosts are folded').to.deep.eq(['stub-site.example']);
+                expect(r.body.nextRun, 'the daily trigger is installed').to.be.a('string');
+            });
+
+            syncAndWait(fixture.sitePath);
+            geoPost(ENDPOINTS.citations, {action: 'status', path: fixture.sitePath, language: 'en'}).then(r => {
+                expect(r.body.status, r.body.message).to.eq('done');
+                const urls = r.body.unresolved.map((u: {url: string}) => u.url);
+                expect(urls, 'the stub URL matches no page of the fixture yet').to.include(OFFER);
+            });
+
+            geoPost(ENDPOINTS.citations, {action: 'map', path: fixture.sitePath, language: 'en', url: `${OFFER}/?utm_source=x`, target: fixture.homePath})
+                .then(r => expectJsonOk(r, 'a cited URL maps to a page of the site'));
+            geoPost(ENDPOINTS.citations, {action: 'map', path: fixture.sitePath, language: 'en', url: 'https://elsewhere.example/x', target: fixture.homePath})
+                .then(r => expectRefusal(r, 400, 'the URL is not on a host of this site', 'only the site\'s own hosts map'));
+
+            syncAndWait(fixture.sitePath);
+
+            geoGet(ENDPOINTS.citations, {path: fixture.homePath, language: 'en'}).then(r => {
+                expectJsonOk(r, 'the drawer read answers');
+                expect(r.body.configured, 'liveness: the site is connected').to.eq(true);
+                const page = r.body.page;
+                expect(page.citations, 'the stub total').to.eq(12);
+                expect(page.via).to.eq('mapping');
+                expect(page.variation, 'kept: the previous window has a run day').to.eq(3);
+                expect(page.prompts[0].text, 'stored as data').to.eq('Which <b>offer</b> fits a first home?');
+                expect(page.coCited[0].outrankingAnswerCount).to.eq(6);
+            });
+
+            geoGet(ENDPOINTS.citations, {path: fixture.childPath, language: 'en'}).then(r => {
+                expectJsonOk(r, 'the drawer read answers for an uncited page');
+                expect(r.body.configured, 'liveness: same connected site').to.eq(true);
+                expect(r.body.syncedAt, 'liveness: a sync happened').to.be.a('string');
+                expect(r.body.page, 'never cited').to.eq(null);
+            });
+        });
+
+        it('stores the site figures of the sync for the dashboard', () => {
+            asUser(fixture.publisher);
+            geoGet(ENDPOINTS.citations, {scope: 'site', path: fixture.sitePath, language: 'en'}).then(r => {
+                expectJsonOk(r, 'a publisher reads the site figures');
+                expect(r.body.configured, 'liveness: the site is connected').to.eq(true);
+                const site = r.body.site;
+                expect(site.failures, 'every site read answered').to.eq(0);
+                const domain = site.domains[0];
+                expect(domain.domain, 'the domain BotRank named').to.eq('stub-site.example');
+                expect(domain.citations).to.eq(12);
+                expect(domain.share).to.eq(0.04);
+                expect(domain.ranking.find((x: {requested: boolean}) => x.requested).rank).to.eq(2);
+                expect(domain.shareHistory[2].share, 'a day with no cited source stays null').to.eq(null);
+                expect(site.hosts[0].citations, 'per host, from the cited pages').to.eq(12);
+                expect(site.topPages[0].url).to.eq(OFFER);
+                expect(site.topPages[0].jcrPath, 'the mapped page, readable by the caller').to.eq(fixture.homePath);
+                expect(site.topPages[0].title, 'its title for the caller').to.be.a('string');
+                expect(site.engines.map((e: {refreshInterval: string}) => e.refreshInterval)).to.deep.eq(['P1D', 'P7D']);
+                expect(site.visibility.score).to.eq(0.5);
+            });
+        });
+
+        it('shows the site figures on the GEO dashboard', () => {
+            cy.login(fixture.publisher.username, fixture.publisher.password);
+            openGeoDashboard(fixture.siteKey);
+            selectTab('AI citations');
+            // Overview, the first sub-tab: the rank as a badge and the domain BotRank counted.
+            cy.contains('AI citations at a glance', {timeout: 30000}).should('be.visible');
+            cy.contains('#2').scrollIntoView().should('be.visible');
+            cy.contains('stub-site.example').scrollIntoView().should('be.visible');
+            selectTab('Ranking');
+            cy.contains('li', 'competitor.example').scrollIntoView().should('be.visible');
+            cy.contains('This site').scrollIntoView().should('be.visible');
+            selectTab('Pages');
+            cy.contains(OFFER).scrollIntoView().should('be.visible');
+            selectTab('Engines');
+            cy.contains('li', 'Perplexity').scrollIntoView().should('contain.text', 'Every 7 days');
+        });
+
+        it('shows the citations tab before any crawler check, and prompt text as text', () => {
+            cy.login(fixture.publisher.username, fixture.publisher.password);
+            openJContentPages(fixture.siteKey);
+            cy.get(GEO_ACTION_SELECTOR, {timeout: 30000}).click();
+            selectTab('AI citations');
+            // The drawer scrolls inside a fixed panel: bring each line into view before asserting it.
+            cy.contains('Cited 12 times in AI answers over the last 30 days', {timeout: 30000})
+                .scrollIntoView().should('be.visible');
+            cy.contains('Which <b>offer</b> fits a first home?').scrollIntoView().should('be.visible');
+            // The co-cited address shows as its host, then its path.
+            cy.contains('competitor.example').scrollIntoView().should('be.visible');
+            cy.contains('/best-offer').should('be.visible');
+        });
+    });
+});

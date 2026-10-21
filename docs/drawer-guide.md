@@ -4,7 +4,9 @@ When ChatGPT, Claude or Perplexity fetch one of your pages, what do they actuall
 answers that for the page you have open, and tells you which parts are yours to fix.
 
 Open it by selecting a page in jContent and choosing **GEO readiness**. Nothing in the panel
-changes your page: it only reads and reports.
+changes your page: it only reads and reports. It closes with Escape, its Close button, the same
+button again, or a click anywhere outside it: the page under edit, the content tree, or another
+panel's button.
 
 A companion guide covers the site-wide screen: [`dashboard-guide.md`](dashboard-guide.md).
 
@@ -35,9 +37,13 @@ none of these, or several.
 | This page is set to noindex | The page itself asks search engines and crawlers to ignore it. |
 | This page is not in the sitemap | Nothing tells crawlers the page exists. They can only find it by following a link. |
 | In the sitemap **and** marked noindex | Your own two files contradict each other: one advertises the page, the other says to ignore it. Pick one. |
+| The last site scan could not reach the sitemap | The scan could not fetch the sitemap, so whether this page is in it is unknown. It names the error; it is a connection problem, not a finding about the page. |
 | Does not exist in every language | The page is missing in one or more of the site's languages. |
 | A translation is not published | The translation was written but never published, so nobody can read it. |
 | Address or sitemap date warnings | The page answers on several addresses, or the sitemap's "last changed" date disagrees with the real one. |
+
+The sitemap banners are read from the last site scan, never fetched by the drawer, and each says
+the date of that scan: run a new scan from the dashboard when the sitemap changed since.
 
 A tab showing an amber number has that many problems inside it. A tab with no number has nothing
 that needs you.
@@ -89,7 +95,8 @@ of the two is wrong.
 
 | You see | It means |
 |---|---|
-| N crawlers are blocked | Someone did not get a normal answer. Not always a refusal: a missing page or a timeout counts too. |
+| The server could not reach the page for N crawlers | No answer came back at all (connection refused, timeout, certificate, unknown host), and the error is named. A connection problem on the Jahia server, not a refusal by the site: on Jahia Cloud, a node that cannot reach its own public address. The score marks "The server could fetch the page" as failed and does not judge whether crawlers are refused. |
+| N crawlers are blocked | The server answered, but not with the page: a refusal, a missing page or an error status. |
 | Even a browser receives almost no text | The page is an empty shell until JavaScript fills it in. Every crawler sees nothing. The most serious result on the tab. |
 | Some crawlers receive far less text | Crawlers got under half the words a browser got. Part of your content needs JavaScript. |
 | Every crawler can read this page | Nothing to do. |
@@ -122,6 +129,10 @@ crawlers it *names* and how many it turns away, then a table with one row per cr
 | Effective | *allowed* or *disallowed*: what the file actually permits for this crawler. |
 | Rule | The exact line that decided it, so you can see why. |
 
+When the server could not fetch a file at all, the tab says so and names the error (connection
+refused, timeout, certificate, unknown host) rather than reporting the file as missing: a missing
+`robots.txt` would mean every crawler is allowed, which nobody checked.
+
 **llms.txt.** A newer, simpler file: a plain summary of the site for AI tools. If it exists you see
 its heading, whether it has a summary, and how many sections and links it contains. If the server
 returns a web page instead of the file, that is called out in red, because a crawler asking for the
@@ -149,6 +160,37 @@ this date, written by this person". Crawlers rely on it heavily.
 **What to do.** The tab shows the finished snippet with a Copy button. Nothing is ever written into
 your page automatically: somebody places it, usually once in a template rather than page by page.
 If properties are missing, the usual fix is to fill in the matching fields on the content itself.
+
+## Tab 5 - AI citations
+
+Only on sites that a site administrator connected to BotRank. It opens without running the check:
+its figures come from the site's daily sync, not from the button.
+
+**What it answers.** "Do AI answers quote this page, for which questions, and against whom?"
+
+**What you see.**
+
+- When the data dates from, and when the site last synced.
+- How many times AI answers cited the page over the last 30 days, compared with the 30 days
+  before. When no tracked question ran in the previous 30 days, no comparison is shown: a "+14"
+  against a period nobody measured would be meaningless.
+- Its rank among the site's cited pages, and the AI engines that cite it.
+- Citations per day. Read the trend: the same question gets different answers from one run to the
+  next.
+- The tracked questions that cite it, with the AI engines behind each one, and the themes those
+  questions belong to. Each question and theme shows its own change on the previous 30 days, under
+  the same rule as the page.
+- The other pages the same answers cite, five at first and the rest one click away, each as a card:
+  in how many of the answers they share it is listed before this page (orange when that is half or
+  more), both average positions among the sources (1 is the first source) with which one ranks
+  higher, and how often it is cited overall.
+- "Not cited yet" when no tracked answer ever cited the page, or "Not cited recently" when it was
+  cited before the last 30 days.
+
+**What to do.** The themes say what AI engines think the page is about; if they surprise you, the
+page may explain something else than you meant. The pages cited alongside show what the engines
+prefer to quote on the same questions. The tracked questions themselves are set up in BotRank, not
+in Jahia.
 
 ## Which problems are actually yours
 

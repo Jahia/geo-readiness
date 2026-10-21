@@ -22,7 +22,9 @@
         "thin": "Some crawlers receive far less text than a browser. The page may need JavaScript to show its content.",
         "unpublishedTitle": "This page is not published",
         "unpublished": "This page has never been published, so there is no public URL to test yet.",
-        "empty": "Even a browser receives almost no text before JavaScript runs ({{count}} words). Crawlers will see an empty page."
+        "empty": "Even a browser receives almost no text before JavaScript runs ({{count}} words). Crawlers will see an empty page.",
+        "unreachable": "The server could not reach the page for {{count}} crawler.",
+        "unreachable_plural": "The server could not reach the page for {{count}} crawlers."
       },
       "agent": "Crawler",
       "status": "Status",
@@ -140,8 +142,12 @@
           },
           "searchBlockedTitle": "{{count}} crawler that answers questions is blocked",
           "searchBlockedTitle_plural": "{{count}} crawlers that answer questions are blocked",
-          "searchBlocked": "Blocking a crawler that builds answers removes you from that assistant's replies. Blocking one that only trains models does not. Check this is what you meant: {{names}}."
-        }
+          "searchBlocked": "Blocking a crawler that builds answers removes you from that assistant's replies. Blocking one that only trains models does not. Check this is what you meant: {{names}}.",
+          "noAnswer": "no answer",
+          "verdictUnreachable": "The server could not reach the page for {{count}} crawler, so what the site does with it is unknown",
+          "verdictUnreachable_plural": "The server could not reach the page for {{count}} crawlers, so what the site does with them is unknown"
+        },
+        "unreachable": "robots.txt could not be fetched, so what it allows is unknown. This is a connection problem, not a finding about the file."
       },
       "llms": {
         "title": "llms.txt",
@@ -190,7 +196,8 @@
         "fresh": {
           "title": "llms.txt is up to date",
           "summary": "All {{count}} entries match what generating would produce right now, so regenerating would change nothing."
-        }
+        },
+        "unreachable": "llms.txt could not be fetched, so whether the site publishes one is unknown. This is a connection problem, not a finding about the file."
       },
       "llmsFull": {
         "label": "llms-full.txt"
@@ -290,6 +297,10 @@
         "guestReadable": {
           "label": "A visitor with no account can read it",
           "fix": "A guest cannot read this page, so no crawler ever will. Some servers answer a gated page with a login form and a 200, which looks like success. Check the page's access restrictions."
+        },
+        "fetched": {
+          "label": "The server could fetch the page",
+          "fix": "The server could not connect to the page for at least one crawler. This is a connection problem on the server, not a refusal by the site, and the checks of what arrives are unreliable until it is fixed."
         }
       },
       "checkColumn": "Check",
@@ -318,13 +329,18 @@
         "freshness": "Freshness",
         "languages": "Languages",
         "schema": "Structured data",
-        "report": "Report"
+        "report": "Report",
+        "citations-overview": "Overview",
+        "citations-ranking": "Ranking",
+        "citations-pages": "Pages",
+        "citations-engines": "Engines"
       },
       "group": {
         "overview": "Overview",
         "reach": "Can a crawler reach it",
         "usable": "Is what arrives usable",
-        "files": "Site-level files"
+        "files": "Site-level files",
+        "citations": "AI citations"
       }
     },
     "visibility": {
@@ -466,6 +482,8 @@
       "checkNow": "CHECK NOW",
       "checking": "CHECKING…",
       "lastCheck": "Last check: {{date}}",
+      "figureEntries": "In the sitemap",
+      "figurePublished": "Published",
       "neverTitle": "Not checked yet",
       "never": "Run a check, or wait for the next scheduled site scan, which refreshes this too.",
       "limits": "Entries are matched to content, not fetched, so a redirect is not detected: an entry that redirects elsewhere counts as resolving. Every language of the site is compared, and each finding names the URL it belongs to.",
@@ -482,7 +500,10 @@
         "notSitemap": "{{url}} returns HTTP {{status}}, but the response is not a sitemap - most often a page or an error page served with a success code. Until that address returns a real sitemap, crawlers have no usable map, and nothing here can be compared.",
         "unreachableTitle": "The sitemap could not be reached",
         "unreachable": "{{url}} could not be fetched at all, so whether a sitemap exists is unknown. This is a connection problem, not a finding about your content."
-      }
+      },
+      "fromScan": "From the site scan of {{date}}.",
+      "unreachablePageTitle": "The last site scan could not reach the sitemap",
+      "unreachablePage": "{{url}} could not be fetched during the site scan of {{date}}, so whether this page is in the sitemap is unknown."
     },
     "links": {
       "title": "Pages nothing links to",
@@ -506,7 +527,11 @@
       "orphanTitle": "Nothing links to this page",
       "orphanPage": "No other published page links here and the sitemap does not list it, so a crawler has no way to discover it at all.",
       "navOnlyTitle": "Only the menu links to this page",
-      "navOnlyPage": "It appears in navigation on {{count}} pages, but no page links to it from its content. Crawlers that weight links treat a menu entry as a weaker signal than a link an author chose to make."
+      "navOnlyPage": "It appears in navigation on {{count}} pages, but no page links to it from its content. Crawlers that weight links treat a menu entry as a weaker signal than a link an author chose to make.",
+      "figure": {
+        "orphans": "Orphan pages",
+        "weak": "Weakly linked"
+      }
     },
     "vanity": {
       "title": "One page, several addresses",
@@ -548,6 +573,11 @@
         "elsewhere": "The canonical names {{detail}}, which is neither this page's own address nor any of its vanity URLs. Everything this page earns is being credited elsewhere.",
         "canonicalTitle": "This page's canonical needs checking",
         "canonical": "The canonical tag does not name this page's own address or any of its aliases."
+      },
+      "figure": {
+        "unresolvable": "Unserved language",
+        "duplicates": "Duplicate addresses",
+        "canonical": "No canonical"
       }
     },
     "freshness": {
@@ -594,7 +624,11 @@
       "allTitle": "Every page, oldest first",
       "allHelp": "The whole list, so the groups above tell you where to look and this tells you which page. Each row opens in jContent.",
       "noDate": "no date",
-      "truncated": "Long lists are cut at {{count}} rows; the groups above still count everything."
+      "truncated": "Long lists are cut at {{count}} rows; the groups above still count everything.",
+      "figure": {
+        "dated": "Dated items",
+        "undated": "No modification date"
+      }
     },
     "languages": {
       "title": "Readiness one language at a time",
@@ -618,6 +652,13 @@
       "series": {
         "coverage": "Translated coverage",
         "score": "Readiness score"
+      },
+      "figure": {
+        "published": "Published items",
+        "declared": "Languages",
+        "unmeasured": "Not measured",
+        "spread": "Spread between languages",
+        "points": "{{points}} pts"
       }
     },
     "schema": {
@@ -656,6 +697,11 @@
         "legend": {
           "complete": "Can emit complete JSON-LD",
           "incomplete": "Mapped, but a required property has no source",
+          "unmapped": "Not mapped"
+        },
+        "figure": {
+          "complete": "Complete JSON-LD",
+          "incomplete": "Missing a source",
           "unmapped": "Not mapped"
         }
       },
@@ -757,6 +803,222 @@
         "owner": "Owner: {{owner}}",
         "effort": "Effort: {{effort}}"
       }
+    },
+    "fetchError": {
+      "ConnectException": "The server could not open a connection to that address ({{error}}). A Jahia Cloud server, for one, cannot reach its own public address: ask for that to be allowed, or set PUBLIC_BASE_URL to an address the server can reach.",
+      "SocketTimeoutException": "The address did not answer in time ({{error}}).",
+      "SSLHandshakeException": "The server's Java does not trust the certificate of that address ({{error}}).",
+      "UnknownHostException": "The server cannot resolve that host name ({{error}}).",
+      "other": "The fetch failed with {{error}}."
+      },
+    "citations": {
+      "tab": "AI citations",
+      "asOf": "BotRank data as of {{date}}.",
+      "asOfUnknown": "BotRank has not counted any AI answer yet.",
+      "syncedAt": "Synced {{date}}.",
+      "running": "A sync is running.",
+      "notSyncedTitle": "No sync yet",
+      "notSynced": "The site is connected to BotRank, but its first sync has not run. Figures appear after the next daily sync, or after a site administrator starts one.",
+      "notPublishedTitle": "This page is not published",
+      "notPublished": "AI answers can only cite a published page. Publish it, and its citations appear after the next sync.",
+      "neverTitle": "Not cited yet",
+      "never": "No AI answer tracked for this site has cited this page. The page may be new, or the tracked questions may not cover its subject.",
+      "notRecentTitle": "Not cited recently",
+      "notRecent": "AI answers cited this page {{count}} time in the past, but not in the last 30 days.",
+      "notRecent_plural": "AI answers cited this page {{count}} times in the past, but not in the last 30 days.",
+      "verdict": "Cited {{count}} time in AI answers over the last 30 days",
+      "verdict_plural": "Cited {{count}} times in AI answers over the last 30 days",
+      "variationUp": "+{{count}} on the previous 30 days",
+      "variationDown": "-{{count}} on the previous 30 days",
+      "variationSame": "Same as the previous 30 days",
+      "variationNone": "No comparison",
+      "variationWithheld": "No comparison is shown: no tracked question ran in the previous 30 days.",
+      "rank": "Rank {{rank}} of {{of}} cited pages of the site.",
+      "everCitations": "{{count}} citations since tracking started.",
+      "severalUrls": "Cited under {{count}} addresses of this page, added up.",
+      "mapped": "A site administrator matched a cited address to this page by hand.",
+      "detailsMissingTitle": "Details not available",
+      "detailsMissing": "BotRank did not answer for this page's details during the last sync. The total is up to date; the rest will be after the next sync.",
+      "engines": "AI engines that cite it",
+      "history": "Citations per day",
+      "historyNote": "One bar per day on which tracked questions ran. A day without a bar had no run. Read the trend, not a single day: answers vary from one run to the next.",
+      "prompts": "Questions that cite it",
+      "tags": "Themes",
+      "tagsIntro": "The topics of the tracked questions that cite this page, as BotRank groups them. This is how AI engines read the page, not how it was tagged in Jahia.",
+      "coCited": "Pages cited in the same answers",
+      "coCitedIntro": "Other pages the same AI answers cite, often competitors.",
+      "coCitedRankOnly": "Average position among the sources of those answers: {{theirs}}; this page is not listed as a source in them",
+      "coCitedTotal": "Cited {{count}} time over the last 30 days, with this page or not",
+      "coCitedTotal_plural": "Cited {{count}} times over the last 30 days, with this page or not",
+      "source": "Source: BotRank. Texts and addresses above come from AI answers and are shown as written.",
+      "loadErrorTitle": "Citations could not be loaded",
+      "loadError": "Try again later. If it persists, a site administrator can check the BotRank connection in Site Settings.",
+      "surface": {
+        "chatgpt": "ChatGPT",
+        "perplexity": "Perplexity",
+        "gemini": "Gemini",
+        "mistral": "Mistral",
+        "aioverview": "Google AI Overview",
+        "aimode": "Google AI Mode",
+        "grok": "Grok",
+        "copilot": "Copilot",
+        "claude": "Claude"
+      },
+      "citationsUnit": "citation",
+      "citationsUnit_plural": "citations",
+      "shareOfPage": "{{percent}}% of this page's citations",
+      "lastCited": "last cited {{day}}",
+      "byEngine": "By AI engine",
+      "tagPrompts": "{{count}} question",
+      "tagPrompts_plural": "{{count}} questions",
+      "youRankHigher": "Your page ranks higher",
+      "theyRankHigher": "Ranks higher than yours",
+      "aheadOf": "Listed before your page in {{ahead}} of the {{count}} answer they share",
+      "aheadOf_plural": "Listed before your page in {{ahead}} of the {{count}} answers they share",
+      "showAll": "Show {{count}} more page",
+      "showAll_plural": "Show {{count}} more pages",
+      "showFewer": "Show fewer",
+      "aheadUnit": "listed before yours",
+      "positionsLabel": "Average position among the sources:",
+      "positionsYours": "yours"
+    },
+    "citationsSettings": {
+      "navLabel": "AI citations (BotRank)",
+      "title": "AI citations (BotRank)",
+      "intro": "Connect this site to a BotRank project to show, on each page, whether AI answers cite it. Jahia reads BotRank once a day; editors never call BotRank themselves.",
+      "notEnabled": "The GEO readiness module is not enabled on this site, or you are not a site administrator. Enable the module in Site Settings, Modules.",
+      "forbidden": "You need to be a site administrator of this site.",
+      "error": "The request failed.",
+      "errorTitle": "Something went wrong",
+      "noConnectionTitle": "No BotRank connection",
+      "noConnection": "A server administrator adds one file per BotRank organisation in karaf/etc, named org.jahia.se.modules.georeadiness.botrank-<id>.cfg, with the organisation's API key. See the module documentation.",
+      "connection": "BotRank connection",
+      "connectionHelp": "The BotRank organisation whose data this site reads.",
+      "connectionProblem": "This connection cannot be used",
+      "choose": "Choose",
+      "project": "Project",
+      "projectHelp": "The BotRank project that tracks the questions about this site.",
+      "projectsErrorTitle": "Projects could not be listed",
+      "hosts": "Hosts of the site",
+      "hostsHelp": "The addresses the site is served on, comma-separated, at most {{max}}. www. does not matter. Needed when the server name is localhost, as on Jahia Cloud.",
+      "enabled": "Daily sync",
+      "enabledHelp": "When on, Jahia reads BotRank every day at this time, Paris time.",
+      "time": "Time",
+      "timeHelp": "HH:mm, Paris time. 06:30 runs after BotRank's night runs.",
+      "save": "Save",
+      "saved": "Settings saved",
+      "syncNow": "Sync now",
+      "syncStarted": "Sync started. It takes a few minutes on a large site.",
+      "lastSync": "Last sync",
+      "status": {
+        "idle": "Idle",
+        "running": "Running",
+        "done": "Done",
+        "failed": "Failed"
+      },
+      "syncedAt": "Last completed: {{date}}",
+      "latestAnswerAt": "Latest AI answer counted by BotRank: {{date}}",
+      "nextRun": "Next daily sync: {{date}}",
+      "citedPages": "Pages with citations: {{count}}",
+      "messageTitle": "Note from the last sync",
+      "unresolved": "Cited addresses not matched to a page",
+      "unresolvedIntro": "Addresses of this site that AI answers cite, but that no published page, vanity URL or mapping matches. Old addresses after a migration often end up here. Match one to a page, then sync.",
+      "unresolvedNone": "Every cited address of the site matches a page.",
+      "citations": "{{count}} citations",
+      "map": "Match to a page",
+      "mappings": "Addresses matched by hand",
+      "unmap": "Remove",
+      "mappingsNote": "A mapping counts from the next sync."
+    },
+    "siteCitations": {
+      "view": {
+        "overview": "AI citations at a glance",
+        "ranking": "Where the site stands",
+        "pages": "Which pages carry it",
+        "engines": "Engines and brand visibility"
+      },
+      "viewIntro": {
+        "overview": "How the answers of AI engines cite this site, from the last daily sync with BotRank: its rank among cited sites, its share of all citations, and what to read first.",
+        "ranking": "The sites that the same AI answers cite, around this one, and how the site's share of citations moved day by day.",
+        "pages": "The addresses of the site that AI answers cite most, matched to their page in Jahia, and the split per host.",
+        "engines": "How often each engine's answers mention the brand, and how often BotRank asks each engine again."
+      },
+      "notConfiguredTitle": "Not connected to BotRank",
+      "notConfigured": "This site is not connected to BotRank. A site administrator connects it in Site Settings, under AI citations (BotRank).",
+      "notConfiguredAdmin": "This site is not connected to BotRank. Connect it in Site Settings, under AI citations (BotRank): pick the connection, the project and the site's hosts.",
+      "notSynced": "The site is connected to BotRank, but no sync has read its site figures yet. They appear after the next daily sync, or after a site administrator starts one.",
+      "metaAsOf": "Data as of {{date}}",
+      "metaPeriod": "{{start}} to {{end}}, against the 30 days before",
+      "metaSynced": "Synced {{date}}",
+      "partialTitle": "Some figures are missing",
+      "partial": "{{count}} read of the site figures failed in the last sync. What BotRank answered is shown; the next sync tries again.",
+      "partial_plural": "{{count}} reads of the site figures failed in the last sync. What BotRank answered is shown; the next sync tries again.",
+      "domainScope": "BotRank counts the whole registrable domain",
+      "domainNote": "Citations, share and rank are BotRank's figures for the whole registrable domain, so they include any other site served on a subdomain of it.",
+      "notCitedTitle": "{{domain}} has never been cited",
+      "notCited": "No AI answer of this BotRank project has ever cited {{domain}}.",
+      "rankLabel": "Rank",
+      "rankShort": "#{{rank}}",
+      "rankFirst": "#1",
+      "rankOf": "among the sites the answers cite",
+      "citations": "Citations",
+      "share": "Share of citations",
+      "citedPages": "Cited pages",
+      "last30": "in AI answers, last 30 days",
+      "citedPagesSub": "addresses of the domain",
+      "points": "{{value}} pts",
+      "takeaways": "What to read first",
+      "tk": {
+        "gap": "{{gap}} of share behind {{domain}}, ranked {{rank}}.",
+        "first": "The site is the most cited of all the sites these answers cite.",
+        "top3": "The three most cited pages carry {{share}} of the domain's citations.",
+        "unmatched": "{{count}} of the {{total}} most cited addresses match no page of the site.",
+        "unmatched_plural": "{{count}} of the {{total}} most cited addresses match no page of the site.",
+        "unresolved": "{{count}} cited address matches no page of the site.",
+        "unresolved_plural": "{{count}} cited addresses match no page of the site.",
+        "bestDay": "Best day: {{day}}, with {{share}} of all citations.",
+        "noComparison": "No comparison yet: BotRank has no comparable previous 30 days for this project."
+      },
+      "visibility": "Brand visibility",
+      "visibilityScore": "of the {{answers}} analysed answer mention the brand.",
+      "visibilityScore_plural": "of the {{answers}} analysed answers mention the brand.",
+      "visibilityNote": "Context, not the site's result: an answer can mention the brand without citing any page of the site.",
+      "leaderboard": "Rank of {{domain}} among cited sites",
+      "leaderboardIntro": "Share of all the citations in the project's AI answers, with the sites just above and below.",
+      "thisSite": "This site",
+      "noRankingTitle": "No ranking",
+      "noRanking": "None of the site's domains is cited by this BotRank project.",
+      "shareHistory": "Share of citations per day",
+      "shareHistoryIntro": "One bar per day the project received AI answers. An empty bar is a day where no answer cited any source.",
+      "statLast": "Latest",
+      "statAverage": "Average",
+      "statBest": "Best",
+      "statLow": "Lowest",
+      "noSource": "no answer cited a source",
+      "topPages": "Most cited pages",
+      "topPagesIntro": "The {{count}} most cited address of the site's hosts, over the last 30 days.",
+      "topPagesIntro_plural": "The {{count}} most cited addresses of the site's hosts, over the last 30 days.",
+      "noTopPages": "No page of the site's hosts was cited over the period.",
+      "unmatched": "No page matched",
+      "unresolved": "{{count}} cited address matches no page of the site. A site administrator can match it to a page in Site Settings, under AI citations (BotRank).",
+      "unresolved_plural": "{{count}} cited addresses match no page of the site. A site administrator can match them to pages in Site Settings, under AI citations (BotRank).",
+      "hosts": "Per host",
+      "host": "Host",
+      "approxShare": "Share, approx.",
+      "hostsNote": "Computed here from the cited pages of each host, since BotRank only filters its list of pages by host. The share is estimated from the domain's own figures.",
+      "byEngine": "Brand visibility per engine",
+      "byMarket": "Brand visibility per market",
+      "oneMarket": "One market tracked: {{market}}, with the project's score of {{score}}.",
+      "engines": "Engines tracked by the project",
+      "enginesIntro": "How often BotRank asks each engine again. New figures appear after the next refresh and the next daily sync.",
+      "intervalNone": "Not refreshed automatically",
+      "intervalDays": "Every day",
+      "intervalDays_plural": "Every {{count}} days",
+      "intervalWeeks": "Every week",
+      "intervalWeeks_plural": "Every {{count}} weeks",
+      "intervalHours": "Every hour",
+      "intervalHours_plural": "Every {{count}} hours",
+      "source": "Source: BotRank. Domains and addresses come from AI answers and are shown as written."
     }
   }
 }

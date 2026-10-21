@@ -7,8 +7,11 @@ import {ScoreTab} from './tabs/ScoreTab';
 import {CrawlerTab} from './tabs/CrawlerTab';
 import {SiteFilesTab} from './tabs/SiteFilesTab';
 import {SchemaTab} from './tabs/SchemaTab';
+import {CitationsTab} from './tabs/CitationsTab';
+import {fetchPageCitations} from './api/citations';
 import tabStyles from './tabs/Tabs.module.css';
 import styles from './GeoReadinessDrawer.module.css';
+import {fetchErrorHint} from './util/fetchError';
 
 const NS = 'geo-readiness';
 const CACHE_SCHEMA = 8;
@@ -58,6 +61,31 @@ function filesIssueCount(report) {
     return n;
 }
 
+/** A stored scan date for a sentence; an unparsable value is shown as stored. */
+const formatScanDate = iso => {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? String(iso || '') : d.toLocaleString();
+};
+
+/** The tabs of the drawer: the report's four when it has a published report, then citations. */
+function drawerTabs(report, citationsAvailable, t) {
+    const tabs = report ? [
+        {id: 'score', label: t('score.tab'), count: report.score ? report.score.criticalFailed : 0},
+        {id: 'crawler', label: t('crawler.tab'), count: report.blockedCount},
+        {id: 'files', label: t('files.tab'), count: filesIssueCount(report)},
+        {
+            id: 'schema',
+            label: t('schema.tab'),
+            count: report.schema && report.schema.mapped && !report.schema.valid ? 1 : 0
+        }
+    ] : [];
+    if (citationsAvailable) {
+        tabs.push({id: 'citations', label: t('citations.tab'), count: 0});
+    }
+
+    return tabs;
+}
+
 export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     const {t} = useTranslation(NS);
     const [report, setReport] = useState(null);
@@ -65,8 +93,14 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     const [phase, setPhase] = useState('idle');
     const [tab, setTab] = useState('score');
     const [error, setError] = useState(null);
+    // BotRank citations load on their own, as soon as the drawer opens: they come from the site's
+    // last sync, not from the crawler check, and they live here so a tab switch does not refetch them.
+    const [citations, setCitations] = useState(null);
+    const [citationsFailed, setCitationsFailed] = useState(false);
     const drawerRef = useRef(null);
     const previouslyFocused = useRef(null);
+    // Set when a press elsewhere closed the drawer: focus then belongs where the user pressed.
+    const closedOutside = useRef(false);
 
     // A portal into document.body has no natural place in the page's own
     // focus order. Without this, opening the drawer leaves keyboard focus on
@@ -75,10 +109,13 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     // the user came from.
     useEffect(() => {
         if (isOpen) {
+            closedOutside.current = false;
             previouslyFocused.current = document.activeElement;
             if (drawerRef.current) {
                 drawerRef.current.focus();
             }
+        } else if (closedOutside.current) {
+            previouslyFocused.current = null;
         } else if (previouslyFocused.current && typeof previouslyFocused.current.focus === 'function') {
             previouslyFocused.current.focus();
             previouslyFocused.current = null;
@@ -114,6 +151,42 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
             first.focus();
         }
     }, [onClose]);
+
+    // Closes on a press anywhere outside the drawer, the way jContent's own side panels behave:
+    // another drawer's button, the content tree, the toolbar. The page under edit is an iframe, and a
+    // click in it never reaches this document, so focus moving into an iframe counts as outside too.
+    // The drawer opens nothing outside itself (no menu, no picker), so nothing legitimate is lost.
+    useEffect(() => {
+        if (!isOpen) {
+            return undefined;
+        }
+
+        const isOutside = target => drawerRef.current && target instanceof Node && !drawerRef.current.contains(target);
+        const onPointerDown = e => {
+            if (isOutside(e.target)) {
+                closedOutside.current = true;
+                onClose('outside');
+            }
+        };
+
+        const onBlur = () => {
+            // The active element is only updated after the blur event: read it on the next tick.
+            setTimeout(() => {
+                const active = document.activeElement;
+                if (active && active.tagName === 'IFRAME' && isOutside(active)) {
+                    closedOutside.current = true;
+                    onClose('outside');
+                }
+            }, 0);
+        };
+
+        document.addEventListener('pointerdown', onPointerDown, true);
+        globalThis.addEventListener('blur', onBlur);
+        return () => {
+            document.removeEventListener('pointerdown', onPointerDown, true);
+            globalThis.removeEventListener('blur', onBlur);
+        };
+    }, [isOpen, onClose]);
 
     // Bound to the node rather than declared as an onKeyDown prop.
     //
@@ -151,6 +224,27 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
         setError(null);
     }, [isOpen, path, language]);
 
+    useEffect(() => {
+        if (!isOpen) {
+            return undefined;
+        }
+        let alive = true;
+        setCitations(null);
+        setCitationsFailed(false);
+        fetchPageCitations({path, language})
+            .then(d => alive && setCitations(d))
+            .catch(e => {
+                // 403 means the module is not enabled on this site or the page is not readable:
+                // the tab simply does not exist then. Anything else is shown as an error in the tab.
+                if (alive && e.code !== 403) {
+                    setCitationsFailed(true);
+                }
+            });
+        return () => {
+            alive = false;
+        };
+    }, [isOpen, path, language]);
+
     const run = useCallback(async () => {
         setPhase('running');
         setError(null);
@@ -169,6 +263,12 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     if (!isOpen) {
         return null;
     }
+
+    const citationsAvailable = citationsFailed || Boolean(citations && citations.configured);
+    const reportTabs = Boolean(report && report.published);
+    // Without a published report only the citations tab exists, whatever tab was selected before.
+    const activeTab = reportTabs || !citationsAvailable ? tab : 'citations';
+    const tabs = drawerTabs(reportTabs ? report : null, citationsAvailable, t);
 
     return (
         // A real <dialog> rather than an <aside role="dialog">. Rendered with
@@ -243,9 +343,22 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                     </Banner>
                 )}
 
+                {/*
+                  * The drawer never fetches the sitemap: these facts come from the last site
+                  * scan, so they carry its date, and a scan that could not reach the file says
+                  * so rather than leaving the page silently "not missing".
+                  */}
+                {report && report.sitemap && report.sitemap.unreachable && (
+                    <Banner variant="warning" title={t('sitemap.unreachablePageTitle')}>
+                        {t('sitemap.unreachablePage', {url: report.sitemap.url, date: formatScanDate(report.sitemap.checkedAt)})}
+                        {report.sitemap.error && ` ${fetchErrorHint(t, report.sitemap.error)}`}
+                    </Banner>
+                )}
+
                 {report && report.sitemap && report.sitemap.missing && (
                     <Banner variant="warning" title={t('sitemap.notListedTitle')}>
                         {t('sitemap.notListed')}
+                        {report.sitemap.checkedAt && ` ${t('sitemap.fromScan', {date: formatScanDate(report.sitemap.checkedAt)})}`}
                     </Banner>
                 )}
 
@@ -256,6 +369,7 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                 {report && report.sitemap && report.sitemap.noindexListed && (
                     <Banner variant="warning" title={t('sitemap.noindexListedTitle')}>
                         {t('sitemap.noindexListedPage')}
+                        {report.sitemap.checkedAt && ` ${t('sitemap.fromScan', {date: formatScanDate(report.sitemap.checkedAt)})}`}
                     </Banner>
                 )}
 
@@ -317,27 +431,19 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                 {report && report.sitemap && report.sitemap.staleDetail && (
                     <Banner variant="info" title={t('sitemap.staleTitle')}>
                         {t('sitemap.stalePage', {detail: report.sitemap.staleDetail})}
+                        {report.sitemap.checkedAt && ` ${t('sitemap.fromScan', {date: formatScanDate(report.sitemap.checkedAt)})}`}
                     </Banner>
                 )}
 
-                {report && report.published && (
+                {tabs.length > 0 && (
                     <Tab className={tabStyles.tabs}>
-                        {[
-                            {id: 'score', label: t('score.tab'), count: report.score ? report.score.criticalFailed : 0},
-                            {id: 'crawler', label: t('crawler.tab'), count: report.blockedCount},
-                            {id: 'files', label: t('files.tab'), count: filesIssueCount(report)},
-                            {
-                                id: 'schema',
-                                label: t('schema.tab'),
-                                count: report.schema && report.schema.mapped && !report.schema.valid ? 1 : 0
-                            }
-                        ].map(item => (
+                        {tabs.map(item => (
                             <TabItem
                                 key={item.id}
                                 id={`geo-drawer-tab-${item.id}`}
                                 aria-controls={`geo-drawer-panel-${item.id}`}
                                 label={item.label}
-                                isSelected={tab === item.id}
+                                isSelected={activeTab === item.id}
                                 icon={item.count > 0 ? <Badge label={String(item.count)} color="warning"/> : undefined}
                                 onClick={() => setTab(item.id)}
                             />
@@ -363,17 +469,18 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                     </Banner>
                 )}
 
-                {report && report.published && (
+                {(reportTabs || activeTab === 'citations') && tabs.length > 0 && (
                     <div
                         role="tabpanel"
-                        id={`geo-drawer-panel-${tab}`}
-                        aria-labelledby={`geo-drawer-tab-${tab}`}
+                        id={`geo-drawer-panel-${activeTab}`}
+                        aria-labelledby={`geo-drawer-tab-${activeTab}`}
                         tabIndex={0}
                     >
-                        {tab === 'score' && <ScoreTab report={report}/>}
-                        {tab === 'crawler' && <CrawlerTab report={report}/>}
-                        {tab === 'files' && <SiteFilesTab report={report}/>}
-                        {tab === 'schema' && <SchemaTab report={report}/>}
+                        {reportTabs && activeTab === 'score' && <ScoreTab report={report}/>}
+                        {reportTabs && activeTab === 'crawler' && <CrawlerTab report={report}/>}
+                        {reportTabs && activeTab === 'files' && <SiteFilesTab report={report}/>}
+                        {reportTabs && activeTab === 'schema' && <SchemaTab report={report}/>}
+                        {activeTab === 'citations' && <CitationsTab data={citations} failed={citationsFailed}/>}
                     </div>
                 )}
             </div>

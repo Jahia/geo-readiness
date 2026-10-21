@@ -473,3 +473,62 @@ server-side, so what the editor sees is the file that would actually be written.
 Wave 1 is complete. Wave 2 candidates, in the order they are worth doing: run the check across
 every site language rather than one at a time, and a site-level roll-up instead of one page at a
 time. The roll-up is the better presales artifact but needs crawl budgeting.
+
+## The vendor gate, if you are about to call BotRank
+
+As of **15 October 2026** BotRank's public API v1 is documented and open in a test organisation:
+reference at `https://api.botrank.ai/public/v1/reference`, OpenAPI 3.1 at
+`https://api.botrank.ai/public/v1/openapi.json`. The integration is server to server: a Jahia
+module holds the customer's key (`Authorization: Bearer brk_…`, plus a `Project-Id` header), syncs
+once a day (06:30 Paris time, after their night runs) and re-exposes the data through Jahia
+GraphQL. The browser never calls BotRank. Each customer has its own BotRank organisation and key;
+Jahia holds none on their behalf.
+
+Code against `openapi.json`, never against responses you happened to see, and keep the key out of
+the repository, of logs and of the browser. The sync reads `data-freshness` first and waits while
+`refreshing` is true, reads a domain's cited-pages list with the site's hosts (their domain is the
+registrable domain, a Jahia site is often a subdomain), resolves each cited URL to a node with
+Jahia's URL resolver, then reads per-page detail only for cited pages, keyed on the page's
+published Jahia URL. The route table and the open points are in `docs/botrank-backlog.md`.
+
+Three more facts worth knowing before designing anything against them, because each one has already
+sent a design the wrong way once:
+
+- **Locale is a property of a prompt, not a filter.** Five markets are five prompts, not one prompt
+  queried five ways. Anything modelled as "filter the results by market" is modelled wrong.
+- **Their page-audit quota is irrelevant to the two authority signals.** Brand and domain authority
+  are per-domain reads. Only Google and Bing indexation are per URL.
+- **Their deep links need a user session.** Settled: anyone who opens BotRank uses their own
+  BotRank account, so a plain link is enough. Everything shown inside Jahia is rendered by us from
+  the synced data.
+
+When any of this changes, `docs/botrank-backlog.md` is where it is recorded, with dates.
+
+## BotRank connector (`botrank/`, GEO-4)
+
+Server to server with the customer's organisation key; the drawer reads what the daily sync stored
+and never causes a call. Reference: `docs/architecture.md`, `botrank/`; the API itself is described
+by `https://api.botrank.ai/public/v1/openapi.json`, which is what code is written against.
+
+- **A connection is a factory configuration file.** `org.jahia.se.modules.georeadiness.botrank-<id>.cfg`;
+  `BotRankConnection` reads `<id>` from `felix.fileinstall.filename`. A file created through the
+  provisioning API (`editConfiguration` + `configIdentifier`) gets the same naming. No file ships: it
+  holds a key.
+- **Write a key on a server without printing it**: pipe it from the keychain into
+  `docker exec -i <container> sh -c 'umask 077; k=$(cat); printf ... > <file>'`, never as an argument
+  or an environment variable of the command, and check the file with `grep -c '^apiKey = brk_'`.
+- **The cron trigger carries `Europe/Paris`.** Quartz reads cron in the server time zone and the
+  container runs UTC: without `setTimeZone`, 06:30 fires at 08:30 in summer. The status route shows
+  `nextRun` in UTC; 04:30Z is 06:30 Paris in summer.
+- **`site-admin` is the settings gate, on purpose.** The organisation key is added by the server, so
+  the permission is the only thing between a user and the customer's BotRank account. On 8.2.3.2 the
+  site-administrator role holds it and the editor role does not; the Cypress spec proves both sides.
+- **The variation guard is not cosmetic.** BotRank computes a variation against a previous period
+  with no run (tested 2026-10-15: `+14`). `CitationSync` keeps one only when the 60-day history shows
+  a run day in the previous window. Do not remove it until BotRank returns `null` itself.
+- **Cited URLs are matched through Jahia, never by string equality.** BotRank folds only `www.`,
+  slash, anchor and tracking parameters; a page also answers on vanity URLs and `/sites/` paths.
+  A cited URL that matches nothing is listed in Site Settings, where an administrator maps it.
+- **Local e2e run**: `node test-fixtures/botrank-stub.js` on the host, then
+  `CYPRESS_BOTRANK_STUB_URL=http://host.docker.internal:9091/public/v1 yarn e2e:ci --spec cypress/e2e/citations.spec.ts`.
+  In CI the stub is the `botrank-stub` service of `tests/docker-compose.yml`.

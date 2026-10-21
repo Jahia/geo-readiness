@@ -22,7 +22,9 @@
         "thin": "Certains robots reçoivent beaucoup moins de texte qu'un navigateur. La page a sans doute besoin de JavaScript pour afficher son contenu.",
         "unpublishedTitle": "Cette page n'est pas publiée",
         "unpublished": "Cette page n'a jamais été publiée. Il n'y a donc pas encore d'URL publique à tester.",
-        "empty": "Même un navigateur ne reçoit presque aucun texte avant l'exécution du JavaScript ({{count}} mots). Les robots verront une page vide."
+        "empty": "Même un navigateur ne reçoit presque aucun texte avant l'exécution du JavaScript ({{count}} mots). Les robots verront une page vide.",
+        "unreachable": "Le serveur n'a pas pu joindre la page pour {{count}} robot.",
+        "unreachable_plural": "Le serveur n'a pas pu joindre la page pour {{count}} robots."
       },
       "agent": "Robot",
       "status": "Statut",
@@ -140,8 +142,12 @@
           },
           "searchBlockedTitle": "{{count}} robot qui répond aux questions est bloqué",
           "searchBlockedTitle_plural": "{{count}} robots qui répondent aux questions sont bloqués",
-          "searchBlocked": "Bloquer un robot qui construit les réponses vous retire des réponses de cet assistant. Bloquer un robot qui ne fait qu'entraîner les modèles, non. Vérifiez que c'est bien votre intention : {{names}}."
-        }
+          "searchBlocked": "Bloquer un robot qui construit les réponses vous retire des réponses de cet assistant. Bloquer un robot qui ne fait qu'entraîner les modèles, non. Vérifiez que c'est bien votre intention : {{names}}.",
+          "noAnswer": "pas de réponse",
+          "verdictUnreachable": "Le serveur n'a pas pu joindre la page pour {{count}} robot : on ne sait donc pas ce que le site en fait",
+          "verdictUnreachable_plural": "Le serveur n'a pas pu joindre la page pour {{count}} robots : on ne sait donc pas ce que le site en fait"
+        },
+        "unreachable": "Le robots.txt n'a pas pu être récupéré : on ne sait donc pas ce qu'il autorise. C'est un problème de connexion, pas un constat sur le fichier."
       },
       "llms": {
         "title": "llms.txt",
@@ -190,7 +196,8 @@
         "fresh": {
           "title": "llms.txt est à jour",
           "summary": "Les {{count}} entrées correspondent à ce que produirait une génération maintenant : régénérer ne changerait rien."
-        }
+        },
+        "unreachable": "Le llms.txt n'a pas pu être récupéré : on ne sait donc pas si le site en publie un. C'est un problème de connexion, pas un constat sur le fichier."
       },
       "llmsFull": {
         "label": "llms-full.txt"
@@ -290,6 +297,10 @@
         "guestReadable": {
           "label": "Un visiteur sans compte peut la lire",
           "fix": "Un visiteur anonyme ne peut pas lire cette page, donc aucun robot ne le pourra. Certains serveurs renvoient un formulaire de connexion avec un code 200, ce qui ressemble à un succès. Vérifiez les restrictions d'accès de la page."
+        },
+        "fetched": {
+          "label": "Le serveur a pu récupérer la page",
+          "fix": "Le serveur n'a pas pu se connecter à la page pour au moins un robot. C'est un problème de connexion côté serveur, pas un refus du site, et les vérifications de ce qui arrive ne sont pas fiables tant qu'il n'est pas réglé."
         }
       },
       "checkColumn": "Vérification",
@@ -318,13 +329,18 @@
         "freshness": "Fraîcheur",
         "languages": "Langues",
         "schema": "Données structurées",
-        "report": "Rapport"
+        "report": "Rapport",
+        "citations-overview": "Vue d'ensemble",
+        "citations-ranking": "Classement",
+        "citations-pages": "Pages",
+        "citations-engines": "Moteurs"
       },
       "group": {
         "overview": "Vue d'ensemble",
         "reach": "Un robot peut-il y accéder",
         "usable": "Ce qui arrive est-il exploitable",
-        "files": "Fichiers du site"
+        "files": "Fichiers du site",
+        "citations": "Citations par les IA"
       }
     },
     "visibility": {
@@ -466,6 +482,8 @@
       "checkNow": "VÉRIFIER",
       "checking": "VÉRIFICATION…",
       "lastCheck": "Dernière vérification : {{date}}",
+      "figureEntries": "Dans le sitemap",
+      "figurePublished": "Publiés",
       "neverTitle": "Pas encore vérifié",
       "never": "Lancez une vérification, ou attendez le prochain scan planifié du site, qui la rafraîchit aussi.",
       "limits": "Les entrées sont rapprochées du contenu, non téléchargées : une redirection n'est donc pas détectée, une entrée qui redirige ailleurs est comptée comme résolue. Toutes les langues du site sont comparées et chaque constat indique l'URL concernée.",
@@ -482,7 +500,10 @@
         "notSitemap": "{{url}} renvoie HTTP {{status}}, mais la réponse n'est pas un sitemap - le plus souvent une page ou une page d'erreur servie avec un code de succès. Tant que cette adresse ne renvoie pas un vrai sitemap, les robots n'ont pas de carte exploitable et rien ne peut être comparé ici.",
         "unreachableTitle": "Le sitemap n'a pas pu être atteint",
         "unreachable": "{{url}} n'a pas pu être récupéré : l'existence d'un sitemap est donc inconnue. Il s'agit d'un problème de connexion, pas d'un constat sur votre contenu."
-      }
+      },
+      "fromScan": "D'après le scan du site du {{date}}.",
+      "unreachablePageTitle": "Le dernier scan du site n'a pas pu joindre le sitemap",
+      "unreachablePage": "{{url}} n'a pas pu être récupéré lors du scan du site du {{date}} : on ne sait donc pas si cette page figure dans le sitemap."
     },
     "links": {
       "title": "Pages vers lesquelles rien ne pointe",
@@ -506,7 +527,11 @@
       "orphanTitle": "Rien ne pointe vers cette page",
       "orphanPage": "Aucune autre page publiée n'y fait de lien et le sitemap ne la liste pas : un robot n'a aucun moyen de la découvrir.",
       "navOnlyTitle": "Seul le menu pointe vers cette page",
-      "navOnlyPage": "Elle figure dans la navigation de {{count}} pages, mais aucune page n'y fait de lien depuis son contenu. Les robots qui pondèrent les liens considèrent une entrée de menu comme un signal plus faible qu'un lien voulu par un rédacteur."
+      "navOnlyPage": "Elle figure dans la navigation de {{count}} pages, mais aucune page n'y fait de lien depuis son contenu. Les robots qui pondèrent les liens considèrent une entrée de menu comme un signal plus faible qu'un lien voulu par un rédacteur.",
+      "figure": {
+        "orphans": "Pages orphelines",
+        "weak": "Liens faibles"
+      }
     },
     "vanity": {
       "title": "Une page, plusieurs adresses",
@@ -548,6 +573,11 @@
         "elsewhere": "La canonique désigne {{detail}}, qui n'est ni l'adresse propre de cette page ni l'une de ses URL personnalisées. Tout ce que cette page gagne est crédité ailleurs.",
         "canonicalTitle": "La balise canonique de cette page est à vérifier",
         "canonical": "La balise canonique ne désigne ni l'adresse propre de cette page ni l'un de ses alias."
+      },
+      "figure": {
+        "unresolvable": "Langue non servie",
+        "duplicates": "Adresses en double",
+        "canonical": "Sans canonique"
       }
     },
     "freshness": {
@@ -594,7 +624,11 @@
       "allTitle": "Toutes les pages, de la plus ancienne à la plus récente",
       "allHelp": "La liste complète : les regroupements ci-dessus indiquent où chercher, celle-ci indique quelle page. Chaque ligne s'ouvre dans jContent.",
       "noDate": "sans date",
-      "truncated": "Les listes longues sont coupées à {{count}} lignes ; les regroupements ci-dessus comptent toujours la totalité."
+      "truncated": "Les listes longues sont coupées à {{count}} lignes ; les regroupements ci-dessus comptent toujours la totalité.",
+      "figure": {
+        "dated": "Contenus datés",
+        "undated": "Sans date de modification"
+      }
     },
     "languages": {
       "title": "La préparation, langue par langue",
@@ -618,6 +652,13 @@
       "series": {
         "coverage": "Couverture traduite",
         "score": "Score de préparation"
+      },
+      "figure": {
+        "published": "Contenus publiés",
+        "declared": "Langues",
+        "unmeasured": "Non mesurées",
+        "spread": "Écart entre langues",
+        "points": "{{points}} pts"
       }
     },
     "schema": {
@@ -656,6 +697,11 @@
         "legend": {
           "complete": "Peut émettre un JSON-LD complet",
           "incomplete": "Associé, mais une propriété requise n'a pas de source",
+          "unmapped": "Non associé"
+        },
+        "figure": {
+          "complete": "JSON-LD complet",
+          "incomplete": "Source manquante",
           "unmapped": "Non associé"
         }
       },
@@ -757,6 +803,222 @@
         "owner": "Responsable : {{owner}}",
         "effort": "Effort : {{effort}}"
       }
+    },
+    "fetchError": {
+      "ConnectException": "Le serveur n'a pas pu ouvrir de connexion vers cette adresse ({{error}}). Un serveur Jahia Cloud, par exemple, ne peut pas joindre sa propre adresse publique : demandez à l'autoriser, ou réglez PUBLIC_BASE_URL sur une adresse que le serveur peut joindre.",
+      "SocketTimeoutException": "L'adresse n'a pas répondu à temps ({{error}}).",
+      "SSLHandshakeException": "Le Java du serveur ne fait pas confiance au certificat de cette adresse ({{error}}).",
+      "UnknownHostException": "Le serveur ne sait pas résoudre ce nom d'hôte ({{error}}).",
+      "other": "La récupération a échoué avec {{error}}."
+      },
+    "citations": {
+      "tab": "Citations IA",
+      "asOf": "Données BotRank au {{date}}.",
+      "asOfUnknown": "BotRank n'a encore compté aucune réponse d'IA.",
+      "syncedAt": "Synchronisé le {{date}}.",
+      "running": "Une synchronisation est en cours.",
+      "notSyncedTitle": "Pas encore synchronisé",
+      "notSynced": "Le site est connecté à BotRank, mais sa première synchronisation n'a pas eu lieu. Les chiffres apparaissent après la prochaine synchronisation quotidienne, ou après qu'un administrateur du site en a lancé une.",
+      "notPublishedTitle": "Cette page n'est pas publiée",
+      "notPublished": "Les réponses d'IA ne peuvent citer qu'une page publiée. Publiez-la : ses citations apparaîtront après la prochaine synchronisation.",
+      "neverTitle": "Pas encore citée",
+      "never": "Aucune réponse d'IA suivie pour ce site ne cite cette page. La page est peut-être récente, ou les questions suivies ne couvrent pas son sujet.",
+      "notRecentTitle": "Pas citée récemment",
+      "notRecent": "Des réponses d'IA ont cité cette page {{count}} fois par le passé, mais pas sur les 30 derniers jours.",
+      "notRecent_plural": "Des réponses d'IA ont cité cette page {{count}} fois par le passé, mais pas sur les 30 derniers jours.",
+      "verdict": "Citée {{count}} fois dans des réponses d'IA sur les 30 derniers jours",
+      "verdict_plural": "Citée {{count}} fois dans des réponses d'IA sur les 30 derniers jours",
+      "variationUp": "+{{count}} sur les 30 jours précédents",
+      "variationDown": "-{{count}} sur les 30 jours précédents",
+      "variationSame": "Comme les 30 jours précédents",
+      "variationNone": "Pas de comparaison",
+      "variationWithheld": "Aucune comparaison n'est affichée : aucune question suivie n'a tourné sur les 30 jours précédents.",
+      "rank": "Rang {{rank}} sur {{of}} pages citées du site.",
+      "everCitations": "{{count}} citations depuis le début du suivi.",
+      "severalUrls": "Citée sous {{count}} adresses de cette page, additionnées.",
+      "mapped": "Un administrateur du site a rattaché à la main une adresse citée à cette page.",
+      "detailsMissingTitle": "Détail indisponible",
+      "detailsMissing": "BotRank n'a pas répondu pour le détail de cette page lors de la dernière synchronisation. Le total est à jour ; le reste le sera à la prochaine synchronisation.",
+      "engines": "Moteurs d'IA qui la citent",
+      "history": "Citations par jour",
+      "historyNote": "Une barre par jour où les questions suivies ont tourné. Un jour sans barre n'a pas eu d'exécution. Lisez la tendance, pas un jour isolé : les réponses varient d'une exécution à l'autre.",
+      "prompts": "Questions qui la citent",
+      "tags": "Thèmes",
+      "tagsIntro": "Les sujets des questions suivies qui citent cette page, tels que BotRank les regroupe. C'est la lecture des moteurs d'IA, pas les tags posés dans Jahia.",
+      "coCited": "Pages citées dans les mêmes réponses",
+      "coCitedIntro": "Les autres pages citées par les mêmes réponses d'IA, souvent des concurrents.",
+      "coCitedRankOnly": "Position moyenne parmi les sources de ces réponses : {{theirs}} ; cette page n'y figure pas parmi les sources",
+      "coCitedTotal": "Citée {{count}} fois sur les 30 derniers jours, avec ou sans cette page",
+      "coCitedTotal_plural": "Citée {{count}} fois sur les 30 derniers jours, avec ou sans cette page",
+      "source": "Source : BotRank. Les textes et adresses ci-dessus viennent de réponses d'IA et sont affichés tels quels.",
+      "loadErrorTitle": "Les citations n'ont pas pu être chargées",
+      "loadError": "Réessayez plus tard. Si cela persiste, un administrateur du site peut vérifier la connexion BotRank dans les Site Settings.",
+      "surface": {
+        "chatgpt": "ChatGPT",
+        "perplexity": "Perplexity",
+        "gemini": "Gemini",
+        "mistral": "Mistral",
+        "aioverview": "Google AI Overview",
+        "aimode": "Google AI Mode",
+        "grok": "Grok",
+        "copilot": "Copilot",
+        "claude": "Claude"
+      },
+      "citationsUnit": "citation",
+      "citationsUnit_plural": "citations",
+      "shareOfPage": "{{percent}} % des citations de cette page",
+      "lastCited": "dernière citation le {{day}}",
+      "byEngine": "Par moteur IA",
+      "tagPrompts": "{{count}} question",
+      "tagPrompts_plural": "{{count}} questions",
+      "youRankHigher": "Votre page est mieux placée",
+      "theyRankHigher": "Mieux placée que la vôtre",
+      "aheadOf": "Placée avant votre page dans {{ahead}} sur {{count}} réponse partagée",
+      "aheadOf_plural": "Placée avant votre page dans {{ahead}} des {{count}} réponses partagées",
+      "showAll": "Afficher {{count}} page de plus",
+      "showAll_plural": "Afficher {{count}} pages de plus",
+      "showFewer": "Afficher moins",
+      "aheadUnit": "placée avant la vôtre",
+      "positionsLabel": "Position moyenne parmi les sources :",
+      "positionsYours": "la vôtre"
+    },
+    "citationsSettings": {
+      "navLabel": "Citations IA (BotRank)",
+      "title": "Citations IA (BotRank)",
+      "intro": "Connectez ce site à un projet BotRank pour afficher, sur chaque page, si des réponses d'IA la citent. Jahia lit BotRank une fois par jour ; les contributeurs n'appellent jamais BotRank eux-mêmes.",
+      "notEnabled": "Le module GEO readiness n'est pas activé sur ce site, ou vous n'en êtes pas administrateur. Activez le module dans Site Settings, Modules.",
+      "forbidden": "Il faut être administrateur de ce site.",
+      "error": "La requête a échoué.",
+      "errorTitle": "Un problème est survenu",
+      "noConnectionTitle": "Aucune connexion BotRank",
+      "noConnection": "Un administrateur du serveur ajoute un fichier par organisation BotRank dans karaf/etc, nommé org.jahia.se.modules.georeadiness.botrank-<id>.cfg, avec la clé d'API de l'organisation. Voir la documentation du module.",
+      "connection": "Connexion BotRank",
+      "connectionHelp": "L'organisation BotRank dont ce site lit les données.",
+      "connectionProblem": "Cette connexion n'est pas utilisable",
+      "choose": "Choisir",
+      "project": "Projet",
+      "projectHelp": "Le projet BotRank qui suit les questions sur ce site.",
+      "projectsErrorTitle": "Les projets n'ont pas pu être listés",
+      "hosts": "Hôtes du site",
+      "hostsHelp": "Les adresses où le site est servi, séparées par des virgules, {{max}} au plus. Le www. n'a pas d'importance. Nécessaire quand le nom de serveur est localhost, comme sur Jahia Cloud.",
+      "enabled": "Synchronisation quotidienne",
+      "enabledHelp": "Activée, Jahia lit BotRank chaque jour à cette heure, heure de Paris.",
+      "time": "Heure",
+      "timeHelp": "HH:mm, heure de Paris. 06:30 passe après les exécutions de nuit de BotRank.",
+      "save": "Enregistrer",
+      "saved": "Réglages enregistrés",
+      "syncNow": "Synchroniser maintenant",
+      "syncStarted": "Synchronisation lancée. Elle prend quelques minutes sur un gros site.",
+      "lastSync": "Dernière synchronisation",
+      "status": {
+        "idle": "En attente",
+        "running": "En cours",
+        "done": "Terminée",
+        "failed": "Échouée"
+      },
+      "syncedAt": "Dernière réussie : {{date}}",
+      "latestAnswerAt": "Dernière réponse d'IA comptée par BotRank : {{date}}",
+      "nextRun": "Prochaine synchronisation quotidienne : {{date}}",
+      "citedPages": "Pages citées : {{count}}",
+      "messageTitle": "Note de la dernière synchronisation",
+      "unresolved": "Adresses citées non rattachées à une page",
+      "unresolvedIntro": "Adresses de ce site citées par des réponses d'IA, mais qu'aucune page publiée, URL vanity ou rattachement ne reconnaît. Les anciennes adresses d'un site migré se retrouvent souvent ici. Rattachez-en une à une page, puis synchronisez.",
+      "unresolvedNone": "Chaque adresse citée du site correspond à une page.",
+      "citations": "{{count}} citations",
+      "map": "Rattacher à une page",
+      "mappings": "Adresses rattachées à la main",
+      "unmap": "Retirer",
+      "mappingsNote": "Un rattachement compte à partir de la prochaine synchronisation."
+    },
+    "siteCitations": {
+      "view": {
+        "overview": "Les citations IA en un coup d'œil",
+        "ranking": "La place du site",
+        "pages": "Les pages qui le portent",
+        "engines": "Moteurs et visibilité de la marque"
+      },
+      "viewIntro": {
+        "overview": "Comment les réponses des moteurs d'IA citent ce site, d'après la dernière synchronisation quotidienne avec BotRank : son rang parmi les sites cités, sa part de toutes les citations, et ce qu'il faut retenir.",
+        "ranking": "Les sites que citent les mêmes réponses d'IA, autour de celui-ci, et l'évolution jour par jour de la part des citations du site.",
+        "pages": "Les adresses du site que les réponses d'IA citent le plus, rattachées à leur page dans Jahia, et la répartition par hôte.",
+        "engines": "La fréquence à laquelle les réponses de chaque moteur mentionnent la marque, et le rythme auquel BotRank interroge chaque moteur."
+      },
+      "notConfiguredTitle": "Non connecté à BotRank",
+      "notConfigured": "Ce site n'est pas connecté à BotRank. Un administrateur du site le connecte dans les réglages du site, sous Citations par les IA (BotRank).",
+      "notConfiguredAdmin": "Ce site n'est pas connecté à BotRank. Connectez-le dans les réglages du site, sous Citations par les IA (BotRank) : choisissez la connexion, le projet et les hôtes du site.",
+      "notSynced": "Le site est connecté à BotRank, mais aucune synchronisation n'a encore lu ses chiffres de site. Ils apparaissent après la prochaine synchronisation quotidienne, ou après qu'un administrateur du site en a lancé une.",
+      "metaAsOf": "Données au {{date}}",
+      "metaPeriod": "Du {{start}} au {{end}}, face aux 30 jours précédents",
+      "metaSynced": "Synchronisé le {{date}}",
+      "partialTitle": "Des chiffres manquent",
+      "partial": "{{count}} lecture des chiffres du site a échoué lors de la dernière synchronisation. Ce que BotRank a répondu est affiché ; la prochaine synchronisation réessaie.",
+      "partial_plural": "{{count}} lectures des chiffres du site ont échoué lors de la dernière synchronisation. Ce que BotRank a répondu est affiché ; la prochaine synchronisation réessaie.",
+      "domainScope": "BotRank compte tout le domaine enregistrable",
+      "domainNote": "Citations, part et rang sont les chiffres de BotRank pour tout le domaine enregistrable : ils incluent tout autre site servi sur un de ses sous-domaines.",
+      "notCitedTitle": "{{domain}} n'a jamais été cité",
+      "notCited": "Aucune réponse d'IA de ce projet BotRank n'a jamais cité {{domain}}.",
+      "rankLabel": "Rang",
+      "rankShort": "{{rank}}e",
+      "rankFirst": "1er",
+      "rankOf": "parmi les sites que citent les réponses",
+      "citations": "Citations",
+      "share": "Part des citations",
+      "citedPages": "Pages citées",
+      "last30": "dans les réponses d'IA, 30 derniers jours",
+      "citedPagesSub": "adresses du domaine",
+      "points": "{{value}} pt",
+      "takeaways": "À retenir",
+      "tk": {
+        "gap": "{{gap}} de part derrière {{domain}}, {{rank}}.",
+        "first": "Le site est le plus cité de tous les sites que citent ces réponses.",
+        "top3": "Les trois pages les plus citées portent {{share}} des citations du domaine.",
+        "unmatched": "{{count}} des {{total}} adresses les plus citées ne correspond à aucune page du site.",
+        "unmatched_plural": "{{count}} des {{total}} adresses les plus citées ne correspondent à aucune page du site.",
+        "unresolved": "{{count}} adresse citée ne correspond à aucune page du site.",
+        "unresolved_plural": "{{count}} adresses citées ne correspondent à aucune page du site.",
+        "bestDay": "Meilleur jour : le {{day}}, avec {{share}} de toutes les citations.",
+        "noComparison": "Pas encore de comparaison : BotRank n'a pas de 30 jours précédents comparables pour ce projet."
+      },
+      "visibility": "Visibilité de la marque",
+      "visibilityScore": "de la {{answers}} réponse analysée mentionne la marque.",
+      "visibilityScore_plural": "des {{answers}} réponses analysées mentionnent la marque.",
+      "visibilityNote": "Un contexte, pas le résultat du site : une réponse peut mentionner la marque sans citer aucune page du site.",
+      "leaderboard": "Rang de {{domain}} parmi les sites cités",
+      "leaderboardIntro": "Part de toutes les citations des réponses d'IA du projet, avec les sites juste au-dessus et en dessous.",
+      "thisSite": "Ce site",
+      "noRankingTitle": "Pas de classement",
+      "noRanking": "Aucun des domaines du site n'est cité par ce projet BotRank.",
+      "shareHistory": "Part des citations par jour",
+      "shareHistoryIntro": "Une barre par jour où le projet a reçu des réponses d'IA. Une barre vide est un jour où aucune réponse n'a cité de source.",
+      "statLast": "Dernier jour",
+      "statAverage": "Moyenne",
+      "statBest": "Meilleur",
+      "statLow": "Plus bas",
+      "noSource": "aucune réponse n'a cité de source",
+      "topPages": "Pages les plus citées",
+      "topPagesIntro": "L'adresse la plus citée des hôtes du site, sur les 30 derniers jours.",
+      "topPagesIntro_plural": "Les {{count}} adresses les plus citées des hôtes du site, sur les 30 derniers jours.",
+      "noTopPages": "Aucune page des hôtes du site n'a été citée sur la période.",
+      "unmatched": "Aucune page rattachée",
+      "unresolved": "{{count}} adresse citée ne correspond à aucune page du site. Un administrateur du site peut la rattacher à une page dans les réglages du site, sous Citations par les IA (BotRank).",
+      "unresolved_plural": "{{count}} adresses citées ne correspondent à aucune page du site. Un administrateur du site peut les rattacher à des pages dans les réglages du site, sous Citations par les IA (BotRank).",
+      "hosts": "Par hôte",
+      "host": "Hôte",
+      "approxShare": "Part, approchée",
+      "hostsNote": "Calculé ici à partir des pages citées de chaque hôte, puisque BotRank ne filtre par hôte que sa liste de pages. La part est estimée à partir des chiffres du domaine.",
+      "byEngine": "Visibilité de la marque par moteur",
+      "byMarket": "Visibilité de la marque par marché",
+      "oneMarket": "Un seul marché suivi : {{market}}, avec le score du projet, {{score}}.",
+      "engines": "Moteurs suivis par le projet",
+      "enginesIntro": "Le rythme auquel BotRank interroge à nouveau chaque moteur. Les nouveaux chiffres arrivent après le prochain passage et la prochaine synchronisation quotidienne.",
+      "intervalNone": "Pas de rafraîchissement automatique",
+      "intervalDays": "Chaque jour",
+      "intervalDays_plural": "Tous les {{count}} jours",
+      "intervalWeeks": "Chaque semaine",
+      "intervalWeeks_plural": "Toutes les {{count}} semaines",
+      "intervalHours": "Toutes les heures",
+      "intervalHours_plural": "Toutes les {{count}} heures",
+      "source": "Source : BotRank. Les domaines et adresses viennent de réponses d'IA et sont affichés tels quels."
     }
   }
 }
