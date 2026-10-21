@@ -1,0 +1,58 @@
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-large, 24px);
+    max-width: 64rem;
+}
+
+/* Content card, as jContent draws it. */
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-medium, 16px);
+    padding: var(--spacing-large, 24px);
+    border-radius: 4px;
+    background: var(--color-white, #fff);
+    box-shadow: 0 4px 8px 0 rgba(19, 28, 33, 0.2);
+}
+
+.inline {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-small, 8px);
+}
+
+.time {
+    max-width: 6rem;
+}
+
+.facts {
+    margin: 0;
+    padding-left: 18px;
+    line-height: 1.7;
+}
+
+.rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-medium, 16px);
+    padding: var(--spacing-small, 8px) 0;
+    border-bottom: 1px solid var(--color-gray_light40, #e1e5e8);
+}
+
+.url {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.count {
+    color: var(--color-gray_dark60, #5d6a74);
+    white-space: nowrap;
+}

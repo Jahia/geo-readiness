@@ -7,6 +7,8 @@ import {ScoreTab} from './tabs/ScoreTab';
 import {CrawlerTab} from './tabs/CrawlerTab';
 import {SiteFilesTab} from './tabs/SiteFilesTab';
 import {SchemaTab} from './tabs/SchemaTab';
+import {CitationsTab} from './tabs/CitationsTab';
+import {fetchPageCitations} from './api/citations';
 import tabStyles from './tabs/Tabs.module.css';
 import styles from './GeoReadinessDrawer.module.css';
 
@@ -58,6 +60,25 @@ function filesIssueCount(report) {
     return n;
 }
 
+/** The tabs of the drawer: the report's four when it has a published report, then citations. */
+function drawerTabs(report, citationsAvailable, t) {
+    const tabs = report ? [
+        {id: 'score', label: t('score.tab'), count: report.score ? report.score.criticalFailed : 0},
+        {id: 'crawler', label: t('crawler.tab'), count: report.blockedCount},
+        {id: 'files', label: t('files.tab'), count: filesIssueCount(report)},
+        {
+            id: 'schema',
+            label: t('schema.tab'),
+            count: report.schema && report.schema.mapped && !report.schema.valid ? 1 : 0
+        }
+    ] : [];
+    if (citationsAvailable) {
+        tabs.push({id: 'citations', label: t('citations.tab'), count: 0});
+    }
+
+    return tabs;
+}
+
 export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     const {t} = useTranslation(NS);
     const [report, setReport] = useState(null);
@@ -65,6 +86,10 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     const [phase, setPhase] = useState('idle');
     const [tab, setTab] = useState('score');
     const [error, setError] = useState(null);
+    // BotRank citations load on their own, as soon as the drawer opens: they come from the site's
+    // last sync, not from the crawler check, and they live here so a tab switch does not refetch them.
+    const [citations, setCitations] = useState(null);
+    const [citationsFailed, setCitationsFailed] = useState(false);
     const drawerRef = useRef(null);
     const previouslyFocused = useRef(null);
 
@@ -151,6 +176,27 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
         setError(null);
     }, [isOpen, path, language]);
 
+    useEffect(() => {
+        if (!isOpen) {
+            return undefined;
+        }
+        let alive = true;
+        setCitations(null);
+        setCitationsFailed(false);
+        fetchPageCitations({path, language})
+            .then(d => alive && setCitations(d))
+            .catch(e => {
+                // 403 means the module is not enabled on this site or the page is not readable:
+                // the tab simply does not exist then. Anything else is shown as an error in the tab.
+                if (alive && e.code !== 403) {
+                    setCitationsFailed(true);
+                }
+            });
+        return () => {
+            alive = false;
+        };
+    }, [isOpen, path, language]);
+
     const run = useCallback(async () => {
         setPhase('running');
         setError(null);
@@ -169,6 +215,12 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
     if (!isOpen) {
         return null;
     }
+
+    const citationsAvailable = citationsFailed || Boolean(citations && citations.configured);
+    const reportTabs = Boolean(report && report.published);
+    // Without a published report only the citations tab exists, whatever tab was selected before.
+    const activeTab = reportTabs || !citationsAvailable ? tab : 'citations';
+    const tabs = drawerTabs(reportTabs ? report : null, citationsAvailable, t);
 
     return (
         // A real <dialog> rather than an <aside role="dialog">. Rendered with
@@ -320,24 +372,15 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                     </Banner>
                 )}
 
-                {report && report.published && (
+                {tabs.length > 0 && (
                     <Tab className={tabStyles.tabs}>
-                        {[
-                            {id: 'score', label: t('score.tab'), count: report.score ? report.score.criticalFailed : 0},
-                            {id: 'crawler', label: t('crawler.tab'), count: report.blockedCount},
-                            {id: 'files', label: t('files.tab'), count: filesIssueCount(report)},
-                            {
-                                id: 'schema',
-                                label: t('schema.tab'),
-                                count: report.schema && report.schema.mapped && !report.schema.valid ? 1 : 0
-                            }
-                        ].map(item => (
+                        {tabs.map(item => (
                             <TabItem
                                 key={item.id}
                                 id={`geo-drawer-tab-${item.id}`}
                                 aria-controls={`geo-drawer-panel-${item.id}`}
                                 label={item.label}
-                                isSelected={tab === item.id}
+                                isSelected={activeTab === item.id}
                                 icon={item.count > 0 ? <Badge label={String(item.count)} color="warning"/> : undefined}
                                 onClick={() => setTab(item.id)}
                             />
@@ -363,17 +406,18 @@ export const GeoReadinessDrawer = ({isOpen, path, language, onClose}) => {
                     </Banner>
                 )}
 
-                {report && report.published && (
+                {(reportTabs || activeTab === 'citations') && tabs.length > 0 && (
                     <div
                         role="tabpanel"
-                        id={`geo-drawer-panel-${tab}`}
-                        aria-labelledby={`geo-drawer-tab-${tab}`}
+                        id={`geo-drawer-panel-${activeTab}`}
+                        aria-labelledby={`geo-drawer-tab-${activeTab}`}
                         tabIndex={0}
                     >
-                        {tab === 'score' && <ScoreTab report={report}/>}
-                        {tab === 'crawler' && <CrawlerTab report={report}/>}
-                        {tab === 'files' && <SiteFilesTab report={report}/>}
-                        {tab === 'schema' && <SchemaTab report={report}/>}
+                        {reportTabs && activeTab === 'score' && <ScoreTab report={report}/>}
+                        {reportTabs && activeTab === 'crawler' && <CrawlerTab report={report}/>}
+                        {reportTabs && activeTab === 'files' && <SiteFilesTab report={report}/>}
+                        {reportTabs && activeTab === 'schema' && <SchemaTab report={report}/>}
+                        {activeTab === 'citations' && <CitationsTab data={citations} failed={citationsFailed}/>}
                     </div>
                 )}
             </div>

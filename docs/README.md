@@ -20,8 +20,10 @@ Neither of these assumes you know what a crawler, a sitemap or structured data i
 which findings are yours to fix and which belong to a developer, an administrator or whoever runs
 the infrastructure.
 
-- **[`drawer-guide.md`](drawer-guide.md)** is the panel that opens on a page: its four tabs, the
+- **[`drawer-guide.md`](drawer-guide.md)** is the panel that opens on a page: its five tabs, the
   banners above them, and what each verdict is telling you.
+- The drawer's AI citations tab is connected to BotRank by a site administrator in Site Settings,
+  AI citations (BotRank); its setup is in the root `README.md`, "BotRank connections".
 - **[`dashboard-guide.md`](dashboard-guide.md)** is the site-wide screen under Additional, SEO: its
   ten panels, which two of them write to the site, and a sensible order to work through them.
 
