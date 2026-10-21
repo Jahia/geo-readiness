@@ -42,6 +42,17 @@ services:
         networks:
             - stack
 
+    # A stand-in for BotRank's public API, so the citations spec never needs a real key.
+    # Jahia reaches it as http://botrank-stub:9091/public/v1 on the stack network.
+    botrank-stub:
+        image: 'node:22-alpine'
+        container_name: botrank-stub
+        command: ['node', '/stub/botrank-stub.js', '--port', '9091']
+        volumes:
+            - ../test-fixtures/botrank-stub.js:/stub/botrank-stub.js:ro
+        networks:
+            - stack
+
     cypress:
         profiles: ["test"]
         image: '${TESTS_IMAGE}'

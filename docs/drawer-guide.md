@@ -158,6 +158,32 @@ this date, written by this person". Crawlers rely on it heavily.
 your page automatically: somebody places it, usually once in a template rather than page by page.
 If properties are missing, the usual fix is to fill in the matching fields on the content itself.
 
+## Tab 5 - AI citations
+
+Only on sites that a site administrator connected to BotRank. It opens without running the check:
+its figures come from the site's daily sync, not from the button.
+
+**What it answers.** "Do AI answers quote this page, for which questions, and against whom?"
+
+**What you see.**
+
+- When the data dates from, and when the site last synced.
+- How many times AI answers cited the page over the last 30 days, compared with the 30 days
+  before. When no tracked question ran in the previous 30 days, no comparison is shown: a "+14"
+  against a period nobody measured would be meaningless.
+- Its rank among the site's cited pages, and the AI engines that cite it.
+- Citations per day. Read the trend: the same question gets different answers from one run to the
+  next.
+- The tracked questions that cite it, the themes those questions belong to, and the other pages
+  the same answers cite, with how often they come first.
+- "Not cited yet" when no tracked answer ever cited the page, or "Not cited recently" when it was
+  cited before the last 30 days.
+
+**What to do.** The themes say what AI engines think the page is about; if they surprise you, the
+page may explain something else than you meant. The pages cited alongside show what the engines
+prefer to quote on the same questions. The tracked questions themselves are set up in BotRank, not
+in Jahia.
+
 ## Which problems are actually yours
 
 | If you see | Who fixes it |
