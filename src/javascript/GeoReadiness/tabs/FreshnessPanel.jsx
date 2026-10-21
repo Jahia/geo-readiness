@@ -1,11 +1,12 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Dropdown, Loader, Separator, Typography} from '@jahia/moonstone';
+import {Banner, Dropdown, Loader, Typography} from '@jahia/moonstone';
 import {scanStatus, checkFreshness} from '../api/siteScore';
 import {BarList, Histogram} from '../charts/Charts';
 import {jcontentUrl} from '../util/jcontentUrl';
 import {Paged} from '../util/Paged';
+import {Card, Figure, Figures, Note, Panel, PanelHeader} from '../dashboard/Layout';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -92,33 +93,28 @@ export const FreshnessPanel = ({path, language}) => {
     );
 
     return (
-        <div>
-            <Typography variant="subheading" component="h2" className={styles.panelTitle}>
-                {t('freshness.title')}
-            </Typography>
-            <Typography variant="caption" className={styles.panelIntro}>
-                {t('freshness.intro')}
-            </Typography>
-
-            <div className={styles.cronRow}>
-                <Typography variant="caption">{t('freshness.thresholdLabel')}</Typography>
-                <Dropdown
-                    size="small"
-                    isDisabled={busy}
-                    value={String(threshold)}
-                    data={THRESHOLDS.map(d => ({
-                        label: t(`freshness.threshold.${d}`),
-                        value: String(d)
-                    }))}
-                    onChange={(e, item) => {
-                        const v = (item && item.value) || '';
-                        if (v) {
-                            load(Number(v));
-                        }
-                    }}
-                />
-                {busy && <Typography variant="caption">{t('freshness.measuring')}</Typography>}
-            </div>
+        <Panel>
+            <PanelHeader title={t('freshness.title')} intro={t('freshness.intro')}>
+                <div className={styles.cronRow}>
+                    <Typography variant="caption">{t('freshness.thresholdLabel')}</Typography>
+                    <Dropdown
+                        size="small"
+                        isDisabled={busy}
+                        value={String(threshold)}
+                        data={THRESHOLDS.map(d => ({
+                            label: t(`freshness.threshold.${d}`),
+                            value: String(d)
+                        }))}
+                        onChange={(e, item) => {
+                            const v = (item && item.value) || '';
+                            if (v) {
+                                load(Number(v));
+                            }
+                        }}
+                    />
+                    {busy && <Typography variant="caption">{t('freshness.measuring')}</Typography>}
+                </div>
+            </PanelHeader>
 
             {!f && (
                 <Banner variant="info" title={t('freshness.neverTitle')}>
@@ -128,116 +124,97 @@ export const FreshnessPanel = ({path, language}) => {
 
             {f && (
                 <>
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                        {t('freshness.whenTitle')}
-                    </Typography>
-                    <Typography variant="caption" className={styles.panelIntro}>
-                        {t('freshness.counts', {total: f.total, undated: f.undated})}
-                    </Typography>
+                    <Card
+                        title={t('freshness.whenTitle')}>
+                        <Figures>
+                            <Figure label={t('freshness.figure.dated')} value={f.total} tone="accent"/>
+                            <Figure label={t('freshness.figure.undated')} value={f.undated} tone={f.undated > 0 ? 'warn' : 'good'}/>
+                        </Figures>
+                        {/*
+                          * The shape is the answer: whether the site's mass sits on
+                          * the left, where nothing has been touched in a long time.
+                          * A bucket entirely past the threshold carries the warning
+                          * tone, so the chosen line shows up in the picture.
+                          */}
+                        <Histogram
+                            axisLeft={t('freshness.axisOlder')}
+                            axisRight={t('freshness.axisRecent')}
+                            format={v => String(v)}
+                            tipFor={r => t(`freshness.bucket.${r.key}`)}
+                            rows={BUCKETS.map(b => ({
+                                key: b.key,
+                                label: t(`freshness.bucketShort.${b.key}`),
+                                value: counts[b.key] || 0,
+                                status: b.from >= threshold ? 'warn' : undefined
+                            }))}
+                        />
+                    </Card>
 
-                    {/*
-                      * The shape is the answer: whether the site's mass sits on
-                      * the left, where nothing has been touched in a long time.
-                      * A bucket entirely past the threshold carries the warning
-                      * tone, so the chosen line shows up in the picture.
-                      */}
-                    <Histogram
-                        axisLeft={t('freshness.axisOlder')}
-                        axisRight={t('freshness.axisRecent')}
-                        format={v => String(v)}
-                        tipFor={r => t(`freshness.bucket.${r.key}`)}
-                        rows={BUCKETS.map(b => ({
-                            key: b.key,
-                            label: t(`freshness.bucketShort.${b.key}`),
-                            value: counts[b.key] || 0,
-                            status: b.from >= threshold ? 'warn' : undefined
-                        }))}
-                    />
+                    <Card title={t('freshness.byType')} intro={t('freshness.byTypeHelp')}>
+                        {groups(f.byType, 'type')}
+                    </Card>
 
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                        {t('freshness.byType')}
-                    </Typography>
-                    <Typography variant="caption" className={styles.panelIntro}>
-                        {t('freshness.byTypeHelp')}
-                    </Typography>
-                    {groups(f.byType, 'type')}
+                    <Card title={t('freshness.bySection')} intro={t('freshness.bySectionHelp')}>
+                        {groups(f.bySection, 'section')}
+                    </Card>
 
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                        {t('freshness.bySection')}
-                    </Typography>
-                    <Typography variant="caption" className={styles.panelIntro}>
-                        {t('freshness.bySectionHelp')}
-                    </Typography>
-                    {groups(f.bySection, 'section')}
-
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                        {t('freshness.allTitle')}
-                    </Typography>
-                    <Typography variant="caption" className={styles.panelIntro}>
-                        {t('freshness.allHelp')}
-                    </Typography>
-
-                    {/*
-                      * The groups above say where to look; this says which page.
-                      * Oldest first, so the list opens on the work rather than on
-                      * whatever the repository happened to return first.
-                      */}
-                    <Paged rows={f.items || []}>
-                        {slice => (
-                            <ul className={styles.checkList}>
-                                {slice.map(r => (
-                                    <li key={r.jcrPath} className={styles.checkItem}>
-                                        <span className={styles.checkText}>
-                                            {jcontentUrl(r.jcrPath, language) ? (
-                                                <a
-                                                    className={styles.pageLink}
-                                                    href={jcontentUrl(r.jcrPath, language)}
-                                                    title={t('score17.openPage')}
-                                                >
-                                                    {r.title}
-                                                </a>
-                                            ) : (
-                                                <Typography variant="body" className={styles.checkLabel}>
-                                                    {r.title}
+                    <Card title={t('freshness.allTitle')} intro={t('freshness.allHelp')}>
+                        {/*
+                          * The groups above say where to look; this says which page.
+                          * Oldest first, so the list opens on the work rather than on
+                          * whatever the repository happened to return first.
+                          */}
+                        <Paged rows={f.items || []}>
+                            {slice => (
+                                <ul className={styles.checkList}>
+                                    {slice.map(r => (
+                                        <li key={r.jcrPath} className={styles.checkItem}>
+                                            <span className={styles.checkText}>
+                                                {jcontentUrl(r.jcrPath, language) ? (
+                                                    <a
+                                                        className={styles.pageLink}
+                                                        href={jcontentUrl(r.jcrPath, language)}
+                                                        title={t('score17.openPage')}
+                                                    >
+                                                        {r.title}
+                                                    </a>
+                                                ) : (
+                                                    <Typography variant="body" className={styles.checkLabel}>
+                                                        {r.title}
+                                                    </Typography>
+                                                )}
+                                                <Typography variant="caption" className={styles.checkFix}>
+                                                    {`${r.type} · ${r.section} · ${r.path}`}
                                                 </Typography>
-                                            )}
-                                            <Typography variant="caption" className={styles.checkFix}>
-                                                {`${r.type} · ${r.section} · ${r.path}`}
-                                            </Typography>
-                                        </span>
-                                        <span className={styles.checkMeta}>
-                                            <Typography
-                                                variant="caption"
-                                                className={r.stale ? styles.checkStale : styles.checkValue}
-                                            >
-                                                {r.days === null ?
-                                                    t('freshness.noDate') :
-                                                    age(r.days, t)}
-                                            </Typography>
-                                            <Typography variant="caption" className={styles.checkFix}>
-                                                {r.modifiedOn || ''}
-                                            </Typography>
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
+                                            </span>
+                                            <span className={styles.checkMeta}>
+                                                <Typography
+                                                    variant="caption"
+                                                    className={r.stale ? styles.checkStale : styles.checkValue}
+                                                >
+                                                    {r.days === null ?
+                                                        t('freshness.noDate') :
+                                                        age(r.days, t)}
+                                                </Typography>
+                                                <Typography variant="caption" className={styles.checkFix}>
+                                                    {r.modifiedOn || ''}
+                                                </Typography>
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </Paged>
+
+                        {f.itemsTruncated && (
+                            <Note>{t('freshness.truncated', {count: (f.items || []).length})}</Note>
                         )}
-                    </Paged>
+                    </Card>
 
-                    {f.itemsTruncated && (
-                        <Typography variant="caption" className={styles.panelIntro}>
-                            {t('freshness.truncated', {count: (f.items || []).length})}
-                        </Typography>
-                    )}
-
-                    <p className={styles.explain}>{t('freshness.limits')}</p>
+                    <Note>{t('freshness.limits')}</Note>
                 </>
             )}
-        </div>
+        </Panel>
     );
 };
 

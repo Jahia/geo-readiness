@@ -1,11 +1,12 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import PropTypes from 'prop-types';
 import {useTranslation} from 'react-i18next';
-import {Banner, Button, Chip, Field, Input, Loader, Separator, Switch, TablePagination, Typography} from '@jahia/moonstone';
+import {Banner, Button, Chip, Field, Input, Loader, Switch, TablePagination, Typography} from '@jahia/moonstone';
 import {CronBuilder} from './CronBuilder';
 import {scanStatus, runScan, saveSchedule} from '../api/siteScore';
 import {jcontentUrl} from '../util/jcontentUrl';
-import {Meter, BarList, FailureMatrix} from '../charts/Charts';
+import {BarList, FailureMatrix} from '../charts/Charts';
+import {Actions, Card, Hero, HeroTitle, Note, Panel, PanelHeader, Ring, scoreTone} from '../dashboard/Layout';
 import styles from './Tabs.module.css';
 
 const NS = 'geo-readiness';
@@ -129,9 +130,8 @@ export const SiteScorePanel = ({path, language}) => {
     const movement = agg && prev && typeof prev.percent === 'number' ? agg.percent - prev.percent : null;
 
     return (
-        <div className={styles.panel}>
-            <Typography variant="heading" component="h2" className={styles.panelTitle}>{t('score17.title')}</Typography>
-            <Typography variant="body" className={styles.panelIntro}>{t('score17.intro')}</Typography>
+        <Panel>
+            <PanelHeader title={t('score17.title')} intro={t('score17.intro')}/>
 
             {/*
               * A scan runs for minutes with nobody watching the screen. Without
@@ -150,74 +150,64 @@ export const SiteScorePanel = ({path, language}) => {
                 <Banner variant="danger" title={t('score17.failedTitle')} role="alert">{t('score17.failed')}</Banner>
             )}
 
-            {agg && (
-                <>
-                    <Separator spacing="medium" size="full"/>
-                    <div className={styles.scoreHeadline}>
-                        {t('score17.headline', {percent: agg.percent})}
+            <Card>
+                {agg && (
+                    <Hero gauge={<Ring value={agg.percent / 100} text={`${agg.percent} %`} tone={scoreTone(agg.percent)}/>}>
+                        {/*
+                          * The one ratio the page leads with: the ring carries severity and
+                          * the headline beside it carries the words, so color is never the
+                          * only signal.
+                          */}
+                        <HeroTitle>{t('score17.headline', {percent: agg.percent})}</HeroTitle>
                         {movement !== null && movement !== 0 && (
-                            <span className={styles.scoreCount}>
-                                {t(movement > 0 ? 'score17.up' : 'score17.down', {n: Math.abs(movement)})}
-                            </span>
+                            <Chip
+                                color={movement > 0 ? 'success' : 'danger'}
+                                label={t(movement > 0 ? 'score17.up' : 'score17.down', {n: Math.abs(movement)})}
+                            />
                         )}
-                    </div>
-                    {/*
-                      * The one ratio the page leads with, as a meter: the fill
-                      * carries severity and the headline above carries the words,
-                      * so color is never the only signal.
-                      */}
-                    <Meter value={agg.percent} label={t('score17.headline', {percent: agg.percent})}/>
-                    <Typography variant="caption" className={styles.panelIntro}>
-                        {t('score17.counts', {
-                            scored: agg.scored,
-                            critical: agg.criticalPages,
-                            unreadable: agg.unreadable
-                        })}
-                    </Typography>
-                    {/*
-                      * The same page reads 15/17 here and 16/18 in the drawer,
-                      * which looks like a bug until somebody explains it. Name
-                      * the missing check rather than leaving it to be noticed.
-                      */}
-                    <Typography variant="caption" className={styles.explain}>
-                        {t('score17.whyFewer', {
-                            check: t('score.check.sameContentForCrawlers.label')
-                        })}
-                    </Typography>
-                    {agg.truncated && (
-                        <Banner variant="warning" title={t('score17.truncatedTitle')}>
-                            {t('score17.truncated', {pages: agg.pages})}
-                        </Banner>
+                        <Typography variant="caption">
+                            {t('score17.counts', {
+                                scored: agg.scored,
+                                critical: agg.criticalPages,
+                                unreadable: agg.unreadable
+                            })}
+                        </Typography>
+                    </Hero>
+                )}
+                {agg && (
+                    // The same page reads 15/17 here and 16/18 in the drawer, which looks like a
+                    // bug until somebody explains it. Name the missing check rather than leaving
+                    // it to be noticed.
+                    <Note>{t('score17.whyFewer', {check: t('score.check.sameContentForCrawlers.label')})}</Note>
+                )}
+                {agg && agg.truncated && (
+                    <Banner variant="warning" title={t('score17.truncatedTitle')}>
+                        {t('score17.truncated', {pages: agg.pages})}
+                    </Banner>
+                )}
+                <Actions>
+                    <Button
+                        size="big"
+                        color="accent"
+                        isDisabled={phase === 'scanning' || run.status === 'running'}
+                        label={phase === 'scanning' ? t('score17.scanning') : t('score17.runNow')}
+                        onClick={scan}
+                    />
+                    {run.finishedAt && (
+                        <Typography variant="caption">
+                            {t('score17.lastRun', {date: new Date(run.finishedAt).toLocaleString()})}
+                        </Typography>
                     )}
-                </>
-            )}
-
-            <div className={styles.actions}>
-                <Button
-                    size="big"
-                    color="accent"
-                    isDisabled={phase === 'scanning' || run.status === 'running'}
-                    label={phase === 'scanning' ? t('score17.scanning') : t('score17.runNow')}
-                    onClick={scan}
-                />
-                {run.finishedAt && (
-                    <Typography variant="caption">
-                        {t('score17.lastRun', {date: new Date(run.finishedAt).toLocaleString()})}
-                    </Typography>
-                )}
-                {state && state.nextRun && (
-                    <Typography variant="caption">
-                        {t('score17.nextRun', {date: new Date(state.nextRun).toLocaleString()})}
-                    </Typography>
-                )}
-            </div>
+                    {state && state.nextRun && (
+                        <Typography variant="caption">
+                            {t('score17.nextRun', {date: new Date(state.nextRun).toLocaleString()})}
+                        </Typography>
+                    )}
+                </Actions>
+            </Card>
 
             {agg && (agg.sections || []).length > 0 && (
-                <>
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                        {t('score17.bySection')}
-                    </Typography>
+                <Card title={t('score17.bySection')}>
                     <BarList
                         max={100}
                         format={v => `${v}%`}
@@ -231,18 +221,11 @@ export const SiteScorePanel = ({path, language}) => {
                             status: s.percent >= 80 ? undefined : 'warn'
                         }))}
                     />
-                </>
+                </Card>
             )}
 
             {agg && (agg.templates || []).length > 0 && (
-                <>
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                        {t('score17.byTemplate')}
-                    </Typography>
-                    <Typography variant="caption" className={styles.panelIntro}>
-                        {t('score17.byTemplateHelp')}
-                    </Typography>
+                <Card title={t('score17.byTemplate')} intro={t('score17.byTemplateHelp')}>
                     <ul className={styles.checkList}>
                         {agg.templates.filter(tpl => tpl.template).map(tpl => (
                             <li key={tpl.template} className={styles.checkItem}>
@@ -279,18 +262,11 @@ export const SiteScorePanel = ({path, language}) => {
                             </li>
                         ))}
                     </ul>
-                </>
+                </Card>
             )}
 
             {(run.failures || []).length > 0 && (
-                <>
-                    <Separator spacing="big" size="full"/>
-                    <Typography variant="subheading" component="h3" className={styles.panelSub}>
-                        {t('score17.worstPages')}
-                    </Typography>
-                    <Typography variant="caption" className={styles.panelIntro}>
-                        {t('score17.matrixHelp')}
-                    </Typography>
+                <Card title={t('score17.worstPages')} intro={t('score17.matrixHelp')}>
                     {/*
                       * Columns ordered by how many pages fail them, so a check
                       * every page fails is a solid stripe at the left - which is
@@ -346,56 +322,54 @@ export const SiteScorePanel = ({path, language}) => {
                             }}
                         />
                     )}
-                </>
+                </Card>
             )}
 
-            <Separator spacing="big" size="full"/>
+            <Card title={t('score17.schedule')} intro={t('score17.scheduleHelp')}>
 
-            <Typography variant="subheading" component="h3" className={styles.panelSub}>{t('score17.schedule')}</Typography>
-            <Typography variant="caption" className={styles.panelIntro}>{t('score17.scheduleHelp')}</Typography>
+                {/*
+                  * Moonstone's Field renders its label as a plain sibling with no
+                  * htmlFor, and puts the id on the wrapper rather than the
+                  * control - so the actual input this Field describes has no
+                  * accessible name of its own. aria-label repeats the same text
+                  * Field already shows, directly on the control.
+                  */}
+                <Field id="geoEnabled" label={t('score17.enabledLabel')} helper={t('score17.enabledHelp')}>
+                    <span className={styles.switchCell}>
+                        <Switch
+                            checked={enabled}
+                            aria-label={t('score17.enabledLabel')}
+                            onChange={(e, v, checked) => setEnabled(checked)}
+                        />
+                        <Typography variant="caption">
+                            {enabled ? t('score17.enabled') : t('score17.disabled')}
+                        </Typography>
+                    </span>
+                </Field>
 
-            {/*
-              * Moonstone's Field renders its label as a plain sibling with no
-              * htmlFor, and puts the id on the wrapper rather than the
-              * control - so the actual input this Field describes has no
-              * accessible name of its own. aria-label repeats the same text
-              * Field already shows, directly on the control.
-              */}
-            <Field id="geoEnabled" label={t('score17.enabledLabel')} helper={t('score17.enabledHelp')}>
-                <span className={styles.switchCell}>
-                    <Switch
-                        checked={enabled}
-                        aria-label={t('score17.enabledLabel')}
-                        onChange={(e, v, checked) => setEnabled(checked)}
+                <Field id="geoCron" label={t('score17.cronLabel')} helper={t('score17.cronHelp')}>
+                    <CronBuilder value={cron} onChange={setCron}/>
+                </Field>
+
+                <Field
+                    id="geoScope"
+                    label={t('score17.scopeLabel')}
+                    helper={t('score17.scopeHelp')}
+                    buttons={<Button label={t('score17.browse')} onClick={pickScope}/>}
+                >
+                    <Input
+                        value={scope}
+                        aria-label={t('score17.scopeLabel')}
+                        placeholder={t('score17.scopePlaceholder')}
+                        onChange={e => setScope(e.target.value)}
                     />
-                    <Typography variant="caption">
-                        {enabled ? t('score17.enabled') : t('score17.disabled')}
-                    </Typography>
-                </span>
-            </Field>
+                </Field>
 
-            <Field id="geoCron" label={t('score17.cronLabel')} helper={t('score17.cronHelp')}>
-                <CronBuilder value={cron} onChange={setCron}/>
-            </Field>
-
-            <Field
-                id="geoScope"
-                label={t('score17.scopeLabel')}
-                helper={t('score17.scopeHelp')}
-                buttons={<Button label={t('score17.browse')} onClick={pickScope}/>}
-            >
-                <Input
-                    value={scope}
-                    aria-label={t('score17.scopeLabel')}
-                    placeholder={t('score17.scopePlaceholder')}
-                    onChange={e => setScope(e.target.value)}
-                />
-            </Field>
-
-            <div className={styles.actions}>
-                <Button size="big" variant="outlined" label={t('score17.save')} onClick={save}/>
-            </div>
-        </div>
+                <Actions>
+                    <Button size="big" variant="outlined" label={t('score17.save')} onClick={save}/>
+                </Actions>
+            </Card>
+        </Panel>
     );
 };
 
