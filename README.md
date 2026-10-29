@@ -1,5 +1,13 @@
 # GEO Readiness
 
+> [!IMPORTANT]
+> **Deprecated: replaced by [Content Governance](https://github.com/Jahia/content-governance).** GEO Readiness is now part of Content Governance
+> 1.0.0, which brings its crawler checks, GEO dashboard, robots.txt and llms.txt editors and BotRank citations together with the other content checks in one drawer, switched on per
+> site. This repository receives no further releases and will be archived.
+>
+> To move: uninstall GEO Readiness, then install Content Governance and enable it on your sites; GEO scans and reports and the BotRank connection files carry over; a site administrator saves the GEO scan schedule and the BotRank settings once, and the AI settings move to the shared model configuration.
+> Details: [moving from the three modules](https://github.com/Jahia/content-governance#moving-from-the-three-modules).
+
 **Can AI crawlers actually read this site?**
 
 A Jahia jContent extension that answers a question nothing else in the back office can: when
