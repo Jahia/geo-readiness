@@ -1,5 +1,7 @@
 # GEO Readiness - agent harness
 
+**Deprecated (2026-10-29):** this module is replaced by Content Governance (https://github.com/Jahia/content-governance). Do not develop here; work goes to content-governance.
+
 Wave 1 of the GEO work. **Track 2 OSGi UI extension**: Maven bundle, React 18, Webpack +
 Module Federation, `@jahia/ui-extender`. Modelled on `page-audit`, which is the reference
 module for this pattern. Read that module's `.agents/README.md` too, most of its traps apply.
